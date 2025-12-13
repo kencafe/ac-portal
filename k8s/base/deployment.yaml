@@ -56,9 +56,11 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
-          runAsUser: 1001
+          runAsUser: 1001980000
           capabilities:
             drop:
             - ALL
       securityContext:
-        fsGroup: 1001
+        runAsUser: 1001980000
+        runAsGroup: 0
+        fsGroup: 0
