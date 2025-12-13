@@ -1,4 +1,7 @@
-apiVersion: build.openshift.io/v1
+apiVersion: build.      from:
+        kind: ImageStreamTag
+        namespace: openshift
+        name: nodejs:20-ubi9-redhatnshift.io/v1
 kind: BuildConfig
 metadata:
   name: ac-portal
