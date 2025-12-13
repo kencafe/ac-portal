@@ -16,6 +16,11 @@ spec:
     type: Docker
     dockerStrategy:
       dockerfilePath: Dockerfile
+      from:
+        kind: DockerImage
+        name: registry.redhat.io/ubi8/nodejs-18:latest
+      pullSecret:
+        name: redhat-registry-secret
   output:
     to:
       kind: ImageStreamTag

@@ -13,7 +13,7 @@
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "clsx": "^2.0.0",
-    "lucide-react": "^0.294.0",
+    "lucide-react": "^0.460.0",
     "gray-matter": "^4.0.3",
     "markdown-it": "^14.0.0",
     "@types/markdown-it": "^13.0.7"
