@@ -1,7 +1,4 @@
-apiVersion: build.      from:
-        kind: ImageStreamTag
-        namespace: openshift
-        name: nodejs:20-ubi9-redhatnshift.io/v1
+apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
   name: ac-portal
@@ -20,10 +17,9 @@ spec:
     dockerStrategy:
       dockerfilePath: Dockerfile
       from:
-        kind: DockerImage
-        name: registry.redhat.io/ubi8/nodejs-18:latest
-      pullSecret:
-        name: redhat-registry-secret
+        kind: ImageStreamTag
+        namespace: openshift
+        name: nodejs:20-ubi9-custom
   output:
     to:
       kind: ImageStreamTag
