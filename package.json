@@ -16,7 +16,8 @@
     "lucide-react": "^0.460.0",
     "gray-matter": "^4.0.3",
     "markdown-it": "^14.0.0",
-    "@types/markdown-it": "^13.0.7"
+    "@types/markdown-it": "^13.0.7",
+    "typescript": "^5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -27,7 +28,6 @@
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
     "tailwindcss": "^4",
-    "typescript": "^5",
     "@tailwindcss/typography": "^0.5.10"
   }
 }
