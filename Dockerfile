@@ -1,5 +1,5 @@
 # Multi-stage Dockerfile for Next.js production optimization  
-FROM registry.redhat.io/ubi9/nodejs-20:latest AS base
+FROM image-registry.openshift-image-registry.svc:5000/openshift/nodejs:20-ubi9 AS base
 
 # Install dependencies only when needed
 FROM base AS deps
