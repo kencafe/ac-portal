@@ -1,9 +1,12 @@
 # Multi-stage Dockerfile for Next.js production optimization
-FROM registry.redhat.io/ubi8/nodejs-18:latest AS base
+FROM registry.redhat.io/ubi9/nodejs-20:latest AS base
 
 # Install dependencies only when needed
 FROM base AS deps
+# Run as root to ensure we can create directories and install dependencies
+USER 0
 WORKDIR /app
+RUN chown -R 1001:0 /app && chmod -R g=u /app
 
 # Install dependencies based on the preferred package manager
 COPY package.json package-lock.json* ./
@@ -14,7 +17,10 @@ RUN \
 
 # Rebuild the source code only when needed
 FROM base AS builder
+# Run as root to ensure we can build
+USER 0
 WORKDIR /app
+RUN chown -R 1001:0 /app && chmod -R g=u /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 

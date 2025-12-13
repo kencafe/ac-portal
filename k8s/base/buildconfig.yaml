@@ -9,7 +9,7 @@ spec:
   source:
     type: Git
     git:
-      uri: file:///root/ac-projects/ac-portal-remote.git
+      uri: https://github.com/vicktorf/ac-portal.git
       ref: main
     contextDir: "."
   strategy:
