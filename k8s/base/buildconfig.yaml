@@ -17,10 +17,8 @@ spec:
     type: Docker
     dockerStrategy:
       dockerfilePath: Dockerfile
-      from:
-        kind: ImageStreamTag
-        namespace: openshift
-        name: nodejs:20-ubi9
+      pullSecret:
+        name: redhat-registry-secret
   output:
     to:
       kind: ImageStreamTag
