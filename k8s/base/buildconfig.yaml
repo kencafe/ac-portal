@@ -12,6 +12,7 @@ spec:
       uri: https://github.com/vicktorf/ac-portal.git
       ref: main
     contextDir: "."
+  serviceAccount: builder
   strategy:
     type: Docker
     dockerStrategy:
