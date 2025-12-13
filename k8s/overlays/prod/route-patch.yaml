@@ -1,0 +1,6 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: ac-portal
+spec:
+  host: ac-portal.apps.cluster.com

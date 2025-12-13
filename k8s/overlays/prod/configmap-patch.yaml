@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ac-portal-config
+data:
+  NODE_ENV: "production"
+  SITE_URL: "https://ac-portal.apps.cluster.com"
+  SITE_NAME: "AC Portal"

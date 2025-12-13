@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ac-portal
+  labels:
+    app: ac-portal
+    component: frontend
+spec:
+  selector:
+    app: ac-portal
+    component: frontend
+  ports:
+  - name: http
+    port: 3000
+    targetPort: 3000
+    protocol: TCP
+  type: ClusterIP
