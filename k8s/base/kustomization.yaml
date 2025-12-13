@@ -9,6 +9,8 @@ resources:
 - service.yaml
 - route.yaml  
 - configmap.yaml
+- imagestream.yaml
+- buildconfig.yaml
 
 commonLabels:
   app: ac-portal

@@ -116,7 +116,7 @@ deploy_environment() {
     # Update image tag in kustomization
     print_status "Updating image tag in kustomization..."
     cd "$overlay_path"
-    kustomize edit set image ac-portal=quay.io/ac-portal/ac-portal:$image_tag
+    kustomize edit set image ac-portal=ac-portal:$image_tag
     cd - > /dev/null
     
     if [ "$dry_run" == "true" ]; then

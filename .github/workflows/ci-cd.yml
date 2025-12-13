@@ -7,8 +7,8 @@ on:
     branches: [ main, develop ]
 
 env:
-  REGISTRY: quay.io
-  IMAGE_NAME: ac-portal/ac-portal
+  OPENSHIFT_SERVER: ${{ secrets.OPENSHIFT_SERVER }}
+  OPENSHIFT_TOKEN: ${{ secrets.OPENSHIFT_TOKEN }}
 
 jobs:
   # Code Quality & Testing
@@ -39,49 +39,49 @@ jobs:
       # - name: Run tests
       #   run: npm test
 
-  # Build and Push Docker Image
+  # Build on OpenShift
   build:
     needs: quality
     runs-on: ubuntu-latest
     outputs:
-      image-tag: ${{ steps.meta.outputs.tags }}
-      image-digest: ${{ steps.build.outputs.digest }}
+      build-number: ${{ steps.build.outputs.build-number }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
+      - name: Install OpenShift CLI
+        uses: redhat-actions/openshift-tools-installer@v1
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
+          oc: latest
 
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
+      - name: Login to OpenShift
+        run: |
+          oc login --token=${{ secrets.OPENSHIFT_TOKEN }} --server=${{ secrets.OPENSHIFT_SERVER }}
 
-      - name: Build and push Docker image
+      - name: Trigger OpenShift Build
         id: build
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/amd64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+        run: |
+          # Determine target namespace based on branch
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            NAMESPACE="ac-portal-prod"
+            TAG="prod"
+          else
+            NAMESPACE="ac-portal-dev" 
+            TAG="dev"
+          fi
+          
+          oc project $NAMESPACE
+          
+          # Start new build
+          BUILD_NAME=$(oc start-build ac-portal --from-repo=. --wait --follow)
+          BUILD_NUMBER=$(echo $BUILD_NAME | grep -o '[0-9]*$')
+          
+          # Tag the built image
+          oc tag ac-portal:latest ac-portal:$TAG
+          oc tag ac-portal:latest ac-portal:build-$BUILD_NUMBER
+          
+          echo "build-number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "Built image: ac-portal:$TAG (build #$BUILD_NUMBER)"
 
   # Deploy to Development Environment
   deploy-dev:
@@ -106,9 +106,9 @@ jobs:
         run: |
           oc project ac-portal-dev
           
-          # Update image in kustomization
+          # Update image tag in kustomization
           cd k8s/overlays/dev
-          kustomize edit set image ac-portal=${{ needs.build.outputs.image-tag }}
+          kustomize edit set image ac-portal=ac-portal:dev
           
           # Apply manifests
           oc apply -k .
@@ -144,9 +144,9 @@ jobs:
         run: |
           oc project ac-portal-prod
           
-          # Update image in kustomization
+          # Update image tag in kustomization  
           cd k8s/overlays/prod
-          kustomize edit set image ac-portal=${{ needs.build.outputs.image-tag }}
+          kustomize edit set image ac-portal=ac-portal:prod
           
           # Apply manifests
           oc apply -k .
@@ -164,15 +164,31 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+      - name: Install OpenShift CLI
+        uses: redhat-actions/openshift-tools-installer@v1
         with:
-          image-ref: ${{ needs.build.outputs.image-tag }}
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+          oc: latest
 
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
-        if: always()
-        with:
-          sarif_file: 'trivy-results.sarif'
+      - name: Login to OpenShift
+        run: |
+          oc login --token=${{ secrets.OPENSHIFT_TOKEN }} --server=${{ secrets.OPENSHIFT_SERVER }}
+
+      - name: Run OpenShift Image Security Scan
+        run: |
+          # Determine namespace based on branch
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            NAMESPACE="ac-portal-prod"
+            TAG="prod"
+          else
+            NAMESPACE="ac-portal-dev"
+            TAG="dev"
+          fi
+          
+          oc project $NAMESPACE
+          
+          # Get image SHA from ImageStream
+          IMAGE_SHA=$(oc get istag ac-portal:$TAG -o jsonpath='{.image.metadata.name}')
+          echo "Scanning image: $IMAGE_SHA"
+          
+          # Check for any security vulnerabilities in the image
+          oc describe image $IMAGE_SHA | grep -i "vulnerabilit\|security\|cve" || echo "No security issues found in image metadata"

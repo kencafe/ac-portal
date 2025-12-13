@@ -1,0 +1,38 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: ac-portal
+  labels:
+    app: ac-portal
+    component: frontend
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/YOUR_USERNAME/ac-portal.git
+      ref: main
+    contextDir: "."
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: ac-portal:latest
+  triggers:
+  - type: GitHub
+    github:
+      secret: ac-portal-webhook-secret
+  - type: Generic
+    generic:
+      secret: ac-portal-webhook-secret
+  - type: ConfigChange
+  - type: ImageChange
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"

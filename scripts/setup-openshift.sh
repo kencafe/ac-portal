@@ -76,29 +76,72 @@ setup_rbac() {
     oc policy add-role-to-user system:image-puller "system:serviceaccount:$namespace:$SERVICE_ACCOUNT" -n "$namespace"
 }
 
-create_registry_secret() {
+setup_imagestreams() {
     local namespace=$1
     
     oc project "$namespace"
     
-    if oc get secret registry-secret -n "$namespace" &> /dev/null; then
-        print_warning "Registry secret đã tồn tại trong namespace '$namespace'"
+    print_status "Thiết lập ImageStreams cho namespace: $namespace"
+    
+    # Check if ImageStream exists
+    if oc get imagestream ac-portal -n "$namespace" &> /dev/null; then
+        print_warning "ImageStream 'ac-portal' đã tồn tại trong namespace '$namespace'"
     else
-        print_status "Tạo registry secret cho namespace: $namespace"
+        print_status "Tạo ImageStream ac-portal trong namespace: $namespace"
         
-        read -p "Container Registry URL (e.g., quay.io): " registry_url
-        read -p "Registry Username: " registry_username
-        read -s -p "Registry Password: " registry_password
-        echo
+        cat <<EOF | oc apply -f -
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: ac-portal
+  namespace: $namespace
+  labels:
+    app: ac-portal
+    component: frontend
+spec:
+  lookupPolicy:
+    local: true
+EOF
+    fi
+    
+    # Check if BuildConfig exists  
+    if oc get buildconfig ac-portal -n "$namespace" &> /dev/null; then
+        print_warning "BuildConfig 'ac-portal' đã tồn tại trong namespace '$namespace'"
+    else
+        print_status "Tạo BuildConfig ac-portal trong namespace: $namespace"
         
-        oc create secret docker-registry registry-secret \
-            --docker-server="$registry_url" \
-            --docker-username="$registry_username" \
-            --docker-password="$registry_password" \
-            -n "$namespace"
-        
-        # Link secret to service account
-        oc secrets link "$SERVICE_ACCOUNT" registry-secret --for=pull -n "$namespace"
+        cat <<EOF | oc apply -f -
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: ac-portal
+  namespace: $namespace
+  labels:
+    app: ac-portal
+    component: frontend
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/YOUR_USERNAME/ac-portal.git
+      ref: main
+    contextDir: "."
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: ac-portal:latest
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+EOF
     fi
 }
 
@@ -221,7 +264,7 @@ main() {
     create_namespace "$DEV_NAMESPACE"
     create_service_account "$DEV_NAMESPACE"
     setup_rbac "$DEV_NAMESPACE"
-    create_registry_secret "$DEV_NAMESPACE"
+    setup_imagestreams "$DEV_NAMESPACE"
     setup_network_policies "$DEV_NAMESPACE"
     setup_resource_quotas "$DEV_NAMESPACE" "dev"
     setup_limit_ranges "$DEV_NAMESPACE"
@@ -232,7 +275,7 @@ main() {
     create_namespace "$PROD_NAMESPACE"
     create_service_account "$PROD_NAMESPACE"
     setup_rbac "$PROD_NAMESPACE"
-    create_registry_secret "$PROD_NAMESPACE"
+    setup_imagestreams "$PROD_NAMESPACE"
     setup_network_policies "$PROD_NAMESPACE"
     setup_resource_quotas "$PROD_NAMESPACE" "prod"
     setup_limit_ranges "$PROD_NAMESPACE"
