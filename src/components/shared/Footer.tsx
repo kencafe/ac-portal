@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import AircraftCarrierLogo from './AircraftCarrierLogo';
 
 interface FooterProps {
   className?: string;
@@ -12,14 +13,15 @@ export function Footer({ className = '' }: FooterProps) {
         <div className="grid md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="col-span-1">
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">AC</span>
-              </div>
-              <span className="text-xl font-bold">AC Portal</span>
+            <div className="mb-4">
+              <AircraftCarrierLogo 
+                size="md" 
+                className="text-blue-400" 
+                textClassName="text-xl font-bold text-white"
+              />
             </div>
             <p className="text-gray-400 text-sm">
-              Cloud Professional Services for DevOps, SRE, and Platform Engineering teams.
+              Chuyên gia Cloud & Platform Engineering với kinh nghiệm thực tế từ môi trường production.
             </p>
           </div>
 
