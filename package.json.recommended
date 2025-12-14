@@ -1,0 +1,38 @@
+{
+  "name": "ac-portal",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "next": "16.0.10",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "typescript": "^5",
+    "babel-plugin-react-compiler": "1.0.0",
+    "@tailwindcss/postcss": "^4",
+    "tailwindcss": "^4"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.10",
+    "@tailwindcss/typography": "^0.5.10"
+  },
+  "_removed": {
+    "_comment": "These dependencies were removed as unused in current codebase",
+    "_add_back_when_needed": {
+      "lucide-react": "^0.561.0 - Add when implementing icons",
+      "clsx": "^2.1.1 - Add when needing className utilities",
+      "gray-matter": "^4.0.3 - Add when implementing blog with markdown",
+      "markdown-it": "^14.1.0 - Add when implementing blog with markdown",
+      "@types/markdown-it": "^14.1.2 - Add when implementing blog with markdown"
+    }
+  }
+}
