@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ac-portal-config
+  labels:
+    app: ac-portal
+    component: frontend
+data:
+  # Application configuration
+  NODE_ENV: "production"
+  NEXT_TELEMETRY_DISABLED: "1"
+  PORT: "3000"
+  
+  # Site configuration
+  SITE_NAME: "AC Portal"
+  SITE_DESCRIPTION: "Cloud Professional Services & Technical Blog"
+  SITE_URL: "https://ac-portal.apps.cluster.com"
+  
+  # Content configuration  
+  BLOG_TITLE: "AC Portal Technical Blog"
+  BLOG_DESCRIPTION: "Technical insights from DevOps, SRE, and Platform Engineering"
+  
+  # Contact information
+  CONTACT_EMAIL: "info@ac-portal.com"
+  CONTACT_PHONE: "+84 xxx xxx xxx"

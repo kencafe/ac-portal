@@ -1,0 +1,57 @@
+services:
+  # AC Portal Next.js Application
+  ac-portal:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+    volumes:
+      # Mount source code for development hot-reload
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - ac-portal-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Development database (optional for future use)
+  # postgres:
+  #   image: postgres:15-alpine
+  #   environment:
+  #     POSTGRES_DB: ac_portal_dev
+  #     POSTGRES_USER: ac_portal
+  #     POSTGRES_PASSWORD: dev_password
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   networks:
+  #     - ac-portal-network
+
+  # Redis for caching (optional for future use)
+  # redis:
+  #   image: redis:7-alpine
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   networks:
+  #     - ac-portal-network
+
+networks:
+  ac-portal-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

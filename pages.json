@@ -1,0 +1,24 @@
+{
+  "pages": [
+    {
+      "name": "Trang chủ",
+      "slug": "/",
+      "content": "homepage.md"
+    },
+    {
+      "name": "Dịch vụ",
+      "slug": "/services",
+      "content": "services.md"
+    },
+    {
+      "name": "Blog",
+      "slug": "/blog",
+      "content": "blog"
+    },
+    {
+      "name": "CMS",
+      "slug": "/cms",
+      "content": "cms"
+    }
+  ]
+}

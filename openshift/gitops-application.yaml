@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ac-portal
+  namespace: openshift-gitops
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/vicktorf/ac-portal
+    targetRevision: HEAD
+    path: .
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ac-portal
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

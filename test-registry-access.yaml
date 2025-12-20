@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-registry-access
+  namespace: ac-portal-dev
+  labels:
+    app: test-registry
+spec:
+  serviceAccountName: builder
+  containers:
+  - name: test
+    image: registry.redhat.io/ubi9/ubi:latest
+    command:
+    - /bin/bash
+    - -c
+    - |
+      echo "Testing registry access..."
+      echo "Checking secrets mounted:"
+      ls -la /var/run/secrets/
+      echo ""
+      echo "Checking dockercfg secrets:"
+      find /var/run/secrets/ -name ".dockercfg" -o -name ".dockerconfigjson" 2>/dev/null
+      echo ""
+      echo "Attempting to pull OpenShift Node.js image..."
+      podman pull image-registry.openshift-image-registry.svc:5000/openshift/nodejs:20-ubi9 || echo "Pull failed - checking auth"
+      echo ""
+      echo "Checking available auth configs:"
+      find /var/run/secrets/ -name ".dockercfg" -exec cat {} \; 2>/dev/null | head -100
+      echo ""
+      echo "Test completed - keeping pod alive for inspection"
+      sleep 3600
+    securityContext:
+      privileged: false
+      allowPrivilegeEscalation: false
+      runAsNonRoot: true
+      capabilities:
+        drop:
+        - ALL
+  restartPolicy: Never
+  imagePullSecrets:
+  - name: deployer-dockercfg-78ff9
+  - name: redhat-registry-secret
