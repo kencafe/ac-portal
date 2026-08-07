@@ -61,7 +61,7 @@ spec:
     # ---- build image via OpenShift BuildConfig (gated on code scans) ----
     - name: build
       runAfter: [secret-scan, sca, sast]
-      taskRef: { kind: ClusterTask, name: openshift-client }
+      taskRef: { kind: Task, name: oc-run }
       params:
         - name: SCRIPT
           value: |
@@ -81,7 +81,7 @@ spec:
     # ---- deploy / roll out the freshly built image ----
     - name: deploy
       runAfter: [image-scan]
-      taskRef: { kind: ClusterTask, name: openshift-client }
+      taskRef: { kind: Task, name: oc-run }
       params:
         - name: SCRIPT
           value: |

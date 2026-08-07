@@ -114,10 +114,9 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
-  name: ns-web-triggers-clusterbinding
-  namespace: ac-portal-dev
+  name: ns-web-triggers-clusterinterceptors
 subjects:
   - kind: ServiceAccount
     name: ns-web-triggers
@@ -125,4 +124,20 @@ subjects:
 roleRef:
   kind: ClusterRole
   name: tekton-triggers-eventlistener-clusterroles
+  apiGroup: rbac.authorization.k8s.io
+---
+# Pipeline pods need pipelines-scc so the shared workspace PVC gets an fsGroup
+# and is group-writable (otherwise git-clone hits Permission denied on RBD).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-pipeline-scc
+  namespace: ac-portal-dev
+subjects:
+  - kind: ServiceAccount
+    name: ns-web-pipeline
+    namespace: ac-portal-dev
+roleRef:
+  kind: ClusterRole
+  name: system:openshift:scc:pipelines-scc
   apiGroup: rbac.authorization.k8s.io

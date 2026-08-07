@@ -307,5 +307,80 @@
     </tbody>
   </table>
 
+  <!-- ============ FIGURE 3: AC-PORTAL PLATFORM CONTEXT ============ -->
+  <h2><span class="sq" style="background:var(--green)"></span>Bối cảnh nền tảng AC-portal <span class="en">AC-portal on OpenShift · platform topology</span></h2>
+  <p class="lead">Site này là một app trong AC-portal, chạy trên ba namespace OpenShift theo branch. Một CI hub (EventListener + Pipeline trong <code class="inline">ac-portal-dev</code>) build &amp; deploy sang cả ba, dùng chung các dịch vụ nền tảng: Ingress Router, Internal Registry, Vault và lưu trữ Ceph.</p>
+
+  <figure>
+    <svg viewBox="0 0 1000 560" role="img" aria-label="Topology AC-portal: GitHub repo với 3 branch gửi webhook tới CI hub trong ac-portal-dev; CI hub build và deploy sang ba namespace dev/staging/prod, mỗi namespace có Route, app Next.js và PostgreSQL; các namespace dùng chung Ingress Router, Internal Registry, HashiCorp Vault và Ceph storage.">
+      <defs>
+        <marker id="b3b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--blue)"/></marker>
+        <marker id="b3o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--orange)"/></marker>
+        <marker id="b3g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--ink-3)"/></marker>
+      </defs>
+
+      <!-- GitHub -->
+      <rect x="360" y="24" width="280" height="52" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
+      <text x="500" y="46" text-anchor="middle" class="svg-label" font-size="13" fill="var(--ink)">GitHub · kencafe/ac-portal</text>
+      <text x="500" y="63" text-anchor="middle" class="svg-mono" font-size="10.5" fill="var(--ink-3)">branch: dev · staging · main</text>
+
+      <!-- CI hub -->
+      <rect x="330" y="108" width="340" height="52" rx="8" fill="color-mix(in srgb, var(--blue) 8%, var(--surface))" stroke="var(--blue)"/>
+      <text x="500" y="130" text-anchor="middle" class="svg-label" font-size="13" fill="var(--ink)">OpenShift Pipelines — CI hub</text>
+      <text x="500" y="147" text-anchor="middle" class="svg-mono" font-size="10.5" fill="var(--ink-3)">EventListener + ns-web-cicd · ac-portal-dev</text>
+
+      <path d="M500 76 V108" fill="none" stroke="var(--ink-3)" stroke-width="1.6" marker-end="url(#b3g)"/>
+      <text x="512" y="96" class="svg-sub" font-size="10.5" fill="var(--ink-2)">webhook push</text>
+
+      <!-- namespace columns -->
+      <g>
+        <!-- dev -->
+        <rect x="24" y="210" width="300" height="170" rx="10" fill="none" stroke="var(--hair)" stroke-dasharray="2 5"/>
+        <text x="40" y="230" class="svg-mono" font-size="11" fill="var(--blue)">ac-portal-dev</text>
+        <rect x="44" y="242" width="260" height="30" rx="6" fill="var(--surface-2)" stroke="var(--green)"/><text x="174" y="261" text-anchor="middle" class="svg-mono" font-size="10.5" fill="var(--ink)">Route · dev.appcarrier.cloud</text>
+        <rect x="44" y="280" width="124" height="42" rx="6" fill="var(--surface)" stroke="var(--blue)"/><text x="106" y="305" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink)">ns-web ×1</text>
+        <rect x="180" y="280" width="124" height="42" rx="6" fill="var(--surface)" stroke="var(--green)"/><text x="242" y="305" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink)">PostgreSQL</text>
+        <text x="174" y="345" text-anchor="middle" class="svg-mono" font-size="9.5" fill="var(--ink-3)">+ BuildConfig · Tekton</text>
+
+        <!-- staging -->
+        <rect x="350" y="210" width="300" height="170" rx="10" fill="none" stroke="var(--hair)" stroke-dasharray="2 5"/>
+        <text x="366" y="230" class="svg-mono" font-size="11" fill="var(--orange)">ac-portal-staging</text>
+        <rect x="370" y="242" width="260" height="30" rx="6" fill="var(--surface-2)" stroke="var(--green)"/><text x="500" y="261" text-anchor="middle" class="svg-mono" font-size="10.5" fill="var(--ink)">Route · staging.appcarrier.cloud</text>
+        <rect x="370" y="280" width="124" height="42" rx="6" fill="var(--surface)" stroke="var(--blue)"/><text x="432" y="305" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink)">ns-web ×1</text>
+        <rect x="506" y="280" width="124" height="42" rx="6" fill="var(--surface)" stroke="var(--green)"/><text x="568" y="305" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink)">PostgreSQL</text>
+        <text x="500" y="345" text-anchor="middle" class="svg-mono" font-size="9.5" fill="var(--orange)">← ZAP DAST gate</text>
+
+        <!-- prod -->
+        <rect x="676" y="210" width="300" height="170" rx="10" fill="none" stroke="var(--hair)" stroke-dasharray="2 5"/>
+        <text x="692" y="230" class="svg-mono" font-size="11" fill="var(--green)">ac-portal-prod</text>
+        <rect x="696" y="242" width="260" height="30" rx="6" fill="var(--surface-2)" stroke="var(--green)"/><text x="826" y="261" text-anchor="middle" class="svg-mono" font-size="10.5" fill="var(--ink)">Route · appcarrier.cloud</text>
+        <rect x="696" y="280" width="124" height="42" rx="6" fill="var(--surface)" stroke="var(--blue)"/><text x="758" y="305" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink)">ns-web ×2</text>
+        <rect x="832" y="280" width="124" height="42" rx="6" fill="var(--surface)" stroke="var(--green)"/><text x="894" y="305" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink)">PostgreSQL</text>
+      </g>
+
+      <!-- CI hub -> namespaces -->
+      <path d="M420 160 Q300 180 174 242" fill="none" stroke="var(--blue)" stroke-width="1.6" marker-end="url(#b3b)"/>
+      <path d="M500 160 V242" fill="none" stroke="var(--blue)" stroke-width="1.6" marker-end="url(#b3b)"/>
+      <path d="M580 160 Q720 180 826 242" fill="none" stroke="var(--blue)" stroke-width="1.6" marker-end="url(#b3b)"/>
+      <text x="352" y="196" class="svg-sub" font-size="10" fill="var(--ink-2)">build &amp; deploy</text>
+
+      <!-- shared platform bar -->
+      <rect x="24" y="418" width="952" height="118" rx="10" fill="var(--surface-2)" stroke="var(--hair)"/>
+      <text x="40" y="440" class="svg-label" font-size="12.5" fill="var(--ink)">Nền tảng dùng chung · OpenShift (prod01.fis-cloud)</text>
+      <g class="svg-label" font-size="11.5" fill="var(--ink)" text-anchor="middle">
+        <rect x="44" y="454" width="210" height="40" rx="6" fill="var(--surface)" stroke="var(--hair)"/><text x="149" y="479">Ingress Router</text>
+        <rect x="268" y="454" width="210" height="40" rx="6" fill="var(--surface)" stroke="var(--hair)"/><text x="373" y="479">Internal Registry</text>
+        <rect x="492" y="454" width="210" height="40" rx="6" fill="var(--surface)" stroke="var(--orange)"/><text x="597" y="479">HashiCorp Vault</text>
+        <rect x="716" y="454" width="216" height="40" rx="6" fill="var(--surface)" stroke="var(--hair)"/><text x="824" y="479">Ceph storage (RBD)</text>
+      </g>
+      <text x="500" y="520" text-anchor="middle" class="svg-sub" font-size="10.5" fill="var(--ink-3)">Registry cấp image · Vault cấp secret/token (dashed) · Router expose Route · Ceph cấp PVC cho PostgreSQL</text>
+
+      <!-- representative feeds from platform up -->
+      <path d="M373 454 V386" fill="none" stroke="var(--blue)" stroke-width="1.5" marker-end="url(#b3b)"/>
+      <path d="M597 454 V386" fill="none" stroke="var(--orange)" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#b3o)"/>
+    </svg>
+    <figcaption>Cùng một image đã quét được promote qua ba namespace. DAST (ZAP) chỉ chạy ở staging làm cổng gate trước khi <code class="inline">main</code> đẩy lên prod (apex <code class="inline">appcarrier.cloud</code>).</figcaption>
+  </figure>
+
   <div class="note"><strong>Chưa triển khai (backend TODO theo README):</strong> ingest RSS, worker dịch phía server, cổng bản quyền, API công khai và xác thực CMS. Frontend hiện chạy trên React state; các mũi tên dữ liệu ở Sơ đồ 1 là kiến trúc mục tiêu để nối backend vào.</div>
 </div>

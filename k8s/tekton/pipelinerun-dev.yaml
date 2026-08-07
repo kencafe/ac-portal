@@ -1,0 +1,30 @@
+# Example manual PipelineRun for the dev environment.
+#   oc -n ac-portal-dev create -f k8s/tekton/pipelinerun-dev.yaml
+# For staging/prod, change git-revision/env/target-namespace/deploy-host
+# (staging also sets run-dast: "true"). See docs/DEPLOYMENT.md.
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: ns-web-dev-
+  namespace: ac-portal-dev
+spec:
+  pipelineRef:
+    name: ns-web-cicd
+  taskRunTemplate:
+    serviceAccountName: ns-web-pipeline
+  params:
+    - { name: git-url, value: "https://github.com/kencafe/ac-portal.git" }
+    - { name: git-revision, value: dev }
+    - { name: env, value: dev }
+    - { name: target-namespace, value: ac-portal-dev }
+    - { name: deploy-host, value: dev.appcarrier.cloud }
+    - { name: run-dast, value: "false" }
+  workspaces:
+    - name: shared
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 1Gi
+          storageClassName: ac-bronze-single

@@ -9,7 +9,8 @@ USER 0
 WORKDIR /app
 RUN chown -R 1001:0 /app && chmod -R g=u /app
 COPY package.json package-lock.json* ./
-RUN npm ci --legacy-peer-deps
+# Match the npm that generated the lockfile (UBI ships npm 10; lockfile is v3/npm 11).
+RUN npm install -g npm@11 && npm ci --legacy-peer-deps
 
 # ---- builder ----
 FROM base AS builder

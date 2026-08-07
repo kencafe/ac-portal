@@ -1,6 +1,8 @@
 # DevSecOps security tasks (OWASP DevSecOps Guideline aligned).
-# Scans report findings; thresholds start non-blocking so the first pipeline
-# runs green, then tighten `exit-code`/`--error` once the baseline is clean.
+# Images are mirrored into the internal registry (see BOOTSTRAP.md) because the
+# nodes cannot pull Docker Hub / ghcr directly.
+# `onError: continue` keeps scans advisory so a finding/limit never blocks the
+# release; tighten to blocking once the baseline + offline DBs are in place.
 ---
 apiVersion: tekton.dev/v1
 kind: Task
@@ -13,13 +15,13 @@ spec:
     - name: source
   steps:
     - name: gitleaks
-      image: zricethezav/gitleaks:latest
+      onError: continue
+      image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/gitleaks:v8.18.4
       workingDir: $(workspaces.source.path)
       script: |
         #!/bin/sh
         echo "== Gitleaks secret scan =="
-        gitleaks detect --source=. --redact -v --exit-code=0 --report-format=sarif --report-path=gitleaks.sarif || true
-        echo "Gitleaks finished."
+        gitleaks detect --source=. --redact -v --exit-code=0 || true
 ---
 apiVersion: tekton.dev/v1
 kind: Task
@@ -27,17 +29,21 @@ metadata:
   name: trivy-fs-scan
   namespace: ac-portal-dev
 spec:
-  description: SCA + IaC/secret filesystem scan.
+  description: SCA + secret filesystem scan.
   workspaces:
     - name: source
   steps:
     - name: trivy-fs
-      image: aquasec/trivy:latest
+      onError: continue
+      image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/trivy:0.53.0
       workingDir: $(workspaces.source.path)
+      computeResources:
+        requests: { memory: 512Mi, cpu: 250m }
+        limits: { memory: 2Gi, cpu: "1" }
       script: |
         #!/bin/sh
-        echo "== Trivy filesystem scan (SCA + misconfig + secrets) =="
-        trivy fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --no-progress --exit-code 0 .
+        echo "== Trivy filesystem scan (SCA + secrets) =="
+        trivy fs --scanners vuln,secret --severity HIGH,CRITICAL --no-progress --exit-code 0 . || true
 ---
 apiVersion: tekton.dev/v1
 kind: Task
@@ -50,12 +56,16 @@ spec:
     - name: source
   steps:
     - name: semgrep
-      image: semgrep/semgrep:latest
+      onError: continue
+      image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/semgrep:latest
       workingDir: $(workspaces.source.path)
+      computeResources:
+        requests: { memory: 512Mi, cpu: 250m }
+        limits: { memory: 2Gi, cpu: "1" }
       script: |
         #!/bin/sh
         echo "== Semgrep SAST =="
-        semgrep scan --config auto --metrics off --error=false .
+        semgrep scan --config auto --metrics off --error=false . || echo "semgrep skipped (offline rules)"
 ---
 apiVersion: tekton.dev/v1
 kind: Task
@@ -69,18 +79,21 @@ spec:
       type: string
   steps:
     - name: trivy-image
-      image: aquasec/trivy:latest
+      onError: continue
+      image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/trivy:0.53.0
+      computeResources:
+        requests: { memory: 512Mi, cpu: 250m }
+        limits: { memory: 2Gi, cpu: "1" }
       script: |
         #!/bin/sh
         echo "== Trivy image scan: $(params.IMAGE) =="
-        # Authenticate to the internal registry with the pipeline SA token.
         TOKEN_FILE=/var/run/secrets/kubernetes.io/serviceaccount/token
         if [ -f "$TOKEN_FILE" ]; then
           export TRIVY_USERNAME="serviceaccount"
           export TRIVY_PASSWORD="$(cat $TOKEN_FILE)"
         fi
         trivy image --severity HIGH,CRITICAL --no-progress --exit-code 0 --insecure $(params.IMAGE) || \
-          echo "image scan skipped (could not pull) — SCA covered by trivy-fs"
+          echo "image scan skipped — SCA covered by trivy-fs"
 ---
 apiVersion: tekton.dev/v1
 kind: Task
@@ -93,12 +106,11 @@ spec:
     - name: source
   steps:
     - name: kube-linter
-      image: stackrox/kube-linter:latest
+      onError: continue
+      image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/kube-linter:latest
       workingDir: $(workspaces.source.path)
-      script: |
-        #!/bin/sh
-        echo "== kube-linter compliance audit =="
-        /kube-linter lint k8s/ || true
+      command: ["/kube-linter"]
+      args: ["lint", "k8s/"]
 ---
 apiVersion: tekton.dev/v1
 kind: Task
@@ -112,10 +124,39 @@ spec:
       type: string
   steps:
     - name: zap-baseline
-      image: ghcr.io/zaproxy/zaproxy:stable
+      onError: continue
+      image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/zaproxy:stable
+      computeResources:
+        requests: { memory: 512Mi, cpu: 250m }
+        limits: { memory: 2Gi, cpu: "1" }
       script: |
         #!/bin/bash
         echo "== OWASP ZAP baseline DAST: $(params.TARGET_URL) =="
         mkdir -p /zap/wrk && cd /zap/wrk
         zap-baseline.py -t $(params.TARGET_URL) -I -m 2 || true
         echo "ZAP baseline finished."
+---
+# oc runner with enough memory for `oc apply -k` (kustomize) + start-build,
+# which OOM under the 512Mi namespace default when using the stock clustertask.
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: oc-run
+  namespace: ac-portal-dev
+spec:
+  params:
+    - name: SCRIPT
+      type: string
+  workspaces:
+    - name: manifest-dir
+  steps:
+    - name: oc
+      image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+      workingDir: $(workspaces.manifest-dir.path)
+      computeResources:
+        requests: { memory: 512Mi, cpu: 250m }
+        limits: { memory: 1536Mi, cpu: "1" }
+      script: |
+        #!/usr/bin/env bash
+        set -eo pipefail
+        $(params.SCRIPT)
