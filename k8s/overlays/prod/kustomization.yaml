@@ -11,6 +11,3 @@ labels:
   - pairs:
       environment: prod
     includeSelectors: false
-images:
-  - name: ac-portal
-    newTag: prod

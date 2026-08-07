@@ -11,7 +11,6 @@ spec:
     - { name: target-namespace }
     - { name: deploy-host }
     - { name: run-dast }
-    - { name: image }
   resourcetemplates:
     - apiVersion: tekton.dev/v1
       kind: PipelineRun
@@ -25,7 +24,6 @@ spec:
         params:
           - { name: git-url, value: $(tt.params.git-url) }
           - { name: git-revision, value: $(tt.params.git-revision) }
-          - { name: image, value: $(tt.params.image) }
           - { name: env, value: $(tt.params.env) }
           - { name: target-namespace, value: $(tt.params.target-namespace) }
           - { name: deploy-host, value: $(tt.params.deploy-host) }
@@ -50,7 +48,6 @@ spec:
     - { name: target-namespace, value: ac-portal-dev }
     - { name: deploy-host, value: dev.appcarrier.cloud }
     - { name: run-dast, value: "false" }
-    - { name: image, value: "image-registry.openshift-image-registry.svc:5000/ac-portal-dev/ac-portal:dev" }
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
@@ -63,7 +60,6 @@ spec:
     - { name: target-namespace, value: ac-portal-staging }
     - { name: deploy-host, value: staging.appcarrier.cloud }
     - { name: run-dast, value: "true" }
-    - { name: image, value: "image-registry.openshift-image-registry.svc:5000/ac-portal-staging/ac-portal:staging" }
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
@@ -76,7 +72,6 @@ spec:
     - { name: target-namespace, value: ac-portal-prod }
     - { name: deploy-host, value: appcarrier.cloud }
     - { name: run-dast, value: "false" }
-    - { name: image, value: "image-registry.openshift-image-registry.svc:5000/ac-portal-prod/ac-portal:prod" }
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener

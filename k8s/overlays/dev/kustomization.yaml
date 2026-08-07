@@ -11,6 +11,3 @@ labels:
   - pairs:
       environment: dev
     includeSelectors: false
-images:
-  - name: ac-portal
-    newTag: dev

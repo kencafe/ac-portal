@@ -1,0 +1,28 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: ac-portal
+  labels:
+    app: ac-portal
+    component: frontend
+spec:
+  # Binary source: the Tekton pipeline streams the checked-out workspace via
+  # `oc start-build --from-dir`. Docker strategy builds the standalone Dockerfile
+  # and pushes to the local ImageStream — no buildah SCC required.
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: ac-portal:latest
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "3Gi"
+      cpu: "2"

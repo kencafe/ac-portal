@@ -11,6 +11,3 @@ labels:
   - pairs:
       environment: staging
     includeSelectors: false
-images:
-  - name: ac-portal
-    newTag: staging

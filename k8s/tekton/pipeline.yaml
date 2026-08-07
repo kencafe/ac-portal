@@ -14,9 +14,6 @@ spec:
     - name: git-revision
       type: string
       default: dev
-    - name: image
-      type: string
-      description: Fully-qualified image ref incl. tag.
     - name: env
       type: string
       description: dev | staging | prod
@@ -30,7 +27,6 @@ spec:
   workspaces:
     - name: shared
   tasks:
-    # ---- fetch ----
     - name: fetch
       taskRef: { kind: ClusterTask, name: git-clone }
       params:
@@ -62,25 +58,27 @@ spec:
       taskRef: { kind: Task, name: kube-linter-scan }
       workspaces: [{ name: source, workspace: shared }]
 
-    # ---- build image (gated on the code scans) ----
+    # ---- build image via OpenShift BuildConfig (gated on code scans) ----
     - name: build
       runAfter: [secret-scan, sca, sast]
-      taskRef: { kind: ClusterTask, name: buildah }
+      taskRef: { kind: ClusterTask, name: openshift-client }
       params:
-        - { name: IMAGE, value: $(params.image) }
-        - { name: DOCKERFILE, value: ./Dockerfile }
-        - { name: CONTEXT, value: . }
-        - { name: TLSVERIFY, value: "false" }
-        - { name: STORAGE_DRIVER, value: vfs }
-      workspaces: [{ name: source, workspace: shared }]
+        - name: SCRIPT
+          value: |
+            set -e
+            oc apply -k k8s/overlays/$(params.env)
+            echo "Starting binary build in $(params.target-namespace)…"
+            oc -n $(params.target-namespace) start-build ac-portal --from-dir=. --follow --wait
+      workspaces: [{ name: manifest-dir, workspace: shared }]
 
     # ---- container image scan ----
     - name: image-scan
       runAfter: [build]
       taskRef: { kind: Task, name: trivy-image-scan }
-      params: [{ name: IMAGE, value: $(params.image) }]
+      params:
+        - { name: IMAGE, value: "image-registry.openshift-image-registry.svc:5000/$(params.target-namespace)/ac-portal:latest" }
 
-    # ---- deploy via kustomize overlay ----
+    # ---- deploy / roll out the freshly built image ----
     - name: deploy
       runAfter: [image-scan]
       taskRef: { kind: ClusterTask, name: openshift-client }
@@ -88,11 +86,8 @@ spec:
         - name: SCRIPT
           value: |
             set -e
-            echo "Deploying env=$(params.env) → ns=$(params.target-namespace)"
-            oc apply -k k8s/overlays/$(params.env)
-            oc -n $(params.target-namespace) import-image ac-portal:$(params.env) --confirm || true
             oc -n $(params.target-namespace) rollout restart deploy/ac-portal
-            oc -n $(params.target-namespace) rollout status deploy/ac-portal --timeout=180s
+            oc -n $(params.target-namespace) rollout status deploy/ac-portal --timeout=240s
       workspaces: [{ name: manifest-dir, workspace: shared }]
 
     # ---- DAST against the running staging site ----
