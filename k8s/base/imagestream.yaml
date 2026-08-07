@@ -6,30 +6,7 @@ metadata:
     app: ac-portal
     component: frontend
 spec:
+  # Tekton pushes ac-portal:<env> here; local lookup lets Deployments
+  # reference the tag by name and get the internal registry digest.
   lookupPolicy:
     local: true
-  tags:
-  - name: latest
-    from:
-      kind: DockerImage
-      name: registry.redhat.io/ubi8/nodejs-18:latest
-    importPolicy:
-      scheduled: true
-    referencePolicy:
-      type: Local
-  - name: dev
-    from:
-      kind: DockerImage 
-      name: ac-portal:dev
-    importPolicy:
-      scheduled: false
-    referencePolicy:
-      type: Local
-  - name: prod
-    from:
-      kind: DockerImage
-      name: ac-portal:prod
-    importPolicy:
-      scheduled: false
-    referencePolicy:
-      type: Local

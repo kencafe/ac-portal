@@ -1,26 +1,125 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ── Design tokens exposed to Tailwind v4 (@theme) ───────────────── */
+@theme {
+  --font-sans: "Inter", var(--font-inter), system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+
+  --color-brand-blue: #0072bc;
+  --color-brand-blue-hover: #338fcb;
+  --color-brand-orange: #f37021;
+  --color-brand-green: #57a336;
+  --color-navy-900: #001529;
+
+  --color-page: #f5f5f5;
+  --color-surface: #ffffff;
+  --color-surface-alt: #fafafa;
+  --color-hero-from: #e6f1f9;
+
+  --color-ink: rgba(0, 0, 0, 0.88);
+  --color-ink-2: rgba(0, 0, 0, 0.65);
+  --color-ink-3: rgba(0, 0, 0, 0.45);
+  --color-hair: #d9d9d9;
+
+  --radius-card: 8px;
+  --radius-btn: 6px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ── Base ────────────────────────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 132px;
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@media (min-width: 1120px) {
+  html {
+    scroll-padding-top: 76px;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background: #f5f5f5;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5714;
+  color: rgba(0, 0, 0, 0.88);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+a {
+  color: #0072bc;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+a:hover {
+  color: #3494d4;
+}
+
+input,
+textarea,
+button,
+select {
+  font-family: inherit;
+}
+input::placeholder,
+textarea::placeholder {
+  color: rgba(0, 0, 0, 0.25);
+}
+
+/* Apply pretty wrapping to multi-line prose per the design spec */
+p,
+li,
+h1,
+h2,
+h3,
+blockquote {
+  text-wrap: pretty;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* ── Reusable hover states (inline styles can't express :hover) ───── */
+.ns-nav-link {
+  display: inline-flex;
+  align-items: center;
+  height: 56px;
+  padding: 0 12px;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 14px;
+  transition: color 0.2s, box-shadow 0.2s;
+}
+.ns-nav-link:hover {
+  color: #0072bc;
+  box-shadow: inset 0 -2px 0 #0072bc;
+}
+
+/* Contact / descriptions row hover */
+.ns-desc-row {
+  transition: background 0.2s;
+}
+.ns-desc-row:hover {
+  background: #f5fafd;
+}
+
+/* Generic link-arrow hover nudge */
+.ns-arrow {
+  transition: transform 0.2s, color 0.2s;
+}
+.ns-arrow:hover {
+  transform: translateX(2px);
+}
+
+/* Blog / prose body typography */
+.ns-prose p {
+  font-size: 16.5px;
+  line-height: 1.8;
+  color: rgba(0, 0, 0, 0.78);
+  margin: 0 0 18px;
 }

@@ -3,6 +3,4 @@ kind: ConfigMap
 metadata:
   name: ac-portal-config
 data:
-  NODE_ENV: "development"
-  SITE_URL: "https://ac-portal-dev.apps.cluster.com"
-  SITE_NAME: "AC Portal (Development)"
+  SITE_URL: "https://dev.appcarrier.cloud"

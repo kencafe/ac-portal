@@ -3,4 +3,4 @@ kind: Route
 metadata:
   name: ac-portal
 spec:
-  host: ac-portal.apps.cluster.com
+  host: appcarrier.cloud

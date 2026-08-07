@@ -1,152 +1,47 @@
-# AC Portal - Cloud Services Website & Technical Blog
+# FPT-IS Next Gen Service — website & blog
 
-## 🚀 Project Overview
+Next.js (App Router) + TypeScript + Tailwind v4, dựng lại từ bộ thiết kế
+`design_handoff_fptis_ns_web`. Triển khai trên OpenShift qua OpenShift Pipelines
+(Tekton) với chuỗi DevSecOps theo OWASP DevSecOps Guideline.
 
-AC Portal là website Cloud Services + Technical Blog được xây dựng với:
+## Màn hình
 
-- **Framework**: Next.js 16 với TypeScript
-- **Styling**: Tailwind CSS 4
-- **Target**: DevOps Engineers, SRE, Platform Engineers
-- **Deployment**: OpenShift với CI/CD automation
+| Route | Nội dung |
+|---|---|
+| `/` | Landing — 9 dịch vụ, mô hình 4 giai đoạn, ngành, đối tác, case study, liên hệ |
+| `/dich-vu/[slug]` | Chi tiết dịch vụ (9 slug, SSG) |
+| `/blog`, `/blog/[slug]` | Blog (tìm kiếm + lọc chuyên mục) và trang bài |
+| `/cms` | Content Studio — 6 khu quản trị (noindex) |
 
-## 📁 Project Structure
+## Phát triển
 
-```
-ac-portal/
-├── src/
-│   ├── app/                    # Next.js App Router
-│   │   ├── blog/              # Blog pages
-│   │   ├── services/          # Service pages  
-│   │   └── layout.tsx         # Root layout
-│   ├── components/
-│   │   ├── blog/              # Blog components
-│   │   ├── services/          # Service components
-│   │   └── shared/            # Shared components
-│   └── lib/                   # Utilities
-├── public/                    # Static assets
-├── .github/
-│   └── workflows/             # GitHub Actions
-├── k8s/                       # OpenShift manifests
-├── Dockerfile                 # Container image
-└── docker-compose.yml         # Development
-```
-
-## 🌲 Git Branching Strategy
-
-- **main** → Production environment (OpenShift prod namespace)
-- **develop** → Development environment (OpenShift dev namespace)
-- **feature/** → Feature branches (tạo PR vào develop)
-- **hotfix/** → Emergency fixes (PR trực tiếp vào main)
-
-## 🛠️ Development Setup
-
-### Prerequisites
-- Node.js 18+
-- Docker & Docker Compose
-- OpenShift CLI (oc)
-
-### Local Development
 ```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Start production server
-npm start
+npm install --legacy-peer-deps
+npm run dev      # http://localhost:3000
+npm run build    # bản standalone cho container
 ```
 
-### Docker Development
-```bash
-# Build và chạy với Docker Compose
-docker-compose up --build
+## Môi trường & branch
 
-# Access: http://localhost:3000
-```
+| Branch | Namespace | Host |
+|---|---|---|
+| `dev` | `ac-portal-dev` | https://dev.appcarrier.cloud |
+| `staging` | `ac-portal-staging` | https://staging.appcarrier.cloud |
+| `main` | `ac-portal-prod` | https://appcarrier.cloud |
 
-## 🚢 Deployment Strategy
+## CI/CD (OpenShift Pipelines)
 
-### Environments
-1. **Development** (`develop` branch)
-   - Namespace: `ac-portal-dev`
-   - Auto-deploy on push to develop
-   - URL: https://ac-portal-dev.apps.cluster.com
+Push → EventListener (webhook GitHub) → PipelineRun `ns-web-cicd`:
 
-2. **Production** (`main` branch)
-   - Namespace: `ac-portal-prod`
-   - Auto-deploy on push to main
-   - URL: https://ac-portal.apps.cluster.com
+`git-clone → gitleaks (secret) → Trivy fs (SCA) + Semgrep (SAST) + kube-linter
+(compliance) → buildah (build+push) → Trivy image → deploy (kustomize) →
+OWASP ZAP DAST (chỉ staging)`
 
-### CI/CD Workflow
-1. Developer tạo feature branch
-2. Tạo PR vào `develop`
-3. Automated tests và code review
-4. Merge → auto-deploy to dev environment
-5. Tạo PR từ `develop` vào `main`
-6. Approval → merge → auto-deploy to production
+Manifests: `k8s/` (base + overlays dev/staging/prod), pipeline `k8s/tekton/`,
+DB `k8s/postgres/`. Kiến trúc: `docs/architecture.html`.
 
-## 📝 Content Guidelines
+## Backend (chưa triển khai — theo README thiết kế)
 
-### Blog Module
-- Technical editorial style
-- Max content width: 760px
-- Focus: Production experience, SRE insights
-- Language: Vietnamese technical content
-
-### Services Module  
-- Enterprise-grade presentation
-- No pricing tables
-- Focus: Methodology and expertise
-- Service categories: Consulting, Implementation, Operations, Security
-
-## 🔐 OpenShift Configuration
-
-### Required Resources
-- **Namespace**: ac-portal-dev, ac-portal-prod
-- **Service Account**: ac-portal-deployer
-- **RBAC**: Deployment permissions
-- **Secrets**: Registry credentials, app secrets
-- **ConfigMaps**: Environment-specific config
-
-### Resource Limits
-```yaml
-resources:
-  requests:
-    memory: "256Mi"
-    cpu: "250m"
-  limits:
-    memory: "512Mi" 
-    cpu: "500m"
-```
-
-## 🚀 Quick Start
-
-1. **Clone repository**
-```bash
-git clone <repo-url>
-cd ac-portal
-```
-
-2. **Setup development environment**
-```bash
-npm install
-npm run dev
-```
-
-3. **Create feature branch**
-```bash
-git checkout -b feature/your-feature-name
-```
-
-4. **Make changes and commit**
-```bash
-git add .
-git commit -m "feat: your feature description"
-git push origin feature/your-feature-name
-```
-
-5. **Create Pull Request** to `develop` branch
+RSS ingest, dịch AI phía server, cổng bản quyền, API công khai, xác thực CMS.
+Kiến trúc mục tiêu dùng **PostgreSQL (CloudNativePG)** lưu bài trước/sau dịch và
+**HashiCorp Vault** giữ token/secret — xem `docs/architecture.html`.

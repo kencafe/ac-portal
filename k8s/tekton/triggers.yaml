@@ -1,0 +1,132 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: ns-web-triggertemplate
+  namespace: ac-portal-dev
+spec:
+  params:
+    - { name: git-revision }
+    - { name: git-url }
+    - { name: env }
+    - { name: target-namespace }
+    - { name: deploy-host }
+    - { name: run-dast }
+    - { name: image }
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1
+      kind: PipelineRun
+      metadata:
+        generateName: ns-web-$(tt.params.env)-
+        namespace: ac-portal-dev
+      spec:
+        pipelineRef: { name: ns-web-cicd }
+        taskRunTemplate:
+          serviceAccountName: ns-web-pipeline
+        params:
+          - { name: git-url, value: $(tt.params.git-url) }
+          - { name: git-revision, value: $(tt.params.git-revision) }
+          - { name: image, value: $(tt.params.image) }
+          - { name: env, value: $(tt.params.env) }
+          - { name: target-namespace, value: $(tt.params.target-namespace) }
+          - { name: deploy-host, value: $(tt.params.deploy-host) }
+          - { name: run-dast, value: $(tt.params.run-dast) }
+        workspaces:
+          - name: shared
+            volumeClaimTemplate:
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                resources: { requests: { storage: 1Gi } }
+                storageClassName: ac-bronze-single
+---
+# One binding per branch/environment.
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata: { name: ns-web-bind-dev, namespace: ac-portal-dev }
+spec:
+  params:
+    - { name: git-url, value: $(body.repository.clone_url) }
+    - { name: git-revision, value: dev }
+    - { name: env, value: dev }
+    - { name: target-namespace, value: ac-portal-dev }
+    - { name: deploy-host, value: dev.appcarrier.cloud }
+    - { name: run-dast, value: "false" }
+    - { name: image, value: "image-registry.openshift-image-registry.svc:5000/ac-portal-dev/ac-portal:dev" }
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata: { name: ns-web-bind-staging, namespace: ac-portal-dev }
+spec:
+  params:
+    - { name: git-url, value: $(body.repository.clone_url) }
+    - { name: git-revision, value: staging }
+    - { name: env, value: staging }
+    - { name: target-namespace, value: ac-portal-staging }
+    - { name: deploy-host, value: staging.appcarrier.cloud }
+    - { name: run-dast, value: "true" }
+    - { name: image, value: "image-registry.openshift-image-registry.svc:5000/ac-portal-staging/ac-portal:staging" }
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata: { name: ns-web-bind-prod, namespace: ac-portal-dev }
+spec:
+  params:
+    - { name: git-url, value: $(body.repository.clone_url) }
+    - { name: git-revision, value: main }
+    - { name: env, value: prod }
+    - { name: target-namespace, value: ac-portal-prod }
+    - { name: deploy-host, value: appcarrier.cloud }
+    - { name: run-dast, value: "false" }
+    - { name: image, value: "image-registry.openshift-image-registry.svc:5000/ac-portal-prod/ac-portal:prod" }
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: ns-web-el
+  namespace: ac-portal-dev
+spec:
+  serviceAccountName: ns-web-triggers
+  triggers:
+    - name: push-dev
+      interceptors:
+        - ref: { name: github }
+          params:
+            - { name: secretRef, value: { secretName: ns-web-webhook-secret, secretKey: secretToken } }
+            - { name: eventTypes, value: ["push"] }
+        - ref: { name: cel }
+          params:
+            - { name: filter, value: "body.ref == 'refs/heads/dev'" }
+      bindings: [{ ref: ns-web-bind-dev }]
+      template: { ref: ns-web-triggertemplate }
+    - name: push-staging
+      interceptors:
+        - ref: { name: github }
+          params:
+            - { name: secretRef, value: { secretName: ns-web-webhook-secret, secretKey: secretToken } }
+            - { name: eventTypes, value: ["push"] }
+        - ref: { name: cel }
+          params:
+            - { name: filter, value: "body.ref == 'refs/heads/staging'" }
+      bindings: [{ ref: ns-web-bind-staging }]
+      template: { ref: ns-web-triggertemplate }
+    - name: push-prod
+      interceptors:
+        - ref: { name: github }
+          params:
+            - { name: secretRef, value: { secretName: ns-web-webhook-secret, secretKey: secretToken } }
+            - { name: eventTypes, value: ["push"] }
+        - ref: { name: cel }
+          params:
+            - { name: filter, value: "body.ref == 'refs/heads/main'" }
+      bindings: [{ ref: ns-web-bind-prod }]
+      template: { ref: ns-web-triggertemplate }
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: ns-web-el
+  namespace: ac-portal-dev
+  labels: { app: ac-portal, component: ci }
+spec:
+  to: { kind: Service, name: el-ns-web-el, weight: 100 }
+  port: { targetPort: http-listener }
+  tls: { termination: edge, insecureEdgeTerminationPolicy: Redirect }

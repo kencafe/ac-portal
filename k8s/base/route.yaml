@@ -6,6 +6,7 @@ metadata:
     app: ac-portal
     component: frontend
 spec:
+  # host is set per-environment in the overlays
   to:
     kind: Service
     name: ac-portal

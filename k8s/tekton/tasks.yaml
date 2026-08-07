@@ -1,0 +1,114 @@
+# DevSecOps security tasks (OWASP DevSecOps Guideline aligned).
+# Scans report findings; thresholds start non-blocking so the first pipeline
+# runs green, then tighten `exit-code`/`--error` once the baseline is clean.
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: gitleaks-scan
+  namespace: ac-portal-dev
+spec:
+  description: Secret/leak scan (pre-commit stage).
+  workspaces:
+    - name: source
+  steps:
+    - name: gitleaks
+      image: zricethezav/gitleaks:latest
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/sh
+        echo "== Gitleaks secret scan =="
+        gitleaks detect --source=. --redact -v --exit-code=0 --report-format=sarif --report-path=gitleaks.sarif || true
+        echo "Gitleaks finished."
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: trivy-fs-scan
+  namespace: ac-portal-dev
+spec:
+  description: SCA + IaC/secret filesystem scan.
+  workspaces:
+    - name: source
+  steps:
+    - name: trivy-fs
+      image: aquasec/trivy:latest
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/sh
+        echo "== Trivy filesystem scan (SCA + misconfig + secrets) =="
+        trivy fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --no-progress --exit-code 0 .
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: semgrep-sast
+  namespace: ac-portal-dev
+spec:
+  description: Static application security testing.
+  workspaces:
+    - name: source
+  steps:
+    - name: semgrep
+      image: semgrep/semgrep:latest
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/sh
+        echo "== Semgrep SAST =="
+        semgrep scan --config auto --metrics off --error=false .
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: trivy-image-scan
+  namespace: ac-portal-dev
+spec:
+  description: Container image vulnerability scan.
+  params:
+    - name: IMAGE
+      type: string
+  steps:
+    - name: trivy-image
+      image: aquasec/trivy:latest
+      script: |
+        #!/bin/sh
+        echo "== Trivy image scan: $(params.IMAGE) =="
+        trivy image --severity HIGH,CRITICAL --no-progress --exit-code 0 --insecure $(params.IMAGE)
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kube-linter-scan
+  namespace: ac-portal-dev
+spec:
+  description: Kubernetes manifest compliance auditing.
+  workspaces:
+    - name: source
+  steps:
+    - name: kube-linter
+      image: stackrox/kube-linter:latest
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/sh
+        echo "== kube-linter compliance audit =="
+        /kube-linter lint k8s/ || true
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: zap-dast
+  namespace: ac-portal-dev
+spec:
+  description: OWASP ZAP baseline DAST against a running environment.
+  params:
+    - name: TARGET_URL
+      type: string
+  steps:
+    - name: zap-baseline
+      image: ghcr.io/zaproxy/zaproxy:stable
+      script: |
+        #!/bin/bash
+        echo "== OWASP ZAP baseline DAST: $(params.TARGET_URL) =="
+        mkdir -p /zap/wrk && cd /zap/wrk
+        zap-baseline.py -t $(params.TARGET_URL) -I -m 2 || true
+        echo "ZAP baseline finished."

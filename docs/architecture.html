@@ -1,0 +1,311 @@
+<title>FPTIS NS — Kiến trúc hệ thống</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --surface-2: #fafbfc;
+    --ink: #12203a;
+    --ink-2: #4d5c76;
+    --ink-3: #7c89a1;
+    --hair: rgba(9, 20, 40, 0.12);
+    --blue: #0072bc;
+    --orange: #f37021;
+    --green: #57a336;
+    --cyan: #38a3d8;
+    --navy: #0b3c86;
+    --radius: 10px;
+    --maxw: 1080px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0a121e;
+      --surface: #111d2e;
+      --surface-2: #0e1927;
+      --ink: #e7edf6;
+      --ink-2: #a6b5cd;
+      --ink-3: #74849e;
+      --hair: rgba(255, 255, 255, 0.13);
+      --blue: #4aa3d8;
+      --orange: #f78a4a;
+      --green: #7cc65a;
+      --cyan: #5cbde8;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f6f8; --surface: #fff; --surface-2: #fafbfc; --ink: #12203a; --ink-2: #4d5c76;
+    --ink-3: #7c89a1; --hair: rgba(9,20,40,0.12); --blue: #0072bc; --orange: #f37021; --green: #57a336; --cyan: #38a3d8;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0a121e; --surface: #111d2e; --surface-2: #0e1927; --ink: #e7edf6; --ink-2: #a6b5cd;
+    --ink-3: #74849e; --hair: rgba(255,255,255,0.13); --blue: #4aa3d8; --orange: #f78a4a; --green: #7cc65a; --cyan: #5cbde8;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 48px 24px 72px; }
+
+  .stripe { height: 4px; background: linear-gradient(90deg, #f37021 0 33.34%, #0072bc 33.34% 66.67%, #57a336 66.67% 100%); }
+
+  header.masthead { margin-bottom: 40px; }
+  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 10px; }
+  h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.14; margin: 0 0 12px; text-wrap: balance; }
+  .sub { font-size: 17px; color: var(--ink-2); max-width: 62ch; margin: 0; }
+
+  h2 { font-size: clamp(20px, 2.4vw, 26px); font-weight: 700; letter-spacing: -0.015em; margin: 56px 0 6px; display: flex; align-items: center; gap: 12px; }
+  h2 .sq { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+  h2 .en { font-size: 14px; font-weight: 500; color: var(--ink-3); letter-spacing: 0; }
+  .lead { color: var(--ink-2); max-width: 68ch; margin: 8px 0 24px; }
+
+  figure { margin: 24px 0 8px; background: var(--surface); border: 1px solid var(--hair); border-radius: var(--radius); padding: 20px; overflow-x: auto; }
+  figure svg { display: block; width: 100%; height: auto; min-width: 640px; color: var(--ink); }
+  figcaption { color: var(--ink-3); font-size: 13.5px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--hair); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 18px; margin: 4px 0 0; font-size: 13px; color: var(--ink-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .legend i { width: 26px; height: 0; border-top-width: 2.5px; border-top-style: solid; display: inline-block; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 20px; }
+  .card { background: var(--surface); border: 1px solid var(--hair); border-radius: var(--radius); padding: 18px 20px; }
+  .card h3 { margin: 0 0 6px; font-size: 15.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .card h3 .dot { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+  .card p { margin: 0; font-size: 14px; color: var(--ink-2); }
+  .card code, code.inline { font-family: var(--mono); font-size: 12.5px; background: var(--surface-2); border: 1px solid var(--hair); border-radius: 4px; padding: 1px 5px; color: var(--ink); }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: 14px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--hair); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); font-weight: 700; }
+  td code { font-family: var(--mono); font-size: 12.5px; color: var(--blue); }
+  .pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 4px; }
+  .pill.blue { color: var(--blue); background: color-mix(in srgb, var(--blue) 14%, transparent); }
+  .pill.green { color: var(--green); background: color-mix(in srgb, var(--green) 16%, transparent); }
+  .pill.orange { color: var(--orange); background: color-mix(in srgb, var(--orange) 16%, transparent); }
+
+  .note { margin-top: 20px; background: var(--surface-2); border: 1px solid var(--hair); border-left: 3px solid var(--orange); border-radius: 8px; padding: 14px 18px; font-size: 14px; color: var(--ink-2); }
+  .svg-label { font-family: var(--sans); font-weight: 600; }
+  .svg-sub { font-family: var(--sans); }
+  .svg-mono { font-family: var(--mono); }
+</style>
+
+<div class="stripe"></div>
+<div class="wrap">
+  <header class="masthead">
+    <p class="eyebrow">FPT-IS Next Gen Service · AppCarrier</p>
+    <h1>Kiến trúc hệ thống website & blog dịch thuật</h1>
+    <p class="sub">Next.js trên OpenShift, có Vault giữ token/secret và PostgreSQL lưu bài viết trước & sau khi dịch. Ba môi trường dev / staging / prod theo luồng DevSecOps của OWASP.</p>
+  </header>
+
+  <!-- ============ FIGURE 1: RUNTIME / TRANSLATION DATA FLOW ============ -->
+  <h2><span class="sq" style="background:var(--blue)"></span>Luồng nội dung & dịch thuật <span class="en">Content &amp; translation data flow</span></h2>
+  <p class="lead">Bài từ nguồn RSS được lấy về và lưu <strong>bản gốc</strong> vào PostgreSQL; worker dịch phía server gọi mô hình AI (token lấy từ Vault) rồi ghi <strong>bản dịch</strong> trở lại cùng một bản ghi. API công khai chỉ đọc bài đã xuất bản để phục vụ web.</p>
+
+  <figure>
+    <svg viewBox="0 0 1000 560" role="img" aria-label="Sơ đồ luồng dữ liệu: nguồn RSS được ingest vào PostgreSQL làm bản gốc, translate worker gọi Claude với token từ Vault rồi ghi bản dịch, API công khai đọc bài đã xuất bản phục vụ Next.js và khách truy cập.">
+      <defs>
+        <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0L10 5L0 10z" fill="var(--blue)"/>
+        </marker>
+        <marker id="ao" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0L10 5L0 10z" fill="var(--orange)"/>
+        </marker>
+      </defs>
+
+      <!-- namespace container -->
+      <rect x="16" y="120" width="712" height="300" rx="12" fill="none" stroke="var(--hair)" stroke-width="1.5" stroke-dasharray="2 5"/>
+      <text x="30" y="140" class="svg-mono" font-size="11.5" fill="var(--ink-3)">OpenShift namespace · ac-portal-&lt;env&gt;</text>
+
+      <!-- RSS sources -->
+      <rect x="770" y="34" width="200" height="58" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
+      <text x="870" y="58" text-anchor="middle" class="svg-label" font-size="13.5" fill="var(--ink)">Nguồn RSS / Atom</text>
+      <text x="870" y="76" text-anchor="middle" class="svg-sub" font-size="11.5" fill="var(--ink-3)">CNCF · K8s · Red Hat · SRE</text>
+
+      <!-- Claude -->
+      <rect x="770" y="150" width="200" height="60" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
+      <text x="870" y="175" text-anchor="middle" class="svg-label" font-size="13.5" fill="var(--ink)">Mô hình AI (Claude)</text>
+      <text x="870" y="193" text-anchor="middle" class="svg-sub" font-size="11.5" fill="var(--ink-3)">gọi phía server</text>
+
+      <!-- Ingest -->
+      <rect x="40" y="168" width="180" height="64" rx="8" fill="var(--surface)" stroke="var(--blue)"/>
+      <text x="130" y="194" text-anchor="middle" class="svg-label" font-size="13.5" fill="var(--ink)">RSS Ingest</text>
+      <text x="130" y="212" text-anchor="middle" class="svg-sub" font-size="11.5" fill="var(--ink-3)">CronJob · chống trùng GUID</text>
+
+      <!-- Translate worker -->
+      <rect x="300" y="168" width="200" height="64" rx="8" fill="var(--surface)" stroke="var(--blue)"/>
+      <text x="400" y="194" text-anchor="middle" class="svg-label" font-size="13.5" fill="var(--ink)">Translate Worker</text>
+      <text x="400" y="212" text-anchor="middle" class="svg-sub" font-size="11.5" fill="var(--ink-3)">dịch + từ điển thuật ngữ</text>
+
+      <!-- Public API -->
+      <rect x="300" y="300" width="200" height="60" rx="8" fill="var(--surface)" stroke="var(--blue)"/>
+      <text x="400" y="325" text-anchor="middle" class="svg-label" font-size="13.5" fill="var(--ink)">Public API</text>
+      <text x="400" y="343" text-anchor="middle" class="svg-mono" font-size="11" fill="var(--ink-3)">GET /api/v1/posts · read-only</text>
+
+      <!-- Next.js web -->
+      <rect x="40" y="300" width="180" height="60" rx="8" fill="var(--surface)" stroke="var(--blue)"/>
+      <text x="130" y="325" text-anchor="middle" class="svg-label" font-size="13.5" fill="var(--ink)">Next.js Web + CMS</text>
+      <text x="130" y="343" text-anchor="middle" class="svg-sub" font-size="11.5" fill="var(--ink-3)">SSR · Content Studio</text>
+
+      <!-- Postgres cylinder -->
+      <g>
+        <path d="M540 168 a70 16 0 0 0 140 0 v104 a70 16 0 0 1 -140 0 z" fill="var(--surface-2)" stroke="var(--green)" stroke-width="1.5"/>
+        <ellipse cx="610" cy="168" rx="70" ry="16" fill="var(--surface)" stroke="var(--green)" stroke-width="1.5"/>
+        <text x="610" y="164" text-anchor="middle" class="svg-label" font-size="12.5" fill="var(--ink)">PostgreSQL</text>
+        <text x="610" y="205" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink-2)">posts · bản gốc + bản dịch</text>
+        <text x="610" y="224" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink-2)">feeds · inbox (hàng chờ)</text>
+        <text x="610" y="252" text-anchor="middle" class="svg-mono" font-size="10.5" fill="var(--ink-3)">CloudNativePG</text>
+      </g>
+
+      <!-- Vault -->
+      <rect x="40" y="360" width="640" height="44" rx="8" fill="color-mix(in srgb, var(--orange) 8%, var(--surface))" stroke="var(--orange)"/>
+      <text x="58" y="380" class="svg-label" font-size="13" fill="var(--ink)">HashiCorp Vault</text>
+      <text x="58" y="396" class="svg-mono" font-size="10.5" fill="var(--ink-3)">vault.appcarrier.cloud</text>
+      <text x="662" y="388" text-anchor="end" class="svg-sub" font-size="11.5" fill="var(--ink-2)">AI keys · DB creds · public API key · webhook secret</text>
+
+      <!-- Clients -->
+      <rect x="770" y="300" width="200" height="58" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
+      <text x="870" y="325" text-anchor="middle" class="svg-label" font-size="13.5" fill="var(--ink)">Khách truy cập</text>
+      <text x="870" y="343" text-anchor="middle" class="svg-sub" font-size="11.5" fill="var(--ink-3)">web &amp; blog công khai</text>
+
+      <!-- Editor -->
+      <rect x="540" y="452" width="188" height="52" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
+      <text x="634" y="474" text-anchor="middle" class="svg-label" font-size="13" fill="var(--ink)">Biên tập viên</text>
+      <text x="634" y="491" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink-3)">duyệt bản dịch · xuất bản</text>
+
+      <!-- ===== data-plane arrows (blue) ===== -->
+      <!-- RSS -> Ingest -->
+      <path d="M770 66 H240 Q220 66 160 168" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
+      <text x="300" y="60" class="svg-sub" font-size="11" fill="var(--ink-2)">poll định kỳ</text>
+      <!-- Ingest -> DB (insert original) -->
+      <path d="M220 200 H540" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
+      <text x="300" y="192" class="svg-sub" font-size="11" fill="var(--ink-2)">ghi bản gốc</text>
+      <!-- Worker <-> DB -->
+      <path d="M500 210 H540" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
+      <text x="505" y="204" class="svg-sub" font-size="10.5" fill="var(--ink-2)">đọc gốc / ghi bản dịch</text>
+      <!-- Worker -> Claude -->
+      <path d="M500 190 H600 Q760 190 770 182" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
+      <text x="600" y="150" class="svg-sub" font-size="11" fill="var(--ink-2)">dịch</text>
+      <!-- DB -> Public API (published) -->
+      <path d="M560 250 Q470 270 450 300" fill="none" stroke="var(--green)" stroke-width="1.7" marker-end="url(#ab)"/>
+      <text x="470" y="290" class="svg-sub" font-size="11" fill="var(--ink-2)">bài đã xuất bản</text>
+      <!-- Public API -> Next web -->
+      <path d="M300 330 H220" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
+      <text x="232" y="322" class="svg-sub" font-size="11" fill="var(--ink-2)">JSON</text>
+      <!-- Public API -> Clients -->
+      <path d="M500 330 H770" fill="none" stroke="var(--green)" stroke-width="1.7" marker-end="url(#ab)"/>
+      <text x="600" y="322" class="svg-sub" font-size="11" fill="var(--ink-2)">HTTPS · read-only</text>
+      <!-- Editor -> DB -->
+      <path d="M634 452 V300 Q634 280 610 272" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
+      <text x="642" y="430" class="svg-sub" font-size="11" fill="var(--ink-2)">duyệt · xuất bản</text>
+
+      <!-- ===== secret-plane arrows (orange dashed) ===== -->
+      <path d="M400 360 V232" fill="none" stroke="var(--orange)" stroke-width="1.7" stroke-dasharray="4 4" marker-end="url(#ao)"/>
+      <text x="408" y="300" class="svg-sub" font-size="10.5" fill="var(--orange)">AI token</text>
+      <path d="M610 360 V272" fill="none" stroke="var(--orange)" stroke-width="1.7" stroke-dasharray="4 4" marker-end="url(#ao)"/>
+      <text x="618" y="320" class="svg-sub" font-size="10.5" fill="var(--orange)">DB creds</text>
+      <path d="M150 360 V232" fill="none" stroke="var(--orange)" stroke-width="1.7" stroke-dasharray="4 4" marker-end="url(#ao)"/>
+      <text x="120" y="300" text-anchor="end" class="svg-sub" font-size="10.5" fill="var(--orange)">secrets</text>
+    </svg>
+    <figcaption>Vault không bao giờ để lộ khoá xuống trình duyệt — mọi lệnh gọi mô hình AI đi qua worker phía server. Trình duyệt chỉ chạm tới Public API read-only.</figcaption>
+  </figure>
+
+  <div class="legend">
+    <span><i style="border-color:var(--blue)"></i> Luồng dữ liệu</span>
+    <span><i style="border-color:var(--green)"></i> Bài đã xuất bản (công khai)</span>
+    <span><i style="border-color:var(--orange); border-top-style:dashed"></i> Secret/token từ Vault</span>
+  </div>
+
+  <!-- component responsibilities -->
+  <div class="grid">
+    <div class="card">
+      <h3><span class="dot" style="background:var(--green)"></span>PostgreSQL (CloudNativePG)</h3>
+      <p>Một bản ghi <code>post</code> giữ cả <code>original[]</code> và <code>translated[]</code> nên trạng thái trước/sau dịch nằm cạnh nhau, kèm <code>canonicalUrl</code>, <code>license</code>. Thêm bảng <code>feeds</code> và <code>inbox</code>.</p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--orange)"></span>HashiCorp Vault</h3>
+      <p>Giữ API key nhà cung cấp AI, thông tin đăng nhập DB, khoá Public API read-only và webhook secret. App nhận secret qua Vault Agent — không hardcode trong mã nguồn.</p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--blue)"></span>Translate Worker</h3>
+      <p>Đọc bản gốc, gọi mô hình theo prompt hệ thống + từ điển thuật ngữ, tôn trọng hạn mức/ngân sách, ghi bản dịch. Nguồn <em>cần xin phép</em> chỉ tạo tóm tắt + link gốc.</p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--blue)"></span>Public API + Web</h3>
+      <p>4 endpoint đọc: <code>/posts</code>, <code>/posts/{slug}</code>, <code>/categories</code>, <code>/feed.xml</code>. Next.js SSR phục vụ landing, service, blog; CMS sau xác thực Editor/Admin.</p>
+    </div>
+  </div>
+
+  <!-- ============ FIGURE 2: DEVSECOPS PIPELINE ============ -->
+  <h2><span class="sq" style="background:var(--orange)"></span>CI/CD DevSecOps trên OpenShift Pipelines <span class="en">OWASP-aligned · Tekton</span></h2>
+  <p class="lead">Mỗi push kích hoạt pipeline Tekton. Quét bảo mật chạy sớm (secret, SCA, SAST) rồi tới build &amp; quét image; <strong>DAST chạy trên môi trường staging đang chạy</strong> — cổng gate trước khi promote image đã quét sang prod.</p>
+
+  <figure>
+    <svg viewBox="0 0 1000 430" role="img" aria-label="Pipeline DevSecOps: pre-commit gồm gitleaks và lint; giai đoạn vulnerability scanning gồm SCA Trivy fs, SAST Semgrep, build buildah, quét image Trivy; deploy dev rồi staging, ZAP DAST chạy trên staging; sau đó promote sang prod kèm kiểm tra compliance kube-linter.">
+      <defs>
+        <marker id="pb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0L10 5L0 10z" fill="var(--ink-3)"/>
+        </marker>
+      </defs>
+
+      <!-- phase columns -->
+      <g font-size="12" text-anchor="middle">
+        <text x="130" y="30" class="svg-label" fill="var(--orange)">Pre-commit</text>
+        <text x="410" y="30" class="svg-label" fill="var(--blue)">Vulnerability scanning (CI)</text>
+        <text x="730" y="30" class="svg-label" fill="var(--green)">Deploy · DAST · Compliance</text>
+      </g>
+      <line x1="270" y1="44" x2="270" y2="300" stroke="var(--hair)" stroke-dasharray="2 5"/>
+      <line x1="600" y1="44" x2="600" y2="300" stroke="var(--hair)" stroke-dasharray="2 5"/>
+
+      <!-- stage boxes -->
+      <g class="svg-label" font-size="12" fill="var(--ink)" text-anchor="middle">
+        <!-- pre-commit -->
+        <rect x="40" y="60" width="180" height="46" rx="7" fill="var(--surface-2)" stroke="var(--orange)"/><text x="130" y="82">git-clone</text><text x="130" y="98" class="svg-mono" font-size="10" fill="var(--ink-3)">Tekton ClusterTask</text>
+        <rect x="40" y="120" width="180" height="46" rx="7" fill="var(--surface-2)" stroke="var(--orange)"/><text x="130" y="142">Secret scan</text><text x="130" y="158" class="svg-mono" font-size="10" fill="var(--ink-3)">Gitleaks</text>
+        <rect x="40" y="180" width="180" height="46" rx="7" fill="var(--surface-2)" stroke="var(--orange)"/><text x="130" y="202">Lint</text><text x="130" y="218" class="svg-mono" font-size="10" fill="var(--ink-3)">ESLint · next lint</text>
+
+        <!-- CI scanning -->
+        <rect x="320" y="60" width="180" height="46" rx="7" fill="var(--surface-2)" stroke="var(--blue)"/><text x="410" y="82">SCA</text><text x="410" y="98" class="svg-mono" font-size="10" fill="var(--ink-3)">Trivy fs · npm audit</text>
+        <rect x="320" y="120" width="180" height="46" rx="7" fill="var(--surface-2)" stroke="var(--blue)"/><text x="410" y="142">SAST</text><text x="410" y="158" class="svg-mono" font-size="10" fill="var(--ink-3)">Semgrep</text>
+        <rect x="320" y="180" width="180" height="46" rx="7" fill="var(--surface-2)" stroke="var(--blue)"/><text x="410" y="202">Build image</text><text x="410" y="218" class="svg-mono" font-size="10" fill="var(--ink-3)">Buildah → registry</text>
+        <rect x="320" y="240" width="180" height="46" rx="7" fill="var(--surface-2)" stroke="var(--blue)"/><text x="410" y="262">Image scan</text><text x="410" y="278" class="svg-mono" font-size="10" fill="var(--ink-3)">Trivy image</text>
+
+        <!-- deploy/dast -->
+        <rect x="640" y="60" width="200" height="46" rx="7" fill="var(--surface-2)" stroke="var(--green)"/><text x="740" y="82">Deploy dev</text><text x="740" y="98" class="svg-mono" font-size="10" fill="var(--ink-3)">dev.appcarrier.cloud</text>
+        <rect x="640" y="120" width="200" height="46" rx="7" fill="var(--surface-2)" stroke="var(--green)"/><text x="740" y="142">Deploy staging</text><text x="740" y="158" class="svg-mono" font-size="10" fill="var(--ink-3)">staging.appcarrier.cloud</text>
+        <rect x="640" y="180" width="200" height="46" rx="7" fill="color-mix(in srgb, var(--green) 10%, var(--surface))" stroke="var(--green)"/><text x="740" y="202">DAST gate</text><text x="740" y="218" class="svg-mono" font-size="10" fill="var(--ink-3)">OWASP ZAP → staging</text>
+        <rect x="640" y="240" width="200" height="46" rx="7" fill="var(--surface-2)" stroke="var(--green)"/><text x="740" y="262">Promote prod</text><text x="740" y="278" class="svg-mono" font-size="10" fill="var(--ink-3)">appcarrier.cloud + kube-linter</text>
+      </g>
+
+      <!-- flow arrows between phases -->
+      <path d="M220 143 H320" fill="none" stroke="var(--ink-3)" stroke-width="1.6" marker-end="url(#pb)"/>
+      <path d="M500 200 H580 Q600 200 600 160 H640 V143" fill="none" stroke="var(--ink-3)" stroke-width="1.6" marker-end="url(#pb)"/>
+
+      <!-- branch -> env lane -->
+      <g font-size="12">
+        <rect x="40" y="330" width="920" height="72" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
+        <text x="60" y="356" class="svg-label" fill="var(--ink)">Branch → môi trường</text>
+        <text x="60" y="382" class="svg-mono" font-size="11.5" fill="var(--ink-2)">dev → ac-portal-dev</text>
+        <text x="360" y="382" class="svg-mono" font-size="11.5" fill="var(--ink-2)">staging → ac-portal-staging (DAST)</text>
+        <text x="730" y="382" class="svg-mono" font-size="11.5" fill="var(--ink-2)">main → ac-portal-prod</text>
+        <circle cx="52" cy="378" r="4" fill="var(--blue)"/>
+        <circle cx="352" cy="378" r="4" fill="var(--orange)"/>
+        <circle cx="722" cy="378" r="4" fill="var(--green)"/>
+      </g>
+    </svg>
+    <figcaption>Ánh xạ theo OWASP DevSecOps Guideline: pre-commit → vulnerability scanning → compliance auditing. Build image một lần, quét, rồi promote đúng image đó lên staging và prod (không build lại).</figcaption>
+  </figure>
+
+  <table>
+    <thead><tr><th>Giai đoạn OWASP</th><th>Kiểm soát</th><th>Công cụ (mã nguồn mở)</th><th>Chạy ở</th></tr></thead>
+    <tbody>
+      <tr><td>Pre-commit</td><td>Secret / leak scan</td><td><code>Gitleaks</code></td><td><span class="pill blue">mọi push</span></td></tr>
+      <tr><td>Pre-commit</td><td>Lint</td><td><code>ESLint</code></td><td><span class="pill blue">mọi push</span></td></tr>
+      <tr><td>Vulnerability scanning</td><td>SCA (dependencies)</td><td><code>Trivy fs</code> · <code>npm audit</code></td><td><span class="pill blue">CI</span></td></tr>
+      <tr><td>Vulnerability scanning</td><td>SAST</td><td><code>Semgrep</code></td><td><span class="pill blue">CI</span></td></tr>
+      <tr><td>Vulnerability scanning</td><td>Container image scan</td><td><code>Trivy image</code></td><td><span class="pill blue">sau build</span></td></tr>
+      <tr><td>Vulnerability scanning</td><td>DAST</td><td><code>OWASP ZAP</code></td><td><span class="pill orange">staging</span></td></tr>
+      <tr><td>Compliance auditing</td><td>IaC / manifest policy</td><td><code>kube-linter</code> · <code>Trivy config</code></td><td><span class="pill green">trước prod</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="note"><strong>Chưa triển khai (backend TODO theo README):</strong> ingest RSS, worker dịch phía server, cổng bản quyền, API công khai và xác thực CMS. Frontend hiện chạy trên React state; các mũi tên dữ liệu ở Sơ đồ 1 là kiến trúc mục tiêu để nối backend vào.</div>
+</div>

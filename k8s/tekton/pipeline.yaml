@@ -1,0 +1,106 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: ns-web-cicd
+  namespace: ac-portal-dev
+spec:
+  description: >
+    DevSecOps CI/CD for the FPT-IS Next Gen Service site. OWASP-aligned:
+    pre-commit (gitleaks) → vulnerability scanning (SCA/SAST/image) → build →
+    deploy → DAST (staging) → compliance audit.
+  params:
+    - name: git-url
+      type: string
+    - name: git-revision
+      type: string
+      default: dev
+    - name: image
+      type: string
+      description: Fully-qualified image ref incl. tag.
+    - name: env
+      type: string
+      description: dev | staging | prod
+    - name: target-namespace
+      type: string
+    - name: deploy-host
+      type: string
+    - name: run-dast
+      type: string
+      default: "false"
+  workspaces:
+    - name: shared
+  tasks:
+    # ---- fetch ----
+    - name: fetch
+      taskRef: { kind: ClusterTask, name: git-clone }
+      params:
+        - { name: url, value: $(params.git-url) }
+        - { name: revision, value: $(params.git-revision) }
+        - { name: deleteExisting, value: "true" }
+      workspaces:
+        - { name: output, workspace: shared }
+
+    # ---- pre-commit: secret scan ----
+    - name: secret-scan
+      runAfter: [fetch]
+      taskRef: { kind: Task, name: gitleaks-scan }
+      workspaces: [{ name: source, workspace: shared }]
+
+    # ---- vulnerability scanning: SCA + SAST ----
+    - name: sca
+      runAfter: [fetch]
+      taskRef: { kind: Task, name: trivy-fs-scan }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: sast
+      runAfter: [fetch]
+      taskRef: { kind: Task, name: semgrep-sast }
+      workspaces: [{ name: source, workspace: shared }]
+
+    # ---- compliance audit of manifests (parallel) ----
+    - name: compliance
+      runAfter: [fetch]
+      taskRef: { kind: Task, name: kube-linter-scan }
+      workspaces: [{ name: source, workspace: shared }]
+
+    # ---- build image (gated on the code scans) ----
+    - name: build
+      runAfter: [secret-scan, sca, sast]
+      taskRef: { kind: ClusterTask, name: buildah }
+      params:
+        - { name: IMAGE, value: $(params.image) }
+        - { name: DOCKERFILE, value: ./Dockerfile }
+        - { name: CONTEXT, value: . }
+        - { name: TLSVERIFY, value: "false" }
+        - { name: STORAGE_DRIVER, value: vfs }
+      workspaces: [{ name: source, workspace: shared }]
+
+    # ---- container image scan ----
+    - name: image-scan
+      runAfter: [build]
+      taskRef: { kind: Task, name: trivy-image-scan }
+      params: [{ name: IMAGE, value: $(params.image) }]
+
+    # ---- deploy via kustomize overlay ----
+    - name: deploy
+      runAfter: [image-scan]
+      taskRef: { kind: ClusterTask, name: openshift-client }
+      params:
+        - name: SCRIPT
+          value: |
+            set -e
+            echo "Deploying env=$(params.env) → ns=$(params.target-namespace)"
+            oc apply -k k8s/overlays/$(params.env)
+            oc -n $(params.target-namespace) import-image ac-portal:$(params.env) --confirm || true
+            oc -n $(params.target-namespace) rollout restart deploy/ac-portal
+            oc -n $(params.target-namespace) rollout status deploy/ac-portal --timeout=180s
+      workspaces: [{ name: manifest-dir, workspace: shared }]
+
+    # ---- DAST against the running staging site ----
+    - name: dast
+      runAfter: [deploy]
+      when:
+        - input: $(params.run-dast)
+          operator: in
+          values: ["true"]
+      taskRef: { kind: Task, name: zap-dast }
+      params: [{ name: TARGET_URL, value: "https://$(params.deploy-host)" }]

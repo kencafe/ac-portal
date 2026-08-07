@@ -1,0 +1,128 @@
+# ServiceAccount used by all PipelineRuns, plus cross-namespace deploy rights.
+# The CI hub namespace is ac-portal-dev; the same SA builds/pushes/deploys into
+# ac-portal-staging and ac-portal-prod.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ns-web-pipeline
+  namespace: ac-portal-dev
+---
+# Let the pipeline SA edit workloads + push images in each target namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-pipeline-edit
+  namespace: ac-portal-dev
+subjects:
+  - kind: ServiceAccount
+    name: ns-web-pipeline
+    namespace: ac-portal-dev
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-pipeline-imagebuilder
+  namespace: ac-portal-dev
+subjects:
+  - kind: ServiceAccount
+    name: ns-web-pipeline
+    namespace: ac-portal-dev
+roleRef:
+  kind: ClusterRole
+  name: system:image-builder
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-pipeline-edit
+  namespace: ac-portal-staging
+subjects:
+  - kind: ServiceAccount
+    name: ns-web-pipeline
+    namespace: ac-portal-dev
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-pipeline-imagebuilder
+  namespace: ac-portal-staging
+subjects:
+  - kind: ServiceAccount
+    name: ns-web-pipeline
+    namespace: ac-portal-dev
+roleRef:
+  kind: ClusterRole
+  name: system:image-builder
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-pipeline-edit
+  namespace: ac-portal-prod
+subjects:
+  - kind: ServiceAccount
+    name: ns-web-pipeline
+    namespace: ac-portal-dev
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-pipeline-imagebuilder
+  namespace: ac-portal-prod
+subjects:
+  - kind: ServiceAccount
+    name: ns-web-pipeline
+    namespace: ac-portal-dev
+roleRef:
+  kind: ClusterRole
+  name: system:image-builder
+  apiGroup: rbac.authorization.k8s.io
+---
+# Triggers SA (EventListener needs to create PipelineRuns).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ns-web-triggers
+  namespace: ac-portal-dev
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-triggers-binding
+  namespace: ac-portal-dev
+subjects:
+  - kind: ServiceAccount
+    name: ns-web-triggers
+    namespace: ac-portal-dev
+roleRef:
+  kind: ClusterRole
+  name: tekton-triggers-eventlistener-roles
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-triggers-clusterbinding
+  namespace: ac-portal-dev
+subjects:
+  - kind: ServiceAccount
+    name: ns-web-triggers
+    namespace: ac-portal-dev
+roleRef:
+  kind: ClusterRole
+  name: tekton-triggers-eventlistener-clusterroles
+  apiGroup: rbac.authorization.k8s.io

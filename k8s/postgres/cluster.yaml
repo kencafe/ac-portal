@@ -1,0 +1,32 @@
+# CloudNativePG cluster for the blog content store (posts before/after
+# translation, feeds, inbox). CNPG auto-creates a Secret `ns-blog-db-app`
+# with the connection credentials — mirror it into Vault and expose to the
+# app as `ns-web-secrets` (DATABASE_URL) via Vault Agent.
+#
+# Apply per environment, e.g.:
+#   oc apply -n ac-portal-dev -f k8s/postgres/cluster.yaml
+# Bump `instances` to 3 for staging/prod for HA.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: ns-blog-db
+  labels:
+    app: ac-portal
+    component: database
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:16
+  storage:
+    size: 2Gi
+    storageClass: ac-bronze-single
+  bootstrap:
+    initdb:
+      database: ns_blog
+      owner: ns_blog
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"

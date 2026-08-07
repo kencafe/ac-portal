@@ -5,17 +5,15 @@ metadata:
   name: ac-portal-base
 
 resources:
-- deployment.yaml
-- service.yaml
-- route.yaml  
-- configmap.yaml
-- imagestream.yaml
-- buildconfig.yaml
+  - imagestream.yaml
+  - configmap.yaml
+  - deployment.yaml
+  - service.yaml
+  - route.yaml
 
 commonLabels:
   app: ac-portal
-  version: v1.0.0
 
 images:
-- name: ac-portal
-  newTag: latest
+  - name: ac-portal
+    newTag: latest

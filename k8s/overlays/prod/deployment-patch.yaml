@@ -3,18 +3,4 @@ kind: Deployment
 metadata:
   name: ac-portal
 spec:
-  replicas: 3
-  template:
-    spec:
-      containers:
-      - name: ac-portal
-        env:
-        - name: NODE_ENV
-          value: "production"
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
+  replicas: 2
