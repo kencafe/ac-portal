@@ -92,8 +92,13 @@ spec:
         - name: SCRIPT
           value: |
             set -e
-            oc -n $(params.target-namespace) rollout restart deploy/ac-portal
-            oc -n $(params.target-namespace) rollout status deploy/ac-portal --timeout=240s
+            NS=$(params.target-namespace)
+            # Pin the freshly-built digest so the rollout always picks it up
+            # (rollout restart alone keeps a previously-resolved digest).
+            REF=$(oc -n "$NS" get istag ac-portal:latest -o jsonpath='{.image.dockerImageReference}')
+            echo "Rolling out $REF"
+            oc -n "$NS" set image deploy/ac-portal ac-portal="$REF"
+            oc -n "$NS" rollout status deploy/ac-portal --timeout=240s
       workspaces: [{ name: manifest-dir, workspace: shared }]
 
     # ---- DAST against the running staging site → DefectDojo ----
