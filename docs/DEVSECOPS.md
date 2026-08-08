@@ -71,18 +71,21 @@ Sản phẩm DefectDojo: **AC-Portal** (`auto_create_context`), engagement
 - Webhook Tekton: `ns-web-webhook-secret` (chữ ký HMAC GitHub).
 - Image công cụ mirror vào registry nội bộ (xem `BOOTSTRAP.md`).
 
-## DefectDojo — trạng thái tích hợp
+## DefectDojo — hoạt động ✅
 
-- Pipeline đã nối đầy đủ: task `defectdojo` (import Trivy/Gitleaks/Dependency-Check/
-  Semgrep) và task `dast` (import ZAP) POST vào `import-scan` của DefectDojo có sẵn
-  ở `ac-devsecops` (in-cluster: `defect-dojo-defectdojo-django.ac-devsecops.svc`
-  + header `Host` + `Accept: application/json`), sản phẩm **AC-Portal**,
-  engagement `ci-<env>` / `dast-<env>`.
-- Kết nối + xác thực đọc OK (GET `/api/v2/*` trả JSON). Tuy nhiên **token trong
-  `defectdojo-creds` hiện chỉ có quyền đọc** → POST `import-scan` trả HTTP 400
-  (trang HTML). Cần **token có quyền import/write** do quản trị DefectDojo cấp;
-  thay giá trị `DD_TOKEN` trong secret `defectdojo-creds` là xong, không phải sửa
-  pipeline.
+Pipeline đẩy kết quả về DefectDojo có sẵn ở `ac-devsecops`, sản phẩm **AC-Portal**
+(product_type "Research and Development"), engagement `ci-<env>` / `dast-<env>`.
+Đã xác nhận import **HTTP 201** (Trivy → test tạo thành công).
+
+Cấu hình trong secret `defectdojo-creds` (namespace `ac-portal-dev`):
+- `DD_URL` = `http://defect-dojo-defectdojo-django.ac-devsecops.svc` (service in-cluster)
+- `DD_HOST` = `security-devsecops.sec.cluster02.fis-cloud.xplat.online` (phải khớp
+  `ALLOWED_HOSTS` của DefectDojo — dùng route prod01 sẽ bị `DisallowedHost` 400)
+- `DD_TOKEN` = token có quyền import (tạo bằng
+  `oc -n ac-devsecops exec deploy/defect-dojo-defectdojo-django -c uwsgi -- python manage.py drf_create_token admin`)
+
+Import bắt buộc kèm `-H "Accept: application/json"`, `product_name`, và
+`product_type_name` khi dùng `auto_create_context=true`.
 
 ## Siết gate về blocking (khi baseline sạch)
 
