@@ -189,6 +189,8 @@ export default function CmsApp() {
   const [reeditBusy, setReeditBusy] = useState<string | null>(null);
   // Editor preview toggle (manual review before publishing)
   const [showPreview, setShowPreview] = useState(false);
+  const [reeditInstruction, setReeditInstruction] = useState("");
+  const [previewBusy, setPreviewBusy] = useState(false);
 
   // AI provider config (Cấu hình API): pick provider → paste token → get models → choose → save
   const [aiProviderSel, setAiProviderSel] = useState("anthropic");
@@ -409,6 +411,23 @@ export default function CmsApp() {
       aiLogLine(`❌ ${(e as Error).message}`);
     }
     setAiBusy(false);
+  }
+  // Preview → ask the LLM to revise the article per an extra instruction. Saves
+  // the current draft first so the instruction applies to the latest content,
+  // then reloads the revised result back into the preview.
+  async function reeditWithInstruction() {
+    const instruction = reeditInstruction.trim();
+    if (!instruction || !draft.slug) return;
+    setPreviewBusy(true);
+    try {
+      await apiSave(draft);
+      const res = await fetch("/api/v1/ai/reedit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: draft.slug, instruction }) });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { alert(d.error === "Forbidden" ? "Bạn không có quyền biên tập." : `Lỗi: ${d.error || res.status}`); }
+      else { await openInEditor(draft.slug, true); setReeditInstruction(""); }
+      loadHistory();
+    } catch (e) { alert((e as Error).message); }
+    setPreviewBusy(false);
   }
   async function reeditPost(slug: string, title: string) {
     if (!window.confirm(`AI biên tập lại bài "${title}" theo phong cách blog? Nội dung hiện tại sẽ được viết lại.`)) return;
@@ -1101,6 +1120,22 @@ export default function CmsApp() {
             <span style={{ marginLeft: "auto", fontSize: 12.5, color: COLORS.ink3 }}>Xem trước rồi chỉnh nếu cần trước khi xuất bản.</span>
           </div>
           {showPreview ? (
+            <>
+            <div style={{ ...panelPad, background: "#F4F8FB", borderColor: "#B3D5EA" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink, marginBottom: 8 }}>✨ Chưa ưng? Yêu cầu AI chỉnh lại</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <input
+                  style={{ ...input, flex: 1, minWidth: 260 }}
+                  placeholder="VD: ngắn gọn hơn, thêm ví dụ thực tế, giọng trang trọng hơn, bổ sung phần kết luận…"
+                  value={reeditInstruction}
+                  onChange={(e) => setReeditInstruction(e.target.value)}
+                  disabled={previewBusy}
+                  onKeyDown={(e) => { if (e.key === "Enter" && reeditInstruction.trim()) reeditWithInstruction(); }}
+                />
+                <button type="button" onClick={reeditWithInstruction} disabled={previewBusy || !reeditInstruction.trim()} style={{ ...btnBlue, opacity: previewBusy || !reeditInstruction.trim() ? 0.5 : 1 }}>{previewBusy ? "⏳ Đang chỉnh…" : "AI chỉnh theo yêu cầu"}</button>
+              </div>
+              <div style={{ fontSize: 11.5, color: COLORS.ink3, marginTop: 8 }}>AI sẽ viết lại bài theo yêu cầu này rồi hiển thị lại bản xem trước. Lặp lại đến khi ưng ý mới xuất bản.</div>
+            </div>
             <article style={{ ...panelPad, maxWidth: 760 }}>
               <div style={{ fontSize: 12.5, fontWeight: 600, color: TONE[draft.cat] ?? COLORS.brandBlue, marginBottom: 8 }}>{draft.cat}</div>
               <h1 style={{ fontSize: 28, fontWeight: 700, lineHeight: 1.25, color: COLORS.ink, margin: "0 0 10px" }}>{draft.title || "(chưa có tiêu đề)"}</h1>
@@ -1115,6 +1150,7 @@ export default function CmsApp() {
                 return <p key={i} style={{ fontSize: 15.5, lineHeight: 1.75, color: COLORS.ink2, margin: "0 0 14px" }}>{text}</p>;
               })}
             </article>
+            </>
           ) : (
           <>
           <div style={panelPad}>

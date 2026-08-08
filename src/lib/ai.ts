@@ -169,6 +169,7 @@ export function parseFeedItems(xml: string, limit = 20): FeedItem[] {
 async function aiEdit(
   title: string,
   text: string,
+  instruction?: string, // optional extra guidance from the editor (preview → chỉnh theo ý)
 ): Promise<{ title: string; blocks: Block[]; aiUsed: boolean }> {
   const clipped = text.slice(0, 12000);
 
@@ -198,8 +199,11 @@ async function aiEdit(
     `- Nếu nội dung gốc là tiếng nước ngoài thì viết lại bằng tiếng Việt theo phong cách trên (không dịch word-by-word).\n` +
     `Trả về JSON THUẦN theo đúng schema (không thêm chữ ngoài JSON):\n` +
     `{"title":"...","blocks":[{"type":"h","text":"Tiêu đề phụ"},{"type":"p","text":"đoạn văn"},{"type":"list","items":["ý 1","ý 2"]},{"type":"quote","text":"trích dẫn"}]}\n` +
-    `type chỉ nhận: "h" (tiêu đề phụ), "p" (đoạn văn), "list" (danh sách), "quote" (trích dẫn). Bài nên có 2–5 heading.\n\n` +
-    `TIÊU ĐỀ GỐC: ${title}\n\nNỘI DUNG:\n${clipped}`;
+    `type chỉ nhận: "h" (tiêu đề phụ), "p" (đoạn văn), "list" (danh sách), "quote" (trích dẫn). Bài nên có 2–5 heading.\n` +
+    (instruction?.trim()
+      ? `\nYÊU CẦU CHỈNH SỬA THÊM TỪ BIÊN TẬP VIÊN (ưu tiên cao, bám sát): ${instruction.trim()}\n`
+      : "") +
+    `\nTIÊU ĐỀ GỐC: ${title}\n\nNỘI DUNG:\n${clipped}`;
 
   const raw = await chatComplete(provider, apiKey, model, prompt);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -288,7 +292,7 @@ export async function ingestText(
 // Re-edit an existing post to the house style. Keeps the same slug, status,
 // category and cover; only the title + body get rewritten by the AI editor.
 // Logs the run to history (mode "reedit"). Returns null if the post is missing.
-export async function reeditPost(slug: string): Promise<IngestResult | null> {
+export async function reeditPost(slug: string, instruction?: string): Promise<IngestResult | null> {
   const post = await getPost(slug);
   if (!post) return null;
 
@@ -299,7 +303,7 @@ export async function reeditPost(slug: string): Promise<IngestResult | null> {
     .filter(Boolean)
     .join("\n\n");
 
-  const { title, blocks, aiUsed } = await aiEdit(post.title, text || post.excerpt || post.title);
+  const { title, blocks, aiUsed } = await aiEdit(post.title, text || post.excerpt || post.title, instruction);
 
   await upsertPost({
     slug,
@@ -318,7 +322,7 @@ export async function reeditPost(slug: string): Promise<IngestResult | null> {
     slug,
     status: post.status === "published" ? "published" : "draft",
     aiUsed,
-    note: "biên tập lại theo style",
+    note: instruction?.trim() ? `chỉnh theo yêu cầu: ${instruction.trim().slice(0, 120)}` : "biên tập lại theo style",
   });
 
   return { slug, title: title || post.title, status: post.status === "published" ? "published" : "draft", aiUsed, source: "reedit" };

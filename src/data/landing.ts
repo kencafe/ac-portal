@@ -262,7 +262,7 @@ export const INDUSTRIES = [
 ] as const;
 
 /* ==================================================================
- * 8. PARTNERS — 12 technology partners
+ * 8. PARTNERS — technology partners
  *    lead + each: name, desc, logo src (CDN url or asset path), slot id.
  * ================================================================== */
 export const PARTNERS_LEAD =
@@ -293,6 +293,32 @@ export const PARTNERS = [
     logo: "https://cdn.simpleicons.org/veeam/00B336", placeholderHint: "Veeam — kéo logo vào" },
   { id: "partner-cncf", name: "CNCF / Kubernetes", desc: "Hệ sinh thái cloud-native",
     logo: "https://cdn.simpleicons.org/kubernetes", placeholderHint: "CNCF / Kubernetes" },
+  { id: "partner-cisco", name: "Cisco", desc: "Mạng & hạ tầng doanh nghiệp",
+    logo: "https://cdn.simpleicons.org/cisco", placeholderHint: "Cisco" },
+  { id: "partner-fortinet", name: "Fortinet", desc: "Network & cloud security",
+    logo: "https://cdn.simpleicons.org/fortinet", placeholderHint: "Fortinet" },
+  { id: "partner-paloalto", name: "Palo Alto Networks", desc: "Zero Trust & NGFW",
+    logo: "https://cdn.simpleicons.org/paloaltonetworks", placeholderHint: "Palo Alto Networks" },
+  { id: "partner-cloudflare", name: "Cloudflare", desc: "CDN · WAF · Zero Trust",
+    logo: "https://cdn.simpleicons.org/cloudflare", placeholderHint: "Cloudflare" },
+  { id: "partner-sap", name: "SAP", desc: "Nền tảng ứng dụng doanh nghiệp",
+    logo: "https://cdn.simpleicons.org/sap", placeholderHint: "SAP" },
+  { id: "partner-databricks", name: "Databricks", desc: "Lakehouse & AI/ML",
+    logo: "https://cdn.simpleicons.org/databricks", placeholderHint: "Databricks" },
+  { id: "partner-snowflake", name: "Snowflake", desc: "Data cloud & analytics",
+    logo: "https://cdn.simpleicons.org/snowflake", placeholderHint: "Snowflake" },
+  { id: "partner-datadog", name: "Datadog", desc: "Observability & monitoring",
+    logo: "https://cdn.simpleicons.org/datadog", placeholderHint: "Datadog" },
+  { id: "partner-grafana", name: "Grafana", desc: "Metrics · logs · dashboards",
+    logo: "https://cdn.simpleicons.org/grafana", placeholderHint: "Grafana" },
+  { id: "partner-splunk", name: "Splunk", desc: "SIEM & log analytics",
+    logo: "https://cdn.simpleicons.org/splunk", placeholderHint: "Splunk" },
+  { id: "partner-gitlab", name: "GitLab", desc: "DevSecOps platform",
+    logo: "https://cdn.simpleicons.org/gitlab", placeholderHint: "GitLab" },
+  { id: "partner-nutanix", name: "Nutanix", desc: "Hyperconverged & hybrid cloud",
+    logo: "https://cdn.simpleicons.org/nutanix", placeholderHint: "Nutanix" },
+  { id: "partner-suse", name: "SUSE", desc: "Enterprise Linux & Rancher",
+    logo: "https://cdn.simpleicons.org/suse", placeholderHint: "SUSE" },
 ] as const;
 
 /* ==================================================================
@@ -343,6 +369,9 @@ export const CASES = [
     logos: [
       { id: "logo-bidv", src: "assets/logo-bidv.png", placeholderHint: "BIDV — kéo logo vào" },
       { id: "logo-vpbank", src: "assets/logo-vpbank.png", placeholderHint: "VPBank — kéo logo vào" },
+      { id: "logo-techcombank", src: "assets/logo-techcombank.png", placeholderHint: "Techcombank — kéo logo vào" },
+      { id: "logo-vib", src: "assets/logo-vib.png", placeholderHint: "VIB — kéo logo vào" },
+      { id: "logo-ocb", src: "assets/logo-ocb.png", placeholderHint: "OCB — kéo logo vào" },
     ],
   },
   {

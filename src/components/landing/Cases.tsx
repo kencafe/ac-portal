@@ -3,6 +3,13 @@ import { Accent, COLORS, RADIUS } from "@/lib/tokens";
 import { tag } from "@/lib/ui";
 import Section from "@/components/shared/Section";
 import SectionHeading from "@/components/shared/SectionHeading";
+import CaseLogo from "@/components/landing/CaseLogo";
+
+// Human-readable customer name from the placeholderHint ("Techcombank — kéo
+// logo vào" → "Techcombank"), used as the text fallback when a logo is missing.
+function logoName(hint?: string): string {
+  return (hint || "").split("—")[0].trim();
+}
 
 export default function Cases() {
   return (
@@ -48,25 +55,7 @@ export default function Cases() {
               }}
             >
               {c.logos.map((logo) => (
-                <div
-                  key={logo.id}
-                  style={{
-                    height: 72,
-                    background: "#fff",
-                    padding: 8,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`/${logo.src}`}
-                    alt=""
-                    style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain" }}
-                    loading="lazy"
-                  />
-                </div>
+                <CaseLogo key={logo.id} src={logo.src} name={logoName(logo.placeholderHint) || logo.id} />
               ))}
             </div>
           </div>
