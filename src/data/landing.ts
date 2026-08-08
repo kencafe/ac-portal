@@ -104,6 +104,10 @@ export const SERVICE_GLYPHS: Record<string, string> = {
     '<path d="M4.4 8.6a3.1 3.1 0 0 1 5.9-.5"/><path d="M10.6 12.4H5.2a2.4 2.4 0 0 1-.4-4.8"/><path d="M19.6 15.4a3.1 3.1 0 0 1-5.9.5"/><path d="M13.4 11.6h5.4a2.4 2.4 0 0 1 .4 4.8"/><path d="M9.8 5.6l2.4 2.4-2.4 2.4M14.2 18.4l-2.4-2.4 2.4-2.4"/>',
   cloudapp:
     '<path d="M12 3.2l7.4 3.6v8L12 20.8 4.6 14.8v-8z"/><path d="M10.4 9.6L8.2 12l2.2 2.4M13.6 9.6L15.8 12l-2.2 2.4"/>',
+  outsourcing:
+    '<circle cx="8.6" cy="8.4" r="2.6"/><path d="M3.6 18.6a5 5 0 0 1 10 0"/><circle cx="16.4" cy="9.4" r="2.1"/><path d="M14.2 14.2a4.4 4.4 0 0 1 6.2 4.4"/>',
+  attt:
+    '<path d="M12 3.4l6.6 2.5v5.6c0 4.3-2.8 7.4-6.6 9.1-3.8-1.7-6.6-4.8-6.6-9.1V5.9z"/><path d="M9.2 11.8l2 2 3.6-3.8"/>',
 };
 
 /* ==================================================================
@@ -214,6 +218,10 @@ export const SERVICES_META = [
     desc: "Đánh giá và di trú ứng dụng/dữ liệu, hiện đại hoá hệ thống." },
   { num: 9, name: "Cloud App", en: "Cloud-native apps", slug: "cloudapp", accent: "green",
     desc: "Phát triển và hiện đại hoá ứng dụng cloud-native, container/K8s." },
+  { num: 10, name: "Outsourcing kỹ sư", en: "Engineer outsourcing", slug: "outsourcing", accent: "blue", ribbon: "MỚI",
+    desc: "Cung cấp kỹ sư Cloud/DevOps/SRE/Security theo dự án hoặc dài hạn — bổ sung năng lực đội ngũ nhanh, linh hoạt." },
+  { num: 11, name: "ATTT theo luật VN", en: "Vietnam IT-security compliance", slug: "attt", accent: "orange", ribbon: "MỚI",
+    desc: "Tuân thủ Luật An ninh mạng, Luật ATTT mạng; phân định & lập hồ sơ cấp độ an toàn hệ thống thông tin (NĐ 85), bảo vệ dữ liệu cá nhân (NĐ 13)." },
 ] as const;
 // NOTE: card #3 (AIOps) is the "hot" card — green border + "MỚI" ribbon.
 //   Its EN subtitle is Vietnamese ("Triển khai & vận hành"), authored that way.

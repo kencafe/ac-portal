@@ -58,6 +58,17 @@ function readingTime(blocks: Block[]): string {
   return `${Math.max(1, Math.round(words / 200))} phút đọc`;
 }
 
+// Resolve a possibly-relative image URL against the article URL. Returns "" on
+// failure so the gradient placeholder kicks in.
+function absolutize(src: string, base: string): string {
+  if (!src) return "";
+  try {
+    return new URL(src, base).toString();
+  } catch {
+    return "";
+  }
+}
+
 function slugify(s: string): string {
   return s
     .normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -66,13 +77,31 @@ function slugify(s: string): string {
     .slice(0, 60) || "bai-viet-" + Date.now();
 }
 
-function stripHtml(html: string): { title: string; text: string } {
+function stripHtml(html: string): { title: string; text: string; cover: string } {
   const title =
     (html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i)?.[1] ||
       html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] ||
       "").trim();
   // Prefer <article>, else <body>.
   const body = html.match(/<article[\s\S]*?<\/article>/i)?.[0] || html;
+  // Lead image: Open Graph / Twitter card meta first (attr order-agnostic),
+  // else the first real content <img> in the article (skip icons/logos/svg).
+  const articleImg = (() => {
+    for (const m of body.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)) {
+      const src = m[1];
+      if (/\.svg(\?|$)/i.test(src)) continue;
+      if (/(logo|icon|avatar|sprite|badge|emoji|favicon)/i.test(src)) continue;
+      return src;
+    }
+    return "";
+  })();
+  const cover = (
+    html.match(/<meta[^>]+property=["']og:image(?::url)?["'][^>]+content=["']([^"']+)/i)?.[1] ||
+    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)?.[1] ||
+    html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)/i)?.[1] ||
+    articleImg ||
+    ""
+  ).trim();
   const text = body
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
@@ -81,7 +110,7 @@ function stripHtml(html: string): { title: string; text: string } {
     .replace(/&amp;/g, "&")
     .replace(/\s+/g, " ")
     .trim();
-  return { title, text };
+  return { title, text, cover };
 }
 
 async function fetchText(url: string): Promise<string> {
@@ -160,27 +189,50 @@ async function aiEdit(
   }
 
   const prompt =
-    `Bạn là biên tập viên kỹ thuật của blog FPT-IS Next Gen Service. Hãy BIÊN TẬP LẠI nội dung sau thành một bài viết hoàn chỉnh, chuẩn để xuất bản, bằng tiếng Việt.\n` +
+    `Bạn là biên tập viên kỹ thuật của blog FPT-IS Next Gen Service. Hãy BIÊN TẬP LẠI nội dung sau thành một bài viết hoàn chỉnh, CÓ CẤU TRÚC, chuẩn để xuất bản, bằng tiếng Việt.\n` +
     `PHONG CÁCH NHÀ (bắt buộc bám theo):\n` +
     `- Tiếng Việt kỹ thuật, chuyên nghiệp, súc tích; câu ngắn gọn, đi thẳng vấn đề, không sáo rỗng, không câu view.\n` +
     `- Tiêu đề rõ nghĩa, đúng trọng tâm. Mở bài nêu ngay bối cảnh/insight thực dụng (kiểu SRE/DevOps).\n` +
     `- Giữ nguyên thuật ngữ tiếng Anh phổ biến (Kubernetes, SRE, latency, error budget…) khi tự nhiên hơn là dịch cứng.\n` +
-    `- Bố cục mạch lạc theo đoạn; mỗi đoạn một ý; ưu tiên nội dung có giá trị hành động.\n` +
+    `- BỐ CỤC: chia bài thành nhiều phần, mỗi phần có TIÊU ĐỀ PHỤ (heading) ngắn gọn; dưới mỗi heading là 1–3 đoạn văn. Dùng danh sách bullet khi liệt kê. Có thể dùng 1 trích dẫn nếu phù hợp.\n` +
     `- Nếu nội dung gốc là tiếng nước ngoài thì viết lại bằng tiếng Việt theo phong cách trên (không dịch word-by-word).\n` +
-    `Trả về JSON thuần: {"title": "...", "paragraphs": ["...", "..."]}. Không thêm chữ ngoài JSON.\n\n` +
+    `Trả về JSON THUẦN theo đúng schema (không thêm chữ ngoài JSON):\n` +
+    `{"title":"...","blocks":[{"type":"h","text":"Tiêu đề phụ"},{"type":"p","text":"đoạn văn"},{"type":"list","items":["ý 1","ý 2"]},{"type":"quote","text":"trích dẫn"}]}\n` +
+    `type chỉ nhận: "h" (tiêu đề phụ), "p" (đoạn văn), "list" (danh sách), "quote" (trích dẫn). Bài nên có 2–5 heading.\n\n` +
     `TIÊU ĐỀ GỐC: ${title}\n\nNỘI DUNG:\n${clipped}`;
 
   const raw = await chatComplete(provider, apiKey, model, prompt);
-  let parsed: { title?: string; paragraphs?: string[] };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let parsed: any;
   try {
     parsed = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? raw);
   } catch {
-    parsed = { title, paragraphs: [raw] };
+    parsed = null;
   }
-  const blocks: Block[] = (parsed.paragraphs ?? [])
-    .filter(Boolean)
-    .map((p) => ({ kind: "p", text: p }) as Block);
-  return { title: parsed.title || title || "Bài nhập tự động", blocks, aiUsed: true };
+
+  const KINDS = new Set(["h", "p", "list", "quote"]);
+  let blocks: Block[] = [];
+  if (parsed && Array.isArray(parsed.blocks)) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    blocks = parsed.blocks
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((b: any): Block | null => {
+        const kind = KINDS.has(b?.type) ? b.type : "p";
+        if (kind === "list") {
+          const items = (Array.isArray(b.items) ? b.items : String(b.text ?? "").split("\n")).map((s: string) => String(s).trim()).filter(Boolean);
+          return items.length ? { kind: "list", items } : null;
+        }
+        const text = String(b?.text ?? "").trim();
+        return text ? { kind, text } : null;
+      })
+      .filter(Boolean) as Block[];
+  } else if (parsed && Array.isArray(parsed.paragraphs)) {
+    // Backward-compat with the old paragraphs[] shape.
+    blocks = parsed.paragraphs.filter(Boolean).map((p: string) => ({ kind: "p", text: p }) as Block);
+  }
+  if (blocks.length === 0) blocks = [{ kind: "p", text: raw.slice(0, 1500) }];
+
+  return { title: parsed?.title || title || "Bài nhập tự động", blocks, aiUsed: true };
 }
 
 // Core: run AI edit over raw {title,text} → create a post + log history.
@@ -188,7 +240,7 @@ async function aiEdit(
 export async function ingestText(
   rawTitle: string,
   text: string,
-  opts?: { forcePublish?: boolean; cat?: string; mode?: IngestMode; source?: string; note?: string; url?: string },
+  opts?: { forcePublish?: boolean; cat?: string; mode?: IngestMode; source?: string; note?: string; url?: string; cover?: string },
 ): Promise<IngestResult> {
   const settings = await getSettings();
   const { title, blocks, aiUsed } = await aiEdit(rawTitle, text);
@@ -210,7 +262,7 @@ export async function ingestText(
     date: todayVN(),
     read: readingTime(blocks),
     tags: ["ai-ingest"],
-    coverUrl: "", // no cover file → branded gradient placeholder (see coverBackground)
+    coverUrl: opts?.cover || "", // source og:image if any, else branded gradient (coverBackground)
     blocks,
     status,
   });
@@ -278,8 +330,8 @@ export async function ingestUrl(
   opts?: { forcePublish?: boolean; cat?: string; mode?: IngestMode; source?: string; note?: string },
 ): Promise<IngestResult> {
   const html = await fetchText(url);
-  const { title: rawTitle, text } = stripHtml(html);
-  return ingestText(rawTitle, text, { ...opts, url, source: opts?.source ?? url });
+  const { title: rawTitle, text, cover } = stripHtml(html);
+  return ingestText(rawTitle, text, { ...opts, url, source: opts?.source ?? url, cover: absolutize(cover, url) });
 }
 
 // Run over a list of feed URLs (manual "Chạy nguồn ngay"). Returns per-item results.

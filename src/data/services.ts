@@ -454,6 +454,86 @@ export const SERVICES: Record<string, ServiceDetail> = {
       "Chi phí hạ tầng theo nhu cầu thực",
     ],
   },
+
+  outsourcing: {
+    slug: "outsourcing",
+    code: "EOS",
+    serviceCode: "NS-EOS",
+    accent: "blue",
+    accentHex: BLUE,
+    name: "Outsourcing kỹ sư",
+    nameEn: "Engineer outsourcing & staff augmentation",
+    group: "Talent & Delivery",
+    positioning:
+      "Cung cấp kỹ sư Cloud, DevOps, SRE, Platform và Security theo hình thức thuê ngoài — bổ sung năng lực cho đội ngũ khách hàng theo dự án hoặc dài hạn. Kỹ sư được tuyển chọn, đào tạo theo chuẩn nội bộ và làm việc trực tiếp trong quy trình của khách hàng.",
+    specs: [
+      { k: "Mã dịch vụ", v: "NS-EOS" },
+      { k: "Nhóm dịch vụ", v: "Talent & Delivery — bổ sung năng lực kỹ thuật" },
+      { k: "Phạm vi", v: "Cung ứng kỹ sư DevOps/SRE/Cloud/Platform/Security theo cấp độ Junior→Expert" },
+      { k: "Đối tượng", v: "Doanh nghiệp thiếu nhân sự chuyên sâu, cần mở rộng đội nhanh, hoặc cần chuyên gia theo giai đoạn" },
+      { k: "Mô hình hợp tác", v: "Body-shopping · team thuê ngoài · managed team (có team lead) · onsite/hybrid/remote" },
+      { k: "Cam kết", v: "SLA thay thế nhân sự · NDA & bảo mật · đánh giá năng lực định kỳ" },
+    ],
+    phases: buildPhases([
+      ["Khảo sát nhu cầu & vị trí cần tuyển", "Thống nhất cấp độ, kỹ năng, ngân sách", "Chuẩn hoá JD và tiêu chí đánh giá", "Kế hoạch onboarding"],
+      ["Tuyển chọn & phỏng vấn ứng viên", "Khách hàng phỏng vấn chốt", "Onboarding vào quy trình khách hàng", "Ký NDA & cấp quyền truy cập"],
+      ["Kỹ sư làm việc trong team khách hàng", "Team lead theo dõi chất lượng", "Báo cáo tiến độ định kỳ", "Hỗ trợ & thay thế khi cần"],
+      ["Đánh giá năng lực & phản hồi", "Đào tạo nâng cấp kỹ năng", "Điều chỉnh quy mô team theo nhu cầu", "Chuyển giao tri thức"],
+    ]),
+    deliverables: [
+      "Hồ sơ năng lực (CV) ứng viên phù hợp cấp độ yêu cầu",
+      "Kỹ sư onboard vào quy trình khách hàng đúng tiến độ",
+      "Báo cáo tiến độ & timesheet định kỳ",
+      "Cam kết SLA thay thế nhân sự khi biến động",
+      "Tài liệu chuyển giao tri thức khi kết thúc",
+    ],
+    stack: ["DevOps", "SRE", "Kubernetes", "AWS", "Azure", "GCP", "Terraform", "CI/CD", "Security", "Platform Engineering"],
+    outcomes: [
+      "Mở rộng đội kỹ thuật nhanh, không tốn thời gian tuyển dụng",
+      "Tiếp cận chuyên gia theo đúng giai đoạn dự án",
+      "Chi phí linh hoạt theo nhu cầu, giảm rủi ro nhân sự",
+    ],
+  },
+
+  attt: {
+    slug: "attt",
+    code: "ATT",
+    serviceCode: "NS-ATT",
+    accent: "orange",
+    accentHex: ORANGE,
+    name: "An toàn thông tin theo luật Việt Nam",
+    nameEn: "Vietnam IT-security compliance (Cybersecurity & IS laws)",
+    group: "Compliance & Assurance",
+    positioning:
+      "Tư vấn và triển khai tuân thủ pháp luật an toàn thông tin Việt Nam: Luật An ninh mạng, Luật An toàn thông tin mạng, Nghị định 85/2016 về bảo đảm an toàn hệ thống thông tin theo cấp độ, và các quy định về bảo vệ dữ liệu cá nhân (NĐ 13/2023). Đồng hành từ phân định cấp độ, lập hồ sơ đề xuất cấp độ đến triển khai phương án bảo vệ và duy trì tuân thủ.",
+    specs: [
+      { k: "Mã dịch vụ", v: "NS-ATT" },
+      { k: "Nhóm dịch vụ", v: "Compliance & Assurance — tuân thủ pháp luật ATTT" },
+      { k: "Phạm vi", v: "Phân loại & xác định cấp độ ATHTTT (cấp 1–5), hồ sơ đề xuất cấp độ, phương án bảo đảm an toàn, tuân thủ Luật ANM / Luật ATTT mạng / NĐ 85 / NĐ 13" },
+      { k: "Đối tượng", v: "Cơ quan nhà nước, doanh nghiệp vận hành hệ thống thông tin quan trọng, tổ chức xử lý dữ liệu cá nhân" },
+      { k: "Mô hình hợp tác", v: "Tư vấn tuân thủ · lập hồ sơ cấp độ · triển khai kỹ thuật · đánh giá định kỳ" },
+      { k: "Cam kết", v: "Hồ sơ đúng biểu mẫu quy định · phối hợp thẩm định với cơ quan chức năng · rà soát định kỳ" },
+    ],
+    phases: buildPhases([
+      ["Khảo sát hệ thống thông tin", "Phân loại & xác định cấp độ an toàn (cấp 1–5)", "Rà soát khoảng trống so với quy định", "Tư vấn lộ trình tuân thủ"],
+      ["Lập hồ sơ đề xuất cấp độ theo NĐ 85", "Thiết kế phương án bảo đảm an toàn theo cấp độ", "Triển khai biện pháp kỹ thuật & quản lý", "Phối hợp thẩm định, phê duyệt cấp độ"],
+      ["Vận hành phương án bảo vệ", "Giám sát an toàn thông tin (SOC/SIEM)", "Ứng phó sự cố theo quy định", "Duy trì hồ sơ tuân thủ"],
+      ["Đánh giá lại cấp độ định kỳ", "Cập nhật theo văn bản pháp luật mới", "Diễn tập ứng phó sự cố", "Tối ưu chi phí tuân thủ"],
+    ]),
+    deliverables: [
+      "Báo cáo phân loại & xác định cấp độ an toàn hệ thống thông tin",
+      "Hồ sơ đề xuất cấp độ theo mẫu Nghị định 85/2016",
+      "Phương án bảo đảm an toàn thông tin theo cấp độ",
+      "Bộ chính sách/quy chế ATTT tuân thủ Luật ANM & Luật ATTT mạng",
+      "Báo cáo tuân thủ bảo vệ dữ liệu cá nhân (NĐ 13/2023)",
+    ],
+    stack: ["ISO 27001", "NĐ 85/2016", "Luật An ninh mạng", "Luật ATTT mạng", "NĐ 13/2023", "SIEM", "SOC", "IAM", "DLP", "Firewall"],
+    outcomes: [
+      "Hệ thống được phân định & phê duyệt cấp độ đúng quy định",
+      "Giảm rủi ro pháp lý và rủi ro an ninh mạng",
+      "Sẵn sàng thẩm định với cơ quan quản lý nhà nước",
+    ],
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -469,6 +549,8 @@ export const ORDER: string[] = [
   "aiinfra",
   "migration",
   "cloudapp",
+  "outsourcing",
+  "attt",
 ];
 
 /**

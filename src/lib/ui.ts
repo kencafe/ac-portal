@@ -24,9 +24,13 @@ export const card: CSSProperties = {
 // looking intentional instead of showing a broken/empty image.
 export function coverBackground(coverUrl: string | undefined, tone: string): string {
   const t = tone || COLORS.brandBlue;
-  return coverUrl
-    ? `${t}14 url(/${coverUrl}) center/cover no-repeat`
-    : `linear-gradient(135deg, ${t} 0%, ${t}80 100%)`;
+  const grad = `linear-gradient(135deg, ${t} 0%, ${t}80 100%)`;
+  if (!coverUrl) return grad;
+  // Absolute URLs (source og:image) are used as-is; local assets get a leading /.
+  const src = /^https?:\/\//.test(coverUrl) ? coverUrl : `/${coverUrl}`;
+  // Image layered over the gradient: if the image fails to load (hotlink block,
+  // 404), the branded gradient shows through instead of a blank tint.
+  return `url("${src}") center/cover no-repeat, ${grad}`;
 }
 
 export const btnBase: CSSProperties = {
