@@ -18,6 +18,17 @@ export const card: CSSProperties = {
   boxShadow: SHADOW.card,
 };
 
+// Cover `background` shorthand for a post card/hero. When the post has a cover
+// image, show it (tinted); otherwise fall back to a branded gradient in the
+// post's tone — AI-ingested posts have no cover file, so this keeps their cards
+// looking intentional instead of showing a broken/empty image.
+export function coverBackground(coverUrl: string | undefined, tone: string): string {
+  const t = tone || COLORS.brandBlue;
+  return coverUrl
+    ? `${t}14 url(/${coverUrl}) center/cover no-repeat`
+    : `linear-gradient(135deg, ${t} 0%, ${t}80 100%)`;
+}
+
 export const btnBase: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",

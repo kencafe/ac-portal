@@ -133,7 +133,7 @@ export async function chatComplete(
     const res = await fetch(p.chatUrl, {
       method: "POST",
       headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model, max_tokens: 2000, messages: [{ role: "user", content: prompt }] }),
+      body: JSON.stringify({ model, max_tokens: 4096, messages: [{ role: "user", content: prompt }] }),
       signal: AbortSignal.timeout(60000),
     });
     if (!res.ok) throw new Error(`${model} → HTTP ${res.status}: ${await res.text()}`);
@@ -143,7 +143,7 @@ export async function chatComplete(
   const res = await fetch(p.chatUrl, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
-    body: JSON.stringify({ model, max_tokens: 2000, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({ model, max_tokens: 4096, messages: [{ role: "user", content: prompt }] }),
     signal: AbortSignal.timeout(60000),
   });
   if (!res.ok) throw new Error(`${model} → HTTP ${res.status}: ${await res.text()}`);

@@ -8,7 +8,7 @@
 // passthrough so the flow is testable offline — it never fabricates a
 // human-quality translation silently.
 
-import { upsertPost, getPost } from "@/lib/store";
+import { upsertPost, getPost, availableSlug } from "@/lib/store";
 import { getSettings } from "@/lib/settings";
 import { notifyPublished } from "@/lib/notify";
 import { getProvider, chatComplete } from "@/lib/providers";
@@ -38,6 +38,25 @@ export type IngestResult = {
   aiUsed: boolean;
   source: string;
 };
+
+// Vietnamese display date "DD/MM/YYYY" for the article header (TZ is set to
+// Asia/Ho_Chi_Minh on the pod). Replaces the design "[Ngày đăng]" placeholder.
+function todayVN(): string {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+}
+
+// Estimate reading time from block text (~200 words/min, min 1).
+function readingTime(blocks: Block[]): string {
+  const words = blocks
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((b: any) => (b.kind === "list" ? (b.items ?? []).join(" ") : b.text ?? ""))
+    .join(" ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+  return `${Math.max(1, Math.round(words / 200))} phút đọc`;
+}
 
 function slugify(s: string): string {
   return s
@@ -176,7 +195,7 @@ export async function ingestText(
 
   const publish = opts?.forcePublish ?? settings.autoPublishAiPosts;
   const status: "draft" | "published" = publish ? "published" : "draft";
-  const slug = slugify(title);
+  const slug = await availableSlug(slugify(title));
   const url = opts?.url ?? opts?.source ?? "";
 
   const saved = await upsertPost({
@@ -188,10 +207,10 @@ export async function ingestText(
     author: "AI Studio",
     role: "Tự động",
     initials: "AI",
-    date: "[Ngày đăng]",
-    read: "3 phút đọc",
+    date: todayVN(),
+    read: readingTime(blocks),
     tags: ["ai-ingest"],
-    coverUrl: `assets/cover-${slug}.png`,
+    coverUrl: "", // no cover file → branded gradient placeholder (see coverBackground)
     blocks,
     status,
   });

@@ -2,6 +2,7 @@ import { listFeatured } from "@/lib/store";
 import { SECTION_TITLES, UI_STRINGS } from "@/data/landing";
 import { accentAt, ACCENTS, COLORS, RADIUS } from "@/lib/tokens";
 import { routes } from "@/lib/routes";
+import { coverBackground } from "@/lib/ui";
 import Section from "@/components/shared/Section";
 import SectionHeading from "@/components/shared/SectionHeading";
 import HoverCard from "@/components/shared/HoverCard";
@@ -46,7 +47,7 @@ export default async function BlogTeasers() {
                 <div
                   style={{
                     height: 168,
-                    background: `${tone}14 url(/${post.coverUrl}) center/cover no-repeat`,
+                    background: coverBackground(post.coverUrl, tone),
                     borderTopLeftRadius: RADIUS.card,
                     borderTopRightRadius: RADIUS.card,
                   }}

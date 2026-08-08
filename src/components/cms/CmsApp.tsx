@@ -187,6 +187,8 @@ export default function CmsApp() {
   const [aiFile, setAiFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [reeditBusy, setReeditBusy] = useState<string | null>(null);
+  // Editor preview toggle (manual review before publishing)
+  const [showPreview, setShowPreview] = useState(false);
 
   // AI provider config (Cấu hình API): pick provider → paste token → get models → choose → save
   const [aiProviderSel, setAiProviderSel] = useState("anthropic");
@@ -373,6 +375,8 @@ export default function CmsApp() {
         aiLogLine(`✅ ${d.title} → ${d.status}${d.aiUsed ? "" : " (AI chưa cấu hình khóa)"}`);
         setAiUrl("");
         refreshPosts();
+        // Manual draft → open for preview + edit before publishing.
+        if (!publish && d.slug) { setAiBusy(false); openInEditor(d.slug, true); return; }
       } else {
         aiLogLine(`❌ ${d.error || res.status}`);
       }
@@ -397,6 +401,7 @@ export default function CmsApp() {
         if (fileRef.current) fileRef.current.value = "";
         refreshPosts();
         loadHistory();
+        if (!publish && d.slug) { setAiBusy(false); openInEditor(d.slug, true); return; }
       } else {
         aiLogLine(`❌ ${d.error || res.status}`);
       }
@@ -538,7 +543,21 @@ export default function CmsApp() {
   function editPost(p: SeedPost) {
     setDraft({ ...p });
     setSaved(false);
+    setShowPreview(false);
     setView("editor");
+  }
+  // Load a post from the store into the editor (used after manual AI ingest so
+  // the admin can preview + edit before publishing). preview=true opens the
+  // rendered preview immediately.
+  async function openInEditor(slug: string, preview = false) {
+    try {
+      const res = await fetch(`/api/v1/posts/${slug}`, { cache: "no-store" });
+      if (!res.ok) return;
+      setDraft(storeToCms(await res.json()));
+      setSaved(false);
+      setShowPreview(preview);
+      setView("editor");
+    } catch { /* ignore */ }
   }
   function newPost() {
     setDraft(makeDraft());
@@ -1055,6 +1074,7 @@ export default function CmsApp() {
                   <span style={{ fontSize: 12.5, color: COLORS.ink3 }}>{p.date}</span>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <button type="button" onClick={() => editPost(p)} style={{ ...btnSm, height: 28, padding: "0 10px" }}>{POSTS_VIEW_UI.editButton}</button>
+                    <button type="button" onClick={() => { if (p.status === "Đã xuất bản") window.open(`/blog/${p.slug}`, "_blank"); else openInEditor(p.slug, true); }} title={p.status === "Đã xuất bản" ? "Mở bài trên trang blog" : "Xem trước bài nháp"} style={{ ...btnSm, height: 28, padding: "0 10px" }}>👁 Xem</button>
                     <button type="button" onClick={() => reeditPost(p.slug, p.title)} disabled={reeditBusy === p.slug} title="AI biên tập lại theo phong cách blog" style={{ ...btnSm, height: 28, padding: "0 10px", color: COLORS.brandBlue, borderColor: "#B3D5EA" }}>{reeditBusy === p.slug ? "…" : "✨ Biên tập lại"}</button>
                     <button type="button" onClick={() => togglePublish(p.slug)} style={{ ...btnSm, height: 28, padding: "0 10px" }}>{p.status === "Đã xuất bản" ? POSTS_VIEW_UI.hideButton : POSTS_VIEW_UI.publishButton}</button>
                     {p.status === "Đã xuất bản" && (
@@ -1075,6 +1095,28 @@ export default function CmsApp() {
     return (
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 320px", gap: 20, alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button type="button" onClick={() => setShowPreview(false)} style={{ ...btnSm, height: 32, background: !showPreview ? "#E6F1F9" : "#fff", color: !showPreview ? COLORS.brandBlue : COLORS.ink2, borderColor: !showPreview ? "#B3D5EA" : COLORS.border }}>✎ Chỉnh sửa</button>
+            <button type="button" onClick={() => setShowPreview(true)} style={{ ...btnSm, height: 32, background: showPreview ? "#E6F1F9" : "#fff", color: showPreview ? COLORS.brandBlue : COLORS.ink2, borderColor: showPreview ? "#B3D5EA" : COLORS.border }}>👁 Xem trước</button>
+            <span style={{ marginLeft: "auto", fontSize: 12.5, color: COLORS.ink3 }}>Xem trước rồi chỉnh nếu cần trước khi xuất bản.</span>
+          </div>
+          {showPreview ? (
+            <article style={{ ...panelPad, maxWidth: 760 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: TONE[draft.cat] ?? COLORS.brandBlue, marginBottom: 8 }}>{draft.cat}</div>
+              <h1 style={{ fontSize: 28, fontWeight: 700, lineHeight: 1.25, color: COLORS.ink, margin: "0 0 10px" }}>{draft.title || "(chưa có tiêu đề)"}</h1>
+              <div style={{ fontSize: 13, color: COLORS.ink3, marginBottom: 6 }}>{draft.author || "AI Studio"} · {draft.date || "—"}</div>
+              {draft.excerpt && <p style={{ fontSize: 16, lineHeight: 1.7, color: COLORS.ink2, fontStyle: "italic", margin: "0 0 20px" }}>{draft.excerpt}</p>}
+              <div style={{ height: 200, borderRadius: RADIUS.card, background: `linear-gradient(135deg, ${TONE[draft.cat] ?? COLORS.brandBlue} 0%, ${TONE[draft.cat] ?? COLORS.brandBlue}80 100%)`, marginBottom: 24 }} />
+              {draft.blocks.map((b, i) => {
+                const text = b[1] || "";
+                if (b[0] === "h") return <h2 key={i} style={{ fontSize: 20, fontWeight: 700, color: COLORS.ink, margin: "22px 0 8px" }}>{text}</h2>;
+                if (b[0] === "quote") return <blockquote key={i} style={{ borderLeft: `3px solid ${COLORS.brandBlue}`, padding: "4px 0 4px 16px", margin: "16px 0", color: COLORS.ink2, fontStyle: "italic" }}>{text}</blockquote>;
+                if (b[0] === "list") return <ul key={i} style={{ margin: "10px 0", paddingLeft: 22, color: COLORS.ink2, lineHeight: 1.7 }}>{text.split("\n").filter(Boolean).map((li, j) => <li key={j}>{li}</li>)}</ul>;
+                return <p key={i} style={{ fontSize: 15.5, lineHeight: 1.75, color: COLORS.ink2, margin: "0 0 14px" }}>{text}</p>;
+              })}
+            </article>
+          ) : (
+          <>
           <div style={panelPad}>
             <label style={label}>{EDITOR_UI.fields.title.label}</label>
             <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder={EDITOR_UI.fields.title.placeholder} style={{ ...input, height: 46, fontSize: 17, fontWeight: 600 }} />
@@ -1118,6 +1160,8 @@ export default function CmsApp() {
               })}
             </div>
           </div>
+          </>
+          )}
         </div>
 
         {/* Right column */}

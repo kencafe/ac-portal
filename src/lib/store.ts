@@ -75,6 +75,19 @@ export async function getPost(slug: string): Promise<StoredPost | undefined> {
   return (await readAll()).find((p) => p.slug === slug);
 }
 
+// Return a slug that isn't already taken, appending -2, -3… on collision. Used
+// by AI ingest so auto-publishing an article whose title matches an existing
+// post never silently overwrites it.
+export async function availableSlug(base: string): Promise<string> {
+  const taken = new Set((await readAll()).map((p) => p.slug));
+  if (!taken.has(base)) return base;
+  for (let i = 2; i < 1000; i++) {
+    const s = `${base}-${i}`;
+    if (!taken.has(s)) return s;
+  }
+  return `${base}-${Date.now()}`;
+}
+
 export async function upsertPost(input: Partial<StoredPost> & { slug: string }): Promise<StoredPost> {
   const all = await readAll();
   const idx = all.findIndex((p) => p.slug === input.slug);
