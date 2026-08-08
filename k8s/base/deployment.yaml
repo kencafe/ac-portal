@@ -100,7 +100,9 @@ spec:
             - --upstream=http://127.0.0.1:3000
             - --provider=oidc
             - --oidc-issuer-url=https://sso.appcarrier.cloud/realms/ac-portal
-            - --scope=openid profile email ac-portal-groups
+            # Realm ac-portal ships a single custom scope that carries email,
+            # preferred_username and the groups (realm-roles) claim.
+            - --scope=openid ac-portal-groups
             - --oidc-groups-claim=groups
             # Only users holding a blog-* realm role may enter the CMS.
             - --allowed-group=blog-author
