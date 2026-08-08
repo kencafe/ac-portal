@@ -83,6 +83,7 @@ spec:
             - --http-address=:8080
             - --https-address=
             - --provider=openshift
+            - --skip-provider-button=true
             - --openshift-service-account=ns-web-cms
             - --upstream=http://localhost:3000
             - --cookie-secret-file=/etc/proxy/secrets/session_secret
