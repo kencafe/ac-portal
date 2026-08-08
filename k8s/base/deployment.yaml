@@ -22,6 +22,13 @@ spec:
         alpha.image.policy.openshift.io/resolve-names: "*"
     spec:
       serviceAccountName: ns-web-cms
+      # In-cluster CoreDNS only knows the apex appcarrier.cloud, not subdomains
+      # (split-horizon DNS). Map the Keycloak SSO host to the router IP so the
+      # oauth2-proxy sidecar can perform OIDC discovery over the public edge
+      # route (golden cert covers *.appcarrier.cloud).
+      hostAliases:
+        - ip: "103.9.0.232"
+          hostnames: ["sso.appcarrier.cloud"]
       containers:
         - name: ac-portal
           image: ac-portal:latest

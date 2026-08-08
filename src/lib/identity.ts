@@ -46,6 +46,16 @@ function initialsOf(name: string): string {
   return (s || "NS").toUpperCase().slice(0, 3);
 }
 
+// True if the signed-in user holds any of the given roles.
+export function hasRole(id: Identity, roles: Role[]): boolean {
+  return roles.includes(id.role);
+}
+
+// Convenience role sets for content actions.
+export const CAN_WRITE: Role[] = ["Quản trị", "Kiểm duyệt", "Biên tập", "Tác giả"];
+export const CAN_PUBLISH: Role[] = ["Quản trị", "Kiểm duyệt"];
+export const CAN_DELETE: Role[] = ["Quản trị"];
+
 export async function getIdentity(): Promise<Identity> {
   const h = await headers();
   const user =
@@ -55,17 +65,17 @@ export async function getIdentity(): Promise<Identity> {
     .split(/[,\s]+/)
     .filter(Boolean);
 
-  // No proxy headers → local dev: full access, clearly flagged as unauthenticated.
+  // No proxy headers. Two very different cases:
+  //  - Local dev (no oauth2-proxy in front): grant admin for convenience.
+  //  - In-cluster: the public route serves /api WITHOUT the oauth2-proxy gate,
+  //    so "no headers" there means UNAUTHENTICATED — must not be treated as
+  //    admin, or anyone could hit mutating endpoints via the public host.
   if (!user && !email) {
-    return {
-      authenticated: false,
-      user: "local-dev",
-      email: "",
-      groups: [],
-      role: "Quản trị",
-      isAdmin: true,
-      initials: "DEV",
-    };
+    const localDev = process.env.NODE_ENV !== "production" || process.env.CMS_LOCAL_ADMIN === "1";
+    if (localDev) {
+      return { authenticated: false, user: "local-dev", email: "", groups: [], role: "Quản trị", isAdmin: true, initials: "DEV" };
+    }
+    return { authenticated: false, user: "", email: "", groups: [], role: "Người dùng", isAdmin: false, initials: "NS" };
   }
 
   const name = user || email;
