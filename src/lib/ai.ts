@@ -8,19 +8,17 @@
 // passthrough so the flow is testable offline — it never fabricates a
 // human-quality translation silently.
 
-import { promises as fsp } from "fs";
-import path from "path";
 import { upsertPost, getPost, availableSlug } from "@/lib/store";
 import { getSettings } from "@/lib/settings";
 import { notifyPublished } from "@/lib/notify";
 import { getProvider, chatComplete } from "@/lib/providers";
 import { addHistory, seenUrls, type IngestMode } from "@/lib/history";
+import { putImage } from "@/lib/storage";
 import type { Block } from "@/data/posts";
 
 const ENV_AI_API_KEY = process.env.AI_API_KEY || process.env.ANTHROPIC_API_KEY || "";
 const ENV_AI_MODEL = process.env.AI_MODEL || "";
 const DEFAULT_MODEL = "claude-sonnet-5";
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
 
 // English image prompt for a clean, appealing editorial cover (no text).
 // `scene` (from the AI, content-aware) or `hint` (excerpt/keywords) makes the
@@ -33,9 +31,10 @@ function coverPrompt(title: string, cat: string, scene = ""): string {
 }
 
 async function saveCover(slug: string, buf: Buffer, ext: string): Promise<string> {
-  await fsp.mkdir(path.join(DATA_DIR, "covers"), { recursive: true });
-  await fsp.writeFile(path.join(DATA_DIR, "covers", `${slug}.${ext}`), buf);
-  return `/api/cover-img/${slug}.${ext}`;
+  const name = `${slug}.${ext}`;
+  const type = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "webp" ? "image/webp" : ext === "gif" ? "image/gif" : "image/png";
+  await putImage(name, buf, type);
+  return `/api/cover-img/${name}`;
 }
 
 // Free, keyless AI image via Pollinations (Flux/SD). Works WITHOUT any billing.

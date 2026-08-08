@@ -56,6 +56,27 @@ spec:
                   name: ns-web-ai
                   key: cron-token
                   optional: true
+            # Image object storage (MinIO). Absent → lib/storage falls back to the PVC.
+            - name: MINIO_ENDPOINT
+              value: minio
+            - name: MINIO_PORT
+              value: "9000"
+            - name: MINIO_USE_SSL
+              value: "false"
+            - name: MINIO_BUCKET
+              value: covers
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-creds
+                  key: root-user
+                  optional: true
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-creds
+                  key: root-password
+                  optional: true
           volumeMounts:
             - name: content-store
               mountPath: /app/.data

@@ -1,13 +1,10 @@
-import { promises as fsp } from "fs";
-import path from "path";
 import { getIdentity, hasRole, CAN_WRITE } from "@/lib/identity";
+import { putImage } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
-
-// Upload a cover image (manual editor). Saves to the PVC and returns its URL.
+// Upload a cover image (manual editor). Stores it (MinIO/PVC) and returns its URL.
 export async function POST(req: Request) {
   const id = await getIdentity();
   if (!hasRole(id, CAN_WRITE)) return Response.json({ error: "Forbidden" }, { status: 403 });
@@ -22,8 +19,7 @@ export async function POST(req: Request) {
   const ext = file.type.includes("svg") ? "svg" : file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : file.type.includes("gif") ? "gif" : "jpg";
   const name = `${slug}-up.${ext}`;
   try {
-    await fsp.mkdir(path.join(DATA_DIR, "covers"), { recursive: true });
-    await fsp.writeFile(path.join(DATA_DIR, "covers", name), Buffer.from(await file.arrayBuffer()));
+    await putImage(name, Buffer.from(await file.arrayBuffer()), file.type);
     return Response.json({ url: `/api/cover-img/${name}` });
   } catch (e) {
     return Response.json({ error: (e as Error).message }, { status: 500 });
