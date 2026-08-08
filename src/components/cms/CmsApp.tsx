@@ -848,35 +848,9 @@ export default function CmsApp() {
                   <input type="number" min={1} max={10} disabled={!isAdmin} value={settings.aiDiscoverCount} onChange={(e) => setSettings({ ...settings, aiDiscoverCount: Math.max(1, Math.min(10, Number(e.target.value) || 1)) })} style={{ ...input, width: 60, height: 32 }} />
                 </label>
               </div>
-              <label style={label}>Nguồn RSS/Atom ({feeds.length})</label>
-              <div style={{ display: "flex", gap: 10, marginBottom: 6 }}>
-                <input style={{ ...input, flex: 1 }} placeholder="https://nguồn.com/rss" value={aiFeedInput} onChange={(e) => setAiFeedInput(e.target.value)} disabled={!isAdmin} />
-                <button type="button" onClick={() => checkFeed(aiFeedInput.trim())} disabled={!aiFeedInput.trim() || feedCheckBusy === aiFeedInput.trim()} style={{ ...btnSm, opacity: aiFeedInput.trim() ? 1 : 0.5 }}>{feedCheckBusy === aiFeedInput.trim() ? "…" : "Kiểm tra"}</button>
-                <button type="button" onClick={addFeed} disabled={!isAdmin || !aiFeedInput} style={{ ...btnSm, opacity: isAdmin && aiFeedInput ? 1 : 0.5 }}>+ Thêm nguồn</button>
+              <div style={{ fontSize: 12.5, color: COLORS.ink2, background: COLORS.surfaceAlt, border: `1px solid ${COLORS.split}`, borderRadius: 8, padding: "10px 12px" }}>
+                Đang có <b>{feeds.length}</b> nguồn RSS. Quản lý (thêm/kiểm tra/xoá) ở tab <b>“Nguồn RSS”</b> bên trái. Chế độ <b>feeds</b> lấy thẳng từ các nguồn đó; chế độ <b>discover</b> để AI tự tìm bài hay (kể cả khi chưa có nguồn — dùng bộ mặc định).
               </div>
-              {aiFeedInput.trim() && feedChecks[aiFeedInput.trim()] && (
-                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: feedChecks[aiFeedInput.trim()].ok ? COLORS.brandGreen : "#C0392B" }}>
-                  {feedChecks[aiFeedInput.trim()].ok
-                    ? `✓ Nguồn hợp lệ · ${feedChecks[aiFeedInput.trim()].count} bài · ${(feedChecks[aiFeedInput.trim()].titles || []).slice(0, 1).join("")}`
-                    : `✗ ${feedChecks[aiFeedInput.trim()].error || "Không hợp lệ"}`}
-                </div>
-              )}
-              {feeds.length === 0 && <div style={{ fontSize: 12.5, color: COLORS.ink3 }}>Chưa có nguồn riêng — AI sẽ tự dùng bộ nguồn kỹ thuật uy tín mặc định khi tìm bài.</div>}
-              {feeds.map((f) => {
-                const chk = feedChecks[f];
-                return (
-                  <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: `1px solid ${COLORS.split}`, fontSize: 13 }}>
-                    <span style={{ flex: 1, fontFamily: "monospace", color: COLORS.ink2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f}</span>
-                    {chk && (
-                      <span style={{ fontSize: 11.5, fontWeight: 600, color: chk.ok ? COLORS.brandGreen : "#C0392B", whiteSpace: "nowrap" }} title={chk.error || (chk.titles || []).join(" · ")}>
-                        {chk.ok ? `✓ hợp lệ · ${chk.count} bài` : `✗ ${chk.error || "lỗi"}`}
-                      </span>
-                    )}
-                    <button type="button" onClick={() => checkFeed(f)} disabled={feedCheckBusy === f} style={{ ...btnSm, height: 26, padding: "0 8px" }}>{feedCheckBusy === f ? "…" : "Check"}</button>
-                    <button type="button" onClick={() => removeFeed(f)} disabled={!isAdmin} style={{ ...btnSm, height: 26, padding: "0 8px", color: "#C0392B" }}>Xoá</button>
-                  </div>
-                );
-              })}
               <div style={{ fontSize: 11.5, color: COLORS.ink3, marginTop: 10 }}>
                 CronJob OpenShift <code>ac-portal-ai-ingest</code> gọi endpoint lúc {String(settings.aiScheduleHour).padStart(2, "0")}:00. Bài mới ra {settings.autoPublishAiPosts ? "xuất bản ngay" : "dạng nháp chờ duyệt"} (đổi ở Quản trị).
               </div>

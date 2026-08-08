@@ -84,7 +84,8 @@ export type IngestResult = {
 // Asia/Ho_Chi_Minh on the pod). Replaces the design "[Ngày đăng]" placeholder.
 function todayVN(): string {
   const d = new Date();
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getHours())}:${p(d.getMinutes())} · ${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
 // Estimate reading time from block text (~200 words/min, min 1).
