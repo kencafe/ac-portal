@@ -15,6 +15,7 @@ resources:
   - route.yaml
   - cms-auth.yaml
   - blog-route.yaml
+  - ai-cron.yaml
 
 commonLabels:
   app: ac-portal

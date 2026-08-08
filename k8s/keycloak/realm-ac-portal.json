@@ -1,0 +1,85 @@
+{
+  "realm": "ac-portal",
+  "enabled": true,
+  "displayName": "AppCarrier Portal",
+  "loginTheme": "keycloak",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "roles": {
+    "realm": [
+      { "name": "blog-author",     "description": "Tạo/sửa bản nháp của mình, gửi duyệt" },
+      { "name": "blog-translator", "description": "Sửa trường bản dịch (vi↔en)" },
+      { "name": "blog-editor",     "description": "Sửa mọi bản nháp, duyệt/trả lại" },
+      { "name": "blog-publisher",  "description": "Xuất bản / gỡ xuất bản" },
+      { "name": "blog-admin",      "description": "Toàn quyền + xoá + cấu hình" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "ac-portal-cms",
+      "name": "AC-Portal CMS",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "secret": "REPLACE_AT_DEPLOY",
+      "redirectUris": [
+        "https://cms.appcarrier.cloud/oauth2/callback",
+        "https://cms-dev.appcarrier.cloud/oauth2/callback",
+        "https://cms-staging.appcarrier.cloud/oauth2/callback"
+      ],
+      "webOrigins": [
+        "https://cms.appcarrier.cloud",
+        "https://cms-dev.appcarrier.cloud",
+        "https://cms-staging.appcarrier.cloud"
+      ],
+      "defaultClientScopes": ["web-origins", "profile", "roles", "email", "ac-portal-groups"]
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "ac-portal-groups",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true", "display.on.consent.screen": "false" },
+      "protocolMappers": [
+        {
+          "name": "realm-roles-to-groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "claim.name": "groups",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "dungpv30",
+      "email": "dungpv30@fpt.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Dung",
+      "lastName": "PV",
+      "credentials": [{ "type": "password", "value": "REPLACE_AT_DEPLOY", "temporary": false }],
+      "realmRoles": ["blog-admin"]
+    },
+    {
+      "username": "editor1",
+      "email": "editor1@fpt.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Editor",
+      "lastName": "One",
+      "credentials": [{ "type": "password", "value": "REPLACE_AT_DEPLOY", "temporary": false }],
+      "realmRoles": ["blog-editor"]
+    }
+  ]
+}

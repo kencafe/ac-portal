@@ -19,3 +19,9 @@ spec:
       ports:
         - { port: 3000, protocol: TCP }
         - { port: 8080, protocol: TCP }
+    # Same-namespace callers (e.g. the AI ingest CronJob) reach the app API
+    # directly on 3000, bypassing the oauth2-proxy login gate.
+    - from:
+        - podSelector: {}
+      ports:
+        - { port: 3000, protocol: TCP }

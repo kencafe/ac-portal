@@ -1,0 +1,95 @@
+# Keycloak — identity provider for AC-Portal (realm `ac-portal`).
+# Fronted by edge TLS at sso.appcarrier.cloud. Realm is imported on first boot
+# from the `kc-realm` ConfigMap (generated at deploy with real secrets).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  labels: { app: keycloak, component: idp }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: keycloak, component: idp } }
+  strategy: { type: Recreate }
+  template:
+    metadata:
+      labels: { app: keycloak, component: idp }
+    spec:
+      containers:
+        - name: keycloak
+          image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/keycloak:24
+          args: ["start", "--import-realm"]
+          env:
+            # DB
+            - { name: KC_DB, value: postgres }
+            - { name: KC_DB_URL, value: "jdbc:postgresql://kc-db:5432/keycloak" }
+            - name: KC_DB_USERNAME
+              valueFrom: { secretKeyRef: { name: kc-db, key: username } }
+            - name: KC_DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: kc-db, key: password } }
+            # Hostname / proxy (edge TLS terminates at the router).
+            # KC 24 wants the bare hostname; scheme comes from xforwarded headers.
+            - { name: KC_HOSTNAME, value: "sso.appcarrier.cloud" }
+            - { name: KC_HOSTNAME_STRICT, value: "false" }
+            - { name: KC_HOSTNAME_STRICT_HTTPS, value: "true" }
+            - { name: KC_HOSTNAME_STRICT_BACKCHANNEL, value: "false" }
+            - { name: KC_HTTP_ENABLED, value: "true" }
+            - { name: KC_PROXY_HEADERS, value: "xforwarded" }
+            - { name: KC_HEALTH_ENABLED, value: "true" }
+            - { name: KC_METRICS_ENABLED, value: "true" }
+            # Bootstrap admin (Secret kc-admin)
+            - name: KEYCLOAK_ADMIN
+              valueFrom: { secretKeyRef: { name: kc-admin, key: username } }
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom: { secretKeyRef: { name: kc-admin, key: password } }
+          ports:
+            - { containerPort: 8080, name: http }
+          volumeMounts:
+            - { name: realm, mountPath: /opt/keycloak/data/import, readOnly: true }
+          # KC 24 serves /health on the main HTTP port (management port 9000 is
+          # a KC 25+ feature).
+          readinessProbe:
+            httpGet: { path: /health/ready, port: 8080 }
+            initialDelaySeconds: 25
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            httpGet: { path: /health/live, port: 8080 }
+            initialDelaySeconds: 90
+            periodSeconds: 15
+            failureThreshold: 5
+          resources:
+            requests: { memory: "512Mi", cpu: "200m" }
+            limits: { memory: "1280Mi", cpu: "1" }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            runAsNonRoot: true
+            seccompProfile: { type: RuntimeDefault }
+      volumes:
+        - name: realm
+          configMap: { name: kc-realm }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  labels: { app: keycloak, component: idp }
+spec:
+  selector: { app: keycloak, component: idp }
+  ports:
+    - { name: http, port: 8080, targetPort: 8080 }
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: keycloak
+  labels: { app: keycloak, component: idp }
+spec:
+  host: sso.appcarrier.cloud
+  to: { kind: Service, name: keycloak, weight: 100 }
+  port: { targetPort: http }
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

@@ -694,6 +694,7 @@ export const SIDEBAR = {
       items: [
         { key: 'feeds', label: 'Nguồn RSS', icon: '⟳', count: '{feedCount}' }, // active feeds (4)
         { key: 'inbox', label: 'Hàng chờ dịch', icon: '↓', badge: '{pendingCount}' }, // pending (5)
+        { key: 'aistudio', label: 'AI tự động', icon: '✨' },
       ],
     },
     {
@@ -731,6 +732,7 @@ export const TOPBAR = {
     translate: 'Bản dịch AI',
     api: 'Cấu hình API',
     admin: 'Quản trị hệ thống',
+    aistudio: 'AI tự động',
   },
   saveHint: 'Đã lưu bản mới nhất', // shown when state.saved
   newPostButton: '+ Bài viết mới',
@@ -740,7 +742,7 @@ export const TOPBAR = {
 export const ADMIN_UI = {
   account: {
     title: 'Tài khoản',
-    hint: 'Đăng nhập bằng tài khoản OpenShift qua oauth-proxy.',
+    hint: 'Đăng nhập bằng Keycloak (sso.appcarrier.cloud) qua oauth2-proxy.',
     signOut: 'Đăng xuất',
     localBadge: 'Chế độ cục bộ (chưa qua OpenShift)',
     fields: { user: 'Người dùng', email: 'Email', role: 'Vai trò', groups: 'Nhóm OpenShift' },
@@ -761,14 +763,14 @@ export const ADMIN_UI = {
   },
   access: {
     title: 'Phân quyền (RBAC)',
-    hint: 'Vai trò ánh xạ từ nhóm OpenShift; quản lý bằng: oc adm groups add-users <group> <user>.',
-    cols: ['Vai trò', 'Nhóm OpenShift', 'Quyền chính'],
+    hint: 'Vai trò = realm role trên Keycloak (realm ac-portal); gán tại sso.appcarrier.cloud → Users → Role mapping.',
+    cols: ['Vai trò', 'Realm role (Keycloak)', 'Quyền chính'],
     rows: [
-      ['Tác giả', 'blog-authors', 'Tạo/sửa nháp của mình, gửi duyệt'],
-      ['Biên dịch', 'blog-translators', 'Sửa trường bản dịch (vi↔en)'],
-      ['Biên tập', 'blog-editors', 'Sửa mọi nháp, duyệt/trả lại'],
-      ['Kiểm duyệt', 'blog-publishers', 'Xuất bản / gỡ xuất bản'],
-      ['Quản trị', 'blog-admins', 'Toàn quyền + xoá + cấu hình'],
+      ['Tác giả', 'blog-author', 'Tạo/sửa nháp của mình, gửi duyệt'],
+      ['Biên dịch', 'blog-translator', 'Sửa trường bản dịch (vi↔en)'],
+      ['Biên tập', 'blog-editor', 'Sửa mọi nháp, duyệt/trả lại'],
+      ['Kiểm duyệt', 'blog-publisher', 'Xuất bản / gỡ xuất bản'],
+      ['Quản trị', 'blog-admin', 'Toàn quyền + xoá + cấu hình'],
     ] as [string, string, string][],
   },
 };

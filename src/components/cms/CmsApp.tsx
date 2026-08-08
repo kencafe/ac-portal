@@ -12,7 +12,7 @@ import {
 } from "@/data/cms";
 import { COLORS, RADIUS } from "@/lib/tokens";
 
-type View = "posts" | "editor" | "taxonomy" | "feeds" | "inbox" | "translate" | "api" | "admin";
+type View = "posts" | "editor" | "taxonomy" | "feeds" | "inbox" | "translate" | "api" | "admin" | "aistudio";
 
 type Me = {
   authenticated: boolean;
@@ -32,6 +32,9 @@ type SiteSettings = {
   defaultLanguage: "vi" | "en";
   requireApprovalToPublish: boolean;
   autoPublishTranslations: boolean;
+  aiScheduleEnabled: boolean;
+  aiScheduleHour: number;
+  aiFeeds: string[];
 };
 
 const panel: CSSProperties = { background: "#fff", border: `1px solid ${COLORS.split}`, borderRadius: RADIUS.card };
@@ -162,6 +165,12 @@ export default function CmsApp() {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [settingsSaved, setSettingsSaved] = useState(false);
 
+  // AI Studio
+  const [aiUrl, setAiUrl] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiLog, setAiLog] = useState<string[]>([]);
+  const [aiFeedInput, setAiFeedInput] = useState("");
+
   function makeDraft(): SeedPost {
     return { ...NEW_DRAFT_DEFAULTS, blocks: [["p", ""]] } as SeedPost;
   }
@@ -208,6 +217,56 @@ export default function CmsApp() {
       setSettingsSaved(true);
       setTimeout(() => setSettingsSaved(false), 2500);
     }
+  }
+
+  function aiLogLine(s: string) {
+    setAiLog((l) => [s, ...l].slice(0, 30));
+  }
+  async function aiIngest(publish: boolean) {
+    if (!aiUrl.trim()) return;
+    setAiBusy(true);
+    aiLogLine(`⏳ ${publish ? "Dịch & xuất bản" : "Dịch → nháp"}: ${aiUrl}`);
+    try {
+      const res = await fetch("/api/v1/ai/ingest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: aiUrl.trim(), publish }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        aiLogLine(`✅ ${d.title} → ${d.status}${d.aiUsed ? "" : " (AI chưa cấu hình khóa)"}`);
+        setAiUrl("");
+        refreshPosts();
+      } else {
+        aiLogLine(`❌ ${d.error || res.status}`);
+      }
+    } catch (e) {
+      aiLogLine(`❌ ${(e as Error).message}`);
+    }
+    setAiBusy(false);
+  }
+  async function aiRunFeeds() {
+    setAiBusy(true);
+    aiLogLine("⏳ Chạy nguồn ngay…");
+    try {
+      const res = await fetch("/api/v1/ai/run-feeds", { method: "POST" });
+      const d = await res.json();
+      aiLogLine(res.ok ? `✅ Đã nhập ${d.ingested} bài từ nguồn` : `❌ ${d.error || res.status}`);
+      if (res.ok) refreshPosts();
+    } catch (e) {
+      aiLogLine(`❌ ${(e as Error).message}`);
+    }
+    setAiBusy(false);
+  }
+  function addFeed() {
+    const u = aiFeedInput.trim();
+    if (!u || !settings) return;
+    setSettings({ ...settings, aiFeeds: [...(settings.aiFeeds || []), u] });
+    setAiFeedInput("");
+  }
+  function removeFeed(u: string) {
+    if (!settings) return;
+    setSettings({ ...settings, aiFeeds: (settings.aiFeeds || []).filter((f) => f !== u) });
   }
 
   async function togglePublish(slug: string) {
@@ -312,12 +371,109 @@ export default function CmsApp() {
           {view === "translate" && TranslateView()}
           {view === "api" && ApiView()}
           {view === "admin" && AdminView()}
+          {view === "aistudio" && AiStudioView()}
         </main>
       </div>
     </div>
   );
 
   // ── Views ──────────────────────────────────────────────────────────────
+  function AiStudioView() {
+    const isAdmin = me?.isAdmin ?? true;
+    const feeds = settings?.aiFeeds ?? [];
+    return (
+      <div style={{ display: "grid", gap: 16, maxWidth: 860 }}>
+        {/* Manual hot-news */}
+        <section style={panelPad}>
+          <PanelHead>Dán link → AI biên tập, dịch & xuất bản ngay (tin hot)</PanelHead>
+          <div style={{ fontSize: 12.5, color: COLORS.ink3, margin: "6px 0 12px" }}>
+            AI đọc bài từ URL, biên tập + dịch sang tiếng Việt, rồi tạo bài. Dùng cho tin nóng cần đăng ngay.
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <input
+              style={{ ...input, flex: 1 }}
+              placeholder="https://nguồn.com/bài-viết"
+              value={aiUrl}
+              onChange={(e) => setAiUrl(e.target.value)}
+              disabled={aiBusy}
+            />
+            <button type="button" onClick={() => aiIngest(false)} disabled={aiBusy || !aiUrl} style={{ ...btnSm, opacity: aiBusy || !aiUrl ? 0.5 : 1 }}>
+              Dịch → Nháp
+            </button>
+            <button type="button" onClick={() => aiIngest(true)} disabled={aiBusy || !aiUrl} style={{ ...btnBlue, opacity: aiBusy || !aiUrl ? 0.5 : 1 }}>
+              ✨ Dịch & Xuất bản ngay
+            </button>
+          </div>
+        </section>
+
+        {/* Daily schedule */}
+        <section style={panelPad}>
+          <PanelHead
+            right={
+              <button type="button" onClick={aiRunFeeds} disabled={aiBusy || feeds.length === 0} style={{ ...btnSm, height: 30, opacity: aiBusy || !feeds.length ? 0.5 : 1 }}>
+                ▶ Chạy nguồn ngay
+              </button>
+            }
+          >
+            Lịch tự động hằng ngày
+          </PanelHead>
+          {settings && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                <button
+                  type="button"
+                  disabled={!isAdmin}
+                  onClick={() => setSettings({ ...settings, aiScheduleEnabled: !settings.aiScheduleEnabled })}
+                  style={{ width: 42, height: 24, borderRadius: 12, border: "none", cursor: isAdmin ? "pointer" : "not-allowed", background: settings.aiScheduleEnabled ? COLORS.brandGreen : "#CBD3DA", position: "relative" }}
+                >
+                  <span style={{ position: "absolute", top: 2, left: settings.aiScheduleEnabled ? 20 : 2, width: 20, height: 20, borderRadius: "50%", background: "#fff" }} />
+                </button>
+                <span style={{ fontSize: 13.5 }}>
+                  Tự động nhập lúc <b>{String(settings.aiScheduleHour).padStart(2, "0")}:00</b> hằng ngày
+                </span>
+                <input
+                  type="number" min={0} max={23} disabled={!isAdmin}
+                  value={settings.aiScheduleHour}
+                  onChange={(e) => setSettings({ ...settings, aiScheduleHour: Math.max(0, Math.min(23, Number(e.target.value) || 0)) })}
+                  style={{ ...input, width: 70, height: 32 }}
+                />
+                <button type="button" onClick={saveSettings} disabled={!isAdmin} style={{ ...btnBlue, height: 32, marginLeft: "auto", opacity: isAdmin ? 1 : 0.5 }}>Lưu lịch</button>
+                {settingsSaved && <span style={{ fontSize: 12.5, color: COLORS.brandGreen }}>Đã lưu</span>}
+              </div>
+              <label style={label}>Nguồn RSS/Atom ({feeds.length})</label>
+              <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+                <input style={{ ...input, flex: 1 }} placeholder="https://nguồn.com/rss" value={aiFeedInput} onChange={(e) => setAiFeedInput(e.target.value)} disabled={!isAdmin} />
+                <button type="button" onClick={addFeed} disabled={!isAdmin || !aiFeedInput} style={{ ...btnSm, opacity: isAdmin && aiFeedInput ? 1 : 0.5 }}>+ Thêm nguồn</button>
+              </div>
+              {feeds.length === 0 && <div style={{ fontSize: 12.5, color: COLORS.ink3 }}>Chưa có nguồn. Thêm URL RSS để lịch tự động chạy.</div>}
+              {feeds.map((f) => (
+                <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: `1px solid ${COLORS.split}`, fontSize: 13 }}>
+                  <span style={{ flex: 1, fontFamily: "monospace", color: COLORS.ink2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f}</span>
+                  <button type="button" onClick={() => removeFeed(f)} disabled={!isAdmin} style={{ ...btnSm, height: 26, padding: "0 8px", color: "#C0392B" }}>Xoá</button>
+                </div>
+              ))}
+              <div style={{ fontSize: 11.5, color: COLORS.ink3, marginTop: 10 }}>
+                CronJob OpenShift <code>ac-portal-ai-ingest</code> gọi endpoint lúc {String(settings.aiScheduleHour).padStart(2, "0")}:00. Bài mới ra {settings.autoPublishTranslations ? "xuất bản ngay" : "dạng nháp chờ duyệt"} (đổi ở Quản trị).
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Activity log */}
+        <section style={panelPad}>
+          <PanelHead>Nhật ký</PanelHead>
+          {aiLog.length === 0 ? (
+            <div style={{ fontSize: 12.5, color: COLORS.ink3, marginTop: 8 }}>Chưa có hoạt động.</div>
+          ) : (
+            <div style={{ marginTop: 8, fontSize: 12.5, fontFamily: "monospace", color: COLORS.ink2, display: "grid", gap: 4 }}>
+              {aiLog.map((l, i) => <div key={i}>{l}</div>)}
+            </div>
+          )}
+        </section>
+      </div>
+    );
+  }
+
   function AdminView() {
     const canEdit = me?.isAdmin ?? true;
     const set = <K extends keyof SiteSettings>(k: K, v: SiteSettings[K]) =>

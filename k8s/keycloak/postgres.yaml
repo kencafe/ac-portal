@@ -1,0 +1,60 @@
+# Postgres backing store for Keycloak (dev). Single instance + PVC.
+# Credentials come from Secret `kc-db` (created at deploy, not in git).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kc-db-data
+  labels: { app: keycloak, component: db }
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: 2Gi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kc-db
+  labels: { app: keycloak, component: db }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: keycloak, component: db } }
+  strategy: { type: Recreate }
+  template:
+    metadata:
+      labels: { app: keycloak, component: db }
+    spec:
+      containers:
+        - name: postgres
+          image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/postgres:16
+          ports: [{ containerPort: 5432 }]
+          env:
+            - { name: POSTGRESQL_DATABASE, value: keycloak }
+            - name: POSTGRESQL_USER
+              valueFrom: { secretKeyRef: { name: kc-db, key: username } }
+            - name: POSTGRESQL_PASSWORD
+              valueFrom: { secretKeyRef: { name: kc-db, key: password } }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/pgsql/data }
+          readinessProbe:
+            exec: { command: ["/usr/libexec/check-container"] }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests: { memory: "256Mi", cpu: "100m" }
+            limits: { memory: "512Mi", cpu: "500m" }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            runAsNonRoot: true
+            seccompProfile: { type: RuntimeDefault }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: kc-db-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kc-db
+  labels: { app: keycloak, component: db }
+spec:
+  selector: { app: keycloak, component: db }
+  ports: [{ port: 5432, targetPort: 5432 }]

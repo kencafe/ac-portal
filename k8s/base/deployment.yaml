@@ -39,6 +39,13 @@ spec:
           env:
             - name: DATA_DIR
               value: /app/.data
+            # Shared token so the AI CronJob can call /api/v1/ai/run-feeds.
+            - name: AI_CRON_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ns-web-ai
+                  key: cron-token
+                  optional: true
           volumeMounts:
             - name: content-store
               mountPath: /app/.data
@@ -72,28 +79,45 @@ spec:
               drop: ["ALL"]
             seccompProfile:
               type: RuntimeDefault
-        # OpenShift OAuth sidecar — protects the CMS route (login + SAR gate).
-        - name: oauth-proxy
-          image: image-registry.openshift-image-registry.svc:5000/openshift/oauth-proxy:v4.4
+        # Keycloak OIDC sidecar — protects the CMS route (login + role gate).
+        # Validates the token against realm `ac-portal` and injects the signed-in
+        # user + roles (groups claim) as X-Forwarded-* headers for the app's RBAC.
+        - name: oauth2-proxy
+          image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/oauth2-proxy:v7
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
               name: http
           args:
-            - --http-address=:8080
-            - --https-address=
-            - --provider=openshift
-            - --skip-provider-button=true
-            - --openshift-service-account=ns-web-cms
-            - --upstream=http://localhost:3000
-            - --cookie-secret-file=/etc/proxy/secrets/session_secret
-            - --cookie-secure=true
-            - '--openshift-sar={"namespace":"ac-portal-dev","resource":"deployments","group":"apps","verb":"update"}'
+            - --http-address=0.0.0.0:8080
+            - --upstream=http://127.0.0.1:3000
+            - --provider=oidc
+            - --oidc-issuer-url=https://sso.appcarrier.cloud/realms/ac-portal
+            - --scope=openid profile email ac-portal-groups
+            - --oidc-groups-claim=groups
+            # Only users holding a blog-* realm role may enter the CMS.
+            - --allowed-group=blog-author
+            - --allowed-group=blog-translator
+            - --allowed-group=blog-editor
+            - --allowed-group=blog-publisher
+            - --allowed-group=blog-admin
             - --email-domain=*
+            - --skip-provider-button=true
+            - --pass-access-token=true
+            - --set-xauthrequest=true
             - --pass-user-headers=true
-          volumeMounts:
-            - name: oauth-cookie
-              mountPath: /etc/proxy/secrets
+            - --cookie-secure=true
+            - --reverse-proxy=true
+          env:
+            - name: OAUTH2_PROXY_CLIENT_ID
+              valueFrom: { secretKeyRef: { name: kc-cms-oidc, key: client-id } }
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom: { secretKeyRef: { name: kc-cms-oidc, key: client-secret } }
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom: { secretKeyRef: { name: ns-web-oauth2, key: cookie-secret } }
+            # Per-env callback URL (overridden in overlays/*/configmap-patch).
+            - name: OAUTH2_PROXY_REDIRECT_URL
+              value: https://cms-dev.appcarrier.cloud/oauth2/callback
           resources:
             requests: { memory: "64Mi", cpu: "50m" }
             limits: { memory: "128Mi", cpu: "200m" }
@@ -108,6 +132,3 @@ spec:
         - name: content-store
           persistentVolumeClaim:
             claimName: ns-web-data
-        - name: oauth-cookie
-          secret:
-            secretName: ns-web-oauth

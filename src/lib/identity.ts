@@ -23,12 +23,20 @@ export type Identity = {
   initials: string;
 };
 
-// Highest-privilege group wins.
+// Highest-privilege role wins. Names match the Keycloak realm roles
+// (realm `ac-portal`), delivered by oauth2-proxy as the `groups` claim →
+// X-Forwarded-Groups. Plural aliases kept for backward-compat with the
+// earlier OpenShift-group naming.
 const GROUP_ROLE: [string, Role][] = [
+  ["blog-admin", "Quản trị"],
   ["blog-admins", "Quản trị"],
+  ["blog-publisher", "Kiểm duyệt"],
   ["blog-publishers", "Kiểm duyệt"],
+  ["blog-editor", "Biên tập"],
   ["blog-editors", "Biên tập"],
+  ["blog-translator", "Biên dịch"],
   ["blog-translators", "Biên dịch"],
+  ["blog-author", "Tác giả"],
   ["blog-authors", "Tác giả"],
 ];
 

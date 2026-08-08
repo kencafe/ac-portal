@@ -14,6 +14,10 @@ export type Settings = {
   requireApprovalToPublish: boolean;
   // Auto-publish AI-translated drafts (off by default — human in the loop).
   autoPublishTranslations: boolean;
+  // AI auto-ingest daily schedule.
+  aiScheduleEnabled: boolean;
+  aiScheduleHour: number; // 0–23, cluster TZ (default 5 = 05:00)
+  aiFeeds: string[]; // RSS/Atom source URLs the daily job pulls from
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -23,6 +27,9 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultLanguage: "vi",
   requireApprovalToPublish: true,
   autoPublishTranslations: false,
+  aiScheduleEnabled: false,
+  aiScheduleHour: 5,
+  aiFeeds: [],
 };
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
