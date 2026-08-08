@@ -14,8 +14,10 @@ export async function POST(req: Request) {
   const { slug, title, cat, tone, scene } = (await req.json().catch(() => ({}))) as { slug?: string; title?: string; cat?: string; tone?: string; scene?: string };
   if (!title) return Response.json({ error: "Thiếu tiêu đề" }, { status: 400 });
   const s = (slug || title).toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60) || "cover";
-  const url = await makeCover(s, title, cat || "", tone || "#0072BC", true, (scene || "").trim());
-  const aiUsed = url.startsWith("/api/cover-img/");
+  const nonce = Date.now() % 1000000; // vary the image + cache-bust on each manual generate
+  const raw = await makeCover(s, title, cat || "", tone || "#0072BC", true, (scene || "").trim(), nonce);
+  const aiUsed = raw.startsWith("/api/cover-img/");
+  const url = aiUsed ? `${raw}?v=${nonce}` : raw;
   return Response.json({
     url,
     aiUsed,

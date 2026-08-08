@@ -39,8 +39,9 @@ async function saveCover(slug: string, buf: Buffer, ext: string): Promise<string
 }
 
 // Free, keyless AI image via Pollinations (Flux/SD). Works WITHOUT any billing.
-async function pollinationsImage(slug: string, title: string, cat: string, scene = ""): Promise<string> {
-  const seed = Math.abs(hashCode(title)) % 100000;
+async function pollinationsImage(slug: string, title: string, cat: string, scene = "", nonce = 0): Promise<string> {
+  // Deterministic seed by default; a nonce (manual re-generate) varies the image.
+  const seed = nonce > 0 ? nonce % 1000000 : Math.abs(hashCode(title)) % 100000;
   const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(coverPrompt(title, cat, scene))}?width=1200&height=630&nologo=true&seed=${seed}&model=flux`;
   const res = await fetch(url, { signal: AbortSignal.timeout(120000), redirect: "follow" });
   if (!res.ok) throw new Error(`pollinations HTTP ${res.status}`);
@@ -81,7 +82,7 @@ function hashCode(s: string): number {
 // Generate a real cover image. Provider "pollinations" (free/keyless, default)
 // or "gemini" (needs billing). Saves to the PVC and returns its URL; falls back
 // to the generated illustration when disabled or on error.
-export async function makeCover(slug: string, title: string, cat = "", tone = "#0072BC", force = false, scene = ""): Promise<string> {
+export async function makeCover(slug: string, title: string, cat = "", tone = "#0072BC", force = false, scene = "", nonce = 0): Promise<string> {
   const fallback = coverFor(title, cat, tone);
   const s = await getSettings();
   if (!s.aiImageEnabled && !force) return fallback;
@@ -94,7 +95,7 @@ export async function makeCover(slug: string, title: string, cat = "", tone = "#
       console.log(`[ai] cover via gemini for ${slug}`);
       return out;
     }
-    const out = await pollinationsImage(slug, title, cat, scene);
+    const out = await pollinationsImage(slug, title, cat, scene, nonce);
     console.log(`[ai] cover via pollinations for ${slug}`);
     return out;
   } catch (e) {
