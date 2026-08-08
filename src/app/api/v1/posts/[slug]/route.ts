@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPost, upsertPost, setStatus, setFeatured, deletePost, type Status } from "@/lib/store";
 import { getIdentity, hasRole, CAN_WRITE, CAN_PUBLISH, CAN_DELETE } from "@/lib/identity";
+import { notifyPublished } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ sl
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const updated = await setStatus(slug, body.status as Status);
-  if (updated) console.log(`[audit] ${id.user} set ${slug} → ${body.status}`);
+  if (updated) {
+    console.log(`[audit] ${id.user} set ${slug} → ${body.status}`);
+    // Fire the on-publish newsletter (no-op unless auto-send is on & configured).
+    if (updated.status === "published") {
+      const sent = await notifyPublished(updated);
+      if (sent) console.log(`[mail] ${slug} newsletter → ${sent} recipients`);
+    }
+  }
   return updated ? NextResponse.json(updated) : NextResponse.json({ error: "not found" }, { status: 404 });
 }
 

@@ -68,6 +68,8 @@ export default function BlogList({ posts }: { posts: Post[] }) {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState("Tất cả");
   const [subscribed, setSubscribed] = useState(false);
+  const [subEmail, setSubEmail] = useState("");
+  const [subErr, setSubErr] = useState("");
 
   const featured = useMemo(() => posts.find((p) => p.featured) ?? posts[0], [posts]);
   const q = query.trim().toLowerCase();
@@ -200,15 +202,23 @@ export default function BlogList({ posts }: { posts: Post[] }) {
           <div style={{ fontSize: 20, fontWeight: 600 }}>{SUBSCRIBE_PANEL.title}</div>
           <p style={{ fontSize: 14, color: "rgba(255,255,255,0.72)", margin: "8px 0 18px" }}>{SUBSCRIBE_PANEL.sub}</p>
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              setSubscribed(true);
+              const email = subEmail.trim();
+              if (!email) return;
+              try {
+                const res = await fetch("/api/v1/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+                if (res.ok) setSubscribed(true);
+                else { const d = await res.json().catch(() => ({})); setSubErr(d.error || "Đăng ký thất bại"); }
+              } catch { setSubErr("Lỗi kết nối, thử lại sau."); }
             }}
             style={{ display: "flex", gap: 10, flexWrap: "wrap" }}
           >
             <input
               type="email"
               required
+              value={subEmail}
+              onChange={(e) => { setSubEmail(e.target.value); setSubErr(""); }}
               placeholder={SUBSCRIBE_PANEL.emailPlaceholder}
               style={{ flex: "1 1 240px", height: 46, padding: "0 14px", borderRadius: RADIUS.button, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)", color: "#fff", fontSize: 14, outline: "none" }}
             />
@@ -220,6 +230,7 @@ export default function BlogList({ posts }: { posts: Post[] }) {
               {subscribed ? SUBSCRIBE_PANEL.buttonLabelSubscribed : SUBSCRIBE_PANEL.buttonLabel}
             </button>
           </form>
+          {subErr && <p style={{ fontSize: 13, color: "#FFD2C7", marginTop: 10 }}>{subErr}</p>}
         </div>
       </div>
     </>

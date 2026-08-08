@@ -8,8 +8,9 @@
 // passthrough so the flow is testable offline — it never fabricates a
 // human-quality translation silently.
 
-import { upsertPost } from "@/lib/store";
+import { upsertPost, getPost } from "@/lib/store";
 import { getSettings } from "@/lib/settings";
+import { notifyPublished } from "@/lib/notify";
 import { getProvider, chatComplete } from "@/lib/providers";
 import { addHistory, seenUrls, type IngestMode } from "@/lib/history";
 import type { Block } from "@/data/posts";
@@ -17,6 +18,18 @@ import type { Block } from "@/data/posts";
 const ENV_AI_API_KEY = process.env.AI_API_KEY || process.env.ANTHROPIC_API_KEY || "";
 const ENV_AI_MODEL = process.env.AI_MODEL || "";
 const DEFAULT_MODEL = "claude-sonnet-5";
+
+// Curated, reputable tech sources so "AI tự tìm bài" works out-of-the-box even
+// when the admin hasn't added any RSS feed yet. Used only as a fallback for
+// discovery — the admin's own feeds take precedence when present.
+export const DEFAULT_DISCOVER_FEEDS = [
+  "https://kubernetes.io/feed.xml",
+  "https://www.cncf.io/feed/",
+  "https://aws.amazon.com/blogs/devops/feed/",
+  "https://cloud.google.com/blog/products/devops-sre/rss",
+  "https://www.docker.com/blog/feed/",
+  "https://kubernetes.io/blog/feed.xml",
+];
 
 export type IngestResult = {
   slug: string;
@@ -166,7 +179,7 @@ export async function ingestText(
   const slug = slugify(title);
   const url = opts?.url ?? opts?.source ?? "";
 
-  await upsertPost({
+  const saved = await upsertPost({
     slug,
     title,
     cat: opts?.cat || "AIOps",
@@ -183,6 +196,9 @@ export async function ingestText(
     status,
   });
 
+  // Auto-published article → fire the newsletter (no-op unless enabled/configured).
+  if (status === "published") await notifyPublished(saved).catch(() => {});
+
   await addHistory({
     at: new Date().toISOString(),
     mode: opts?.mode ?? "manual",
@@ -196,6 +212,45 @@ export async function ingestText(
   });
 
   return { slug, title, status, aiUsed, source: url || (opts?.source ?? "file") };
+}
+
+// Re-edit an existing post to the house style. Keeps the same slug, status,
+// category and cover; only the title + body get rewritten by the AI editor.
+// Logs the run to history (mode "reedit"). Returns null if the post is missing.
+export async function reeditPost(slug: string): Promise<IngestResult | null> {
+  const post = await getPost(slug);
+  if (!post) return null;
+
+  // Flatten the current blocks back to source text for the editor.
+  const text = (post.blocks ?? [])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((b: any) => (b.kind === "list" ? (b.items ?? []).join("\n") : b.text ?? ""))
+    .filter(Boolean)
+    .join("\n\n");
+
+  const { title, blocks, aiUsed } = await aiEdit(post.title, text || post.excerpt || post.title);
+
+  await upsertPost({
+    slug,
+    title: title || post.title,
+    excerpt: (blocks.find((b) => b.kind === "p")?.text ?? post.excerpt ?? "").slice(0, 160),
+    blocks: blocks.length ? blocks : post.blocks,
+    // status, cat, tone, author, cover, tags, featured are preserved by upsert merge.
+  });
+
+  await addHistory({
+    at: new Date().toISOString(),
+    mode: "reedit",
+    source: "reedit",
+    url: "",
+    title: title || post.title,
+    slug,
+    status: post.status === "published" ? "published" : "draft",
+    aiUsed,
+    note: "biên tập lại theo style",
+  });
+
+  return { slug, title: title || post.title, status: post.status === "published" ? "published" : "draft", aiUsed, source: "reedit" };
 }
 
 // Ingest a single URL → a post (fetch + strip HTML, then AI edit).
@@ -270,7 +325,9 @@ export type DiscoverResult = { candidates: number; picked: number; results: Inge
 // then translate + (optionally) publish them, logging each to history.
 export async function discoverAndPublish(): Promise<DiscoverResult> {
   const settings = await getSettings();
-  const feeds = settings.aiFeeds ?? [];
+  // Admin feeds take precedence; fall back to the curated defaults so discovery
+  // always has good sources to pull from.
+  const feeds = (settings.aiFeeds && settings.aiFeeds.length) ? settings.aiFeeds : DEFAULT_DISCOVER_FEEDS;
   const topics = settings.aiTopics ?? [];
   const count = Math.max(1, settings.aiDiscoverCount || 3);
   const seen = await seenUrls();

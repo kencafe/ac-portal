@@ -11,7 +11,9 @@ import path from "path";
 import { POSTS, type Post, type Block } from "@/data/posts";
 
 export type Status = "draft" | "review" | "published";
-export type StoredPost = Post & { status: Status };
+// `notified` guards the on-publish mailer so subscribers aren't emailed twice
+// if a post is unpublished and re-published.
+export type StoredPost = Post & { status: Status; notified?: boolean; featuredAt?: string };
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
 const FILE = path.join(DATA_DIR, "posts.json");
@@ -48,13 +50,15 @@ export async function listPublished(limit?: number): Promise<StoredPost[]> {
   return typeof limit === "number" ? pub.slice(0, limit) : pub;
 }
 
-// Posts chosen by an editor to appear on the portal homepage. If the admin has
-// flagged any post as featured, the homepage shows only those (newest first,
-// capped at `limit`); otherwise it falls back to the latest published posts so
-// the homepage is never empty.
+// Posts chosen by an editor to appear on the portal homepage. Featured posts
+// are shown most-recently-pinned first (so a freshly pinned post always surfaces
+// on the homepage), capped at `limit`. Falls back to the latest published posts
+// when nothing is pinned, so the homepage is never empty.
 export async function listFeatured(limit = 3): Promise<StoredPost[]> {
   const pub = (await readAll()).filter((p) => p.status === "published");
-  const featured = pub.filter((p) => p.featured);
+  const featured = pub
+    .filter((p) => p.featured)
+    .sort((a, b) => (b.featuredAt ?? "").localeCompare(a.featuredAt ?? ""));
   return (featured.length ? featured : pub).slice(0, limit);
 }
 
@@ -62,7 +66,7 @@ export async function setFeatured(slug: string, featured: boolean): Promise<Stor
   const all = await readAll();
   const idx = all.findIndex((p) => p.slug === slug);
   if (idx < 0) return undefined;
-  all[idx] = { ...all[idx], featured };
+  all[idx] = { ...all[idx], featured, featuredAt: featured ? new Date().toISOString() : undefined };
   await writeAll(all);
   return all[idx];
 }

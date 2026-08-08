@@ -26,6 +26,11 @@ export type Settings = {
   mailUser: string;
   mailFrom: string; // From: header (defaults to mailUser)
   mailPassword: string; // SMTP/app password — SECRET; never returned (see publicSettings)
+  // Auto-send a newsletter when a post is published.
+  mailAutoSend: boolean;
+  // Distribution list for the on-publish mailer (team / Keycloak-group mailing
+  // addresses). Combined with the public blog subscribers.
+  mailExtraRecipients: string[];
   // AI auto-discovery: pick the most relevant/high-quality unseen articles and publish.
   aiTopics: string[]; // topics/keywords describing what counts as a "good" article
   aiAutoPublish: boolean; // publish discovered articles automatically (vs draft)
@@ -53,6 +58,8 @@ export const DEFAULT_SETTINGS: Settings = {
   mailUser: "",
   mailFrom: "",
   mailPassword: "",
+  mailAutoSend: false,
+  mailExtraRecipients: [],
   aiTopics: ["cloud", "AI", "DevOps", "SRE", "Kubernetes", "security"],
   aiAutoPublish: false,
   aiDiscoverCount: 3,

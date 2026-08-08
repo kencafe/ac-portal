@@ -1,6 +1,6 @@
 "use client";
 
-import { CSSProperties, useEffect, useMemo, useState } from "react";
+import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import {
   SEED, SeedPost, PostStatus, CATS, TONE, CATEGORIES, TAGS, TAXONOMY_UI,
   KINDS, EDITOR_UI, NEW_DRAFT_DEFAULTS, BlockKind,
@@ -43,6 +43,8 @@ type SiteSettings = {
   mailUser: string;
   mailFrom: string;
   mailPasswordSet: boolean;
+  mailAutoSend: boolean;
+  mailExtraRecipients: string[];
   aiTopics: string[];
   aiAutoPublish: boolean;
   aiDiscoverCount: number;
@@ -181,6 +183,10 @@ export default function CmsApp() {
   const [aiBusy, setAiBusy] = useState(false);
   const [aiLog, setAiLog] = useState<string[]>([]);
   const [aiFeedInput, setAiFeedInput] = useState("");
+  // File ingest (Word/PDF) + re-edit existing post
+  const [aiFile, setAiFile] = useState<File | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [reeditBusy, setReeditBusy] = useState<string | null>(null);
 
   // AI provider config (Cấu hình API): pick provider → paste token → get models → choose → save
   const [aiProviderSel, setAiProviderSel] = useState("anthropic");
@@ -202,6 +208,10 @@ export default function CmsApp() {
   const [mailTestTo, setMailTestTo] = useState("");
   const [mailMsg, setMailMsg] = useState("");
   const [mailBusy, setMailBusy] = useState(false);
+  // Newsletter: auto-send on publish + recipients (subscribers + distribution list)
+  const [subs, setSubs] = useState<{ email: string; at: string }[]>([]);
+  const [recipientsInput, setRecipientsInput] = useState("");
+  const [nlMsg, setNlMsg] = useState("");
 
   function makeDraft(): SeedPost {
     return { ...NEW_DRAFT_DEFAULTS, blocks: [["p", ""]] } as SeedPost;
@@ -230,7 +240,8 @@ export default function CmsApp() {
   useEffect(() => {
     refreshPosts();
     fetch("/api/v1/me", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then(setMe); }).catch(() => {});
-    fetch("/api/v1/settings", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then((s: SiteSettings) => { setSettings(s); setAiModelSel(s.aiModel || ""); setAiProviderSel(s.aiProvider || "anthropic"); setAiTopicsInput((s.aiTopics || []).join(", ")); }); }).catch(() => {});
+    fetch("/api/v1/settings", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then((s: SiteSettings) => { setSettings(s); setAiModelSel(s.aiModel || ""); setAiProviderSel(s.aiProvider || "anthropic"); setAiTopicsInput((s.aiTopics || []).join(", ")); setRecipientsInput((s.mailExtraRecipients || []).join("\n")); }); }).catch(() => {});
+    loadSubscribers();
     fetch("/api/v1/ai/history", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then((d) => setAiHistory(d.results || [])); }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -370,6 +381,42 @@ export default function CmsApp() {
     }
     setAiBusy(false);
   }
+  async function aiIngestFile(publish: boolean) {
+    if (!aiFile) return;
+    setAiBusy(true);
+    aiLogLine(`⏳ Đọc & biên tập file: ${aiFile.name}`);
+    try {
+      const fd = new FormData();
+      fd.append("file", aiFile);
+      if (publish) fd.append("publish", "1");
+      const res = await fetch("/api/v1/ai/ingest-file", { method: "POST", body: fd });
+      const d = await res.json();
+      if (res.ok) {
+        aiLogLine(`✅ ${d.title} → ${d.status}${d.aiUsed ? "" : " (AI chưa cấu hình khóa)"}`);
+        setAiFile(null);
+        if (fileRef.current) fileRef.current.value = "";
+        refreshPosts();
+        loadHistory();
+      } else {
+        aiLogLine(`❌ ${d.error || res.status}`);
+      }
+    } catch (e) {
+      aiLogLine(`❌ ${(e as Error).message}`);
+    }
+    setAiBusy(false);
+  }
+  async function reeditPost(slug: string, title: string) {
+    if (!window.confirm(`AI biên tập lại bài "${title}" theo phong cách blog? Nội dung hiện tại sẽ được viết lại.`)) return;
+    setReeditBusy(slug);
+    try {
+      const res = await fetch("/api/v1/ai/reedit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) });
+      const d = await res.json();
+      if (!res.ok) alert(d.error === "Forbidden" ? "Bạn không có quyền biên tập." : `Lỗi: ${d.error || res.status}`);
+      refreshPosts();
+      loadHistory();
+    } catch (e) { alert((e as Error).message); }
+    setReeditBusy(null);
+  }
   async function aiRunFeeds() {
     setAiBusy(true);
     aiLogLine("⏳ Chạy nguồn ngay…");
@@ -441,6 +488,26 @@ export default function CmsApp() {
       setMailMsg(res.ok ? `✅ Đã gửi thử tới ${mailTestTo}` : `❌ ${d.error || res.status}`);
     } catch (e) { setMailMsg(`❌ ${(e as Error).message}`); }
     setMailBusy(false);
+  }
+  async function loadSubscribers() {
+    try {
+      const res = await fetch("/api/v1/subscribers");
+      if (res.ok) setSubs((await res.json()).results ?? []);
+    } catch { /* ignore */ }
+  }
+  async function saveNewsletterCfg() {
+    if (!settings) return;
+    const recips = recipientsInput.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean);
+    setNlMsg("⏳ Đang lưu…");
+    try {
+      const res = await fetch("/api/v1/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mailAutoSend: settings.mailAutoSend, mailExtraRecipients: recips }) });
+      if (res.ok) { setSettings(await res.json()); setNlMsg("✅ Đã lưu cấu hình gửi bài"); }
+      else { const d = await res.json().catch(() => ({})); setNlMsg(`❌ ${d.error || res.status}`); }
+    } catch (e) { setNlMsg(`❌ ${(e as Error).message}`); }
+  }
+  async function removeSub(email: string) {
+    setSubs((s) => s.filter((x) => x.email !== email)); // optimistic
+    await fetch("/api/v1/subscribers", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }).catch(() => {});
   }
 
   async function togglePublish(slug: string) {
@@ -596,6 +663,19 @@ export default function CmsApp() {
           </div>
         </section>
 
+        {/* File ingest — Word / PDF */}
+        <section style={panelPad}>
+          <PanelHead>Tải file Word/PDF → AI biên tập</PanelHead>
+          <div style={{ fontSize: 12.5, color: COLORS.ink3, margin: "6px 0 12px" }}>
+            Chọn file <b>.docx / .pdf / .txt / .md</b> — AI trích nội dung rồi biên tập lại theo phong cách blog. Mặc định tạo <b>bản nháp</b> để bạn duyệt trước.
+          </div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <input ref={fileRef} type="file" accept=".docx,.pdf,.txt,.md,.markdown" disabled={aiBusy} onChange={(e) => setAiFile(e.target.files?.[0] ?? null)} style={{ fontSize: 13, flex: 1, minWidth: 220 }} />
+            <button type="button" onClick={() => aiIngestFile(false)} disabled={aiBusy || !aiFile} style={{ ...btnSm, opacity: aiBusy || !aiFile ? 0.5 : 1 }}>Biên tập → Nháp</button>
+            <button type="button" onClick={() => aiIngestFile(true)} disabled={aiBusy || !aiFile} style={{ ...btnBlue, opacity: aiBusy || !aiFile ? 0.5 : 1 }}>✨ Biên tập & Xuất bản</button>
+          </div>
+        </section>
+
         {/* Daily schedule */}
         <section style={panelPad}>
           <PanelHead
@@ -646,11 +726,19 @@ export default function CmsApp() {
                 </label>
               </div>
               <label style={label}>Nguồn RSS/Atom ({feeds.length})</label>
-              <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+              <div style={{ display: "flex", gap: 10, marginBottom: 6 }}>
                 <input style={{ ...input, flex: 1 }} placeholder="https://nguồn.com/rss" value={aiFeedInput} onChange={(e) => setAiFeedInput(e.target.value)} disabled={!isAdmin} />
+                <button type="button" onClick={() => checkFeed(aiFeedInput.trim())} disabled={!aiFeedInput.trim() || feedCheckBusy === aiFeedInput.trim()} style={{ ...btnSm, opacity: aiFeedInput.trim() ? 1 : 0.5 }}>{feedCheckBusy === aiFeedInput.trim() ? "…" : "Kiểm tra"}</button>
                 <button type="button" onClick={addFeed} disabled={!isAdmin || !aiFeedInput} style={{ ...btnSm, opacity: isAdmin && aiFeedInput ? 1 : 0.5 }}>+ Thêm nguồn</button>
               </div>
-              {feeds.length === 0 && <div style={{ fontSize: 12.5, color: COLORS.ink3 }}>Chưa có nguồn. Thêm URL RSS để lịch tự động chạy.</div>}
+              {aiFeedInput.trim() && feedChecks[aiFeedInput.trim()] && (
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: feedChecks[aiFeedInput.trim()].ok ? COLORS.brandGreen : "#C0392B" }}>
+                  {feedChecks[aiFeedInput.trim()].ok
+                    ? `✓ Nguồn hợp lệ · ${feedChecks[aiFeedInput.trim()].count} bài · ${(feedChecks[aiFeedInput.trim()].titles || []).slice(0, 1).join("")}`
+                    : `✗ ${feedChecks[aiFeedInput.trim()].error || "Không hợp lệ"}`}
+                </div>
+              )}
+              {feeds.length === 0 && <div style={{ fontSize: 12.5, color: COLORS.ink3 }}>Chưa có nguồn riêng — AI sẽ tự dùng bộ nguồn kỹ thuật uy tín mặc định khi tìm bài.</div>}
               {feeds.map((f) => {
                 const chk = feedChecks[f];
                 return (
@@ -677,15 +765,15 @@ export default function CmsApp() {
         <section style={{ ...panelPad, borderColor: COLORS.brandGreen }}>
           <PanelHead
             right={
-              <button type="button" onClick={aiDiscover} disabled={aiBusy || (settings?.aiFeeds?.length ?? 0) === 0} style={{ ...btnBlue, height: 30, opacity: aiBusy || !(settings?.aiFeeds?.length) ? 0.5 : 1 }}>
-                ✨ Tự tìm & xuất bản ngay
+              <button type="button" onClick={aiDiscover} disabled={aiBusy} style={{ ...btnBlue, height: 30, opacity: aiBusy ? 0.6 : 1 }}>
+                {aiBusy ? "⏳ Đang tìm…" : "✨ Tự tìm & xuất bản ngay"}
               </button>
             }
           >
             AI tự tìm bài hay & xuất bản
           </PanelHead>
           <div style={{ fontSize: 12.5, color: COLORS.ink3, margin: "6px 0 14px" }}>
-            AI quét các nguồn ở trên, bỏ bài đã lấy (theo lịch sử), tự chọn bài <b>phù hợp & chất lượng nhất</b> theo chủ đề rồi biên tập — chạy hằng ngày lúc {String(settings?.aiScheduleHour ?? 5).padStart(2, "0")}:00 hoặc bấm chạy ngay. Bạn không cần vào tìm bài.
+            AI quét các nguồn ở trên (hoặc <b>bộ nguồn kỹ thuật uy tín mặc định</b> nếu bạn chưa thêm nguồn), bỏ bài đã lấy (theo lịch sử), tự chọn bài <b>phù hợp & chất lượng nhất</b> theo chủ đề rồi biên tập — chạy hằng ngày lúc {String(settings?.aiScheduleHour ?? 5).padStart(2, "0")}:00 hoặc bấm chạy ngay. Bạn không cần vào tìm bài.
           </div>
           {settings && (
             <div>
@@ -737,7 +825,7 @@ export default function CmsApp() {
                   {aiHistory.map((h, i) => (
                     <tr key={i} style={{ borderBottom: `1px solid ${COLORS.split}` }}>
                       <td style={{ padding: "6px 8px", whiteSpace: "nowrap", color: COLORS.ink3 }}>{new Date(h.at).toLocaleString("vi-VN")}</td>
-                      <td style={{ padding: "6px 8px", color: COLORS.ink3 }}>{h.mode === "discover" ? "AI tự tìm" : h.mode === "cron" ? "Lịch" : "Thủ công"}</td>
+                      <td style={{ padding: "6px 8px", color: COLORS.ink3 }}>{h.mode === "discover" ? "AI tự tìm" : h.mode === "cron" ? "Lịch" : h.mode === "file" ? "Từ file" : h.mode === "reedit" ? "Biên tập lại" : "Thủ công"}</td>
                       <td style={{ padding: "6px 8px" }}><a href={h.url} target="_blank" rel="noreferrer" style={{ color: COLORS.brandBlue }}>{h.title}</a></td>
                       <td style={{ padding: "6px 8px" }}><span style={{ fontSize: 11, fontWeight: 600, padding: "1px 7px", borderRadius: 8, background: h.status === "published" ? "#E9F6E3" : h.status === "draft" ? "#FEF1E9" : "#F1F3F5", color: h.status === "published" ? "#3F7F27" : h.status === "draft" ? "#C25A17" : COLORS.ink3 }}>{h.status === "published" ? "Đã xuất bản" : h.status === "draft" ? "Nháp" : h.status}</span></td>
                       <td style={{ padding: "6px 8px", color: COLORS.ink3 }}>{h.aiUsed ? "✓" : "—"}</td>
@@ -870,6 +958,40 @@ export default function CmsApp() {
           </section>
         )}
 
+        {/* Newsletter — auto-send on publish */}
+        {settings && (
+          <section style={panelPad}>
+            <PanelHead right={<button type="button" onClick={saveNewsletterCfg} disabled={!canEdit} style={{ ...btnBlue, height: 30, opacity: canEdit ? 1 : 0.5 }}>Lưu cấu hình gửi bài</button>}>
+              Gửi bài tự động qua email
+            </PanelHead>
+            <div style={{ fontSize: 12.5, color: COLORS.ink3, margin: "6px 0 12px" }}>
+              Khi một bài được <b>xuất bản</b>, hệ thống tự gửi email tới <b>người đăng ký trên blog</b> + <b>danh sách phân phối</b> bên dưới (nơi đặt địa chỉ mailing-list của nhóm Keycloak/đội ngũ). Cần cấu hình SMTP ở trên.
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, cursor: canEdit ? "pointer" : "default" }}>
+              <input type="checkbox" checked={settings.mailAutoSend} disabled={!canEdit} onChange={(e) => set("mailAutoSend", e.target.checked)} />
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: COLORS.ink }}>Tự động gửi email khi xuất bản bài</span>
+            </label>
+            <label style={label}>Danh sách phân phối (mỗi dòng/ dấu phẩy một email — nhóm, đội, mailing-list)</label>
+            <textarea style={{ ...input, minHeight: 72, fontFamily: "monospace", marginBottom: 6 }} value={recipientsInput} disabled={!canEdit} onChange={(e) => setRecipientsInput(e.target.value)} placeholder={"team-sre@fpt.com\nblog-announce@fpt.com"} />
+            {nlMsg && <div style={{ fontSize: 12.5, color: COLORS.ink2, margin: "4px 0 10px" }}>{nlMsg}</div>}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+              <label style={{ ...label, margin: 0 }}>Người đăng ký từ blog ({subs.length})</label>
+              <button type="button" onClick={loadSubscribers} style={{ ...btnSm, height: 26, padding: "0 8px", marginLeft: "auto" }}>Tải lại</button>
+            </div>
+            <div style={{ maxHeight: 180, overflowY: "auto", marginTop: 6 }}>
+              {subs.length === 0 ? (
+                <div style={{ fontSize: 12.5, color: COLORS.ink3, padding: "6px 0" }}>Chưa có người đăng ký.</div>
+              ) : subs.map((s) => (
+                <div key={s.email} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: `1px solid ${COLORS.split}`, fontSize: 13 }}>
+                  <span style={{ flex: 1, color: COLORS.ink2 }}>{s.email}</span>
+                  <span style={{ fontSize: 11.5, color: COLORS.ink3 }}>{(s.at || "").slice(0, 10)}</span>
+                  {canEdit && <button type="button" onClick={() => removeSub(s.email)} style={{ ...btnSm, height: 24, padding: "0 8px", color: "#C0392B" }}>Xoá</button>}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Access / RBAC */}
         <section style={panelPad}>
           <PanelHead>{ADMIN_UI.access.title}</PanelHead>
@@ -933,6 +1055,7 @@ export default function CmsApp() {
                   <span style={{ fontSize: 12.5, color: COLORS.ink3 }}>{p.date}</span>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <button type="button" onClick={() => editPost(p)} style={{ ...btnSm, height: 28, padding: "0 10px" }}>{POSTS_VIEW_UI.editButton}</button>
+                    <button type="button" onClick={() => reeditPost(p.slug, p.title)} disabled={reeditBusy === p.slug} title="AI biên tập lại theo phong cách blog" style={{ ...btnSm, height: 28, padding: "0 10px", color: COLORS.brandBlue, borderColor: "#B3D5EA" }}>{reeditBusy === p.slug ? "…" : "✨ Biên tập lại"}</button>
                     <button type="button" onClick={() => togglePublish(p.slug)} style={{ ...btnSm, height: 28, padding: "0 10px" }}>{p.status === "Đã xuất bản" ? POSTS_VIEW_UI.hideButton : POSTS_VIEW_UI.publishButton}</button>
                     {p.status === "Đã xuất bản" && (
                       <button type="button" onClick={() => toggleFeatured(p.slug)} title={p.featured ? "Bỏ ghim khỏi trang chủ" : "Ghim lên trang chủ portal"} style={{ ...btnSm, height: 28, padding: "0 10px", color: p.featured ? "#B7791F" : COLORS.ink2, borderColor: p.featured ? "#F0C674" : COLORS.border, background: p.featured ? "#FEF3C7" : "#fff" }}>{p.featured ? "★ Bỏ ghim" : "☆ Trang chủ"}</button>
