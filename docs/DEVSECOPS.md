@@ -71,6 +71,19 @@ Sản phẩm DefectDojo: **AC-Portal** (`auto_create_context`), engagement
 - Webhook Tekton: `ns-web-webhook-secret` (chữ ký HMAC GitHub).
 - Image công cụ mirror vào registry nội bộ (xem `BOOTSTRAP.md`).
 
+## DefectDojo — trạng thái tích hợp
+
+- Pipeline đã nối đầy đủ: task `defectdojo` (import Trivy/Gitleaks/Dependency-Check/
+  Semgrep) và task `dast` (import ZAP) POST vào `import-scan` của DefectDojo có sẵn
+  ở `ac-devsecops` (in-cluster: `defect-dojo-defectdojo-django.ac-devsecops.svc`
+  + header `Host` + `Accept: application/json`), sản phẩm **AC-Portal**,
+  engagement `ci-<env>` / `dast-<env>`.
+- Kết nối + xác thực đọc OK (GET `/api/v2/*` trả JSON). Tuy nhiên **token trong
+  `defectdojo-creds` hiện chỉ có quyền đọc** → POST `import-scan` trả HTTP 400
+  (trang HTML). Cần **token có quyền import/write** do quản trị DefectDojo cấp;
+  thay giá trị `DD_TOKEN` trong secret `defectdojo-creds` là xong, không phải sửa
+  pipeline.
+
 ## Siết gate về blocking (khi baseline sạch)
 
 Trong `tasks.yaml`, bỏ `onError: continue` và trả mã lỗi thật:
