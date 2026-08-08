@@ -166,6 +166,38 @@ export function parseFeedItems(xml: string, limit = 20): FeedItem[] {
 // AI biên tập: rewrite/clean up the raw content into a publish-ready Vietnamese
 // article (the AI plays the editor's role instead of a person). Returns a title
 // + content blocks.
+// Parse the model's JSON reply into content blocks (h/p/list/quote), tolerant of
+// fences and the legacy paragraphs[] shape. Falls back to a single block.
+function blocksFromRaw(raw: string): { title: string; blocks: Block[] } {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let parsed: any;
+  try {
+    parsed = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? raw);
+  } catch {
+    parsed = null;
+  }
+  const KINDS = new Set(["h", "p", "list", "quote"]);
+  let blocks: Block[] = [];
+  if (parsed && Array.isArray(parsed.blocks)) {
+    blocks = parsed.blocks
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((b: any): Block | null => {
+        const kind = KINDS.has(b?.type) ? b.type : "p";
+        if (kind === "list") {
+          const items = (Array.isArray(b.items) ? b.items : String(b.text ?? "").split("\n")).map((s: string) => String(s).trim()).filter(Boolean);
+          return items.length ? { kind: "list", items } : null;
+        }
+        const text = String(b?.text ?? "").trim();
+        return text ? { kind, text } : null;
+      })
+      .filter(Boolean) as Block[];
+  } else if (parsed && Array.isArray(parsed.paragraphs)) {
+    blocks = parsed.paragraphs.filter(Boolean).map((p: string) => ({ kind: "p", text: p }) as Block);
+  }
+  if (blocks.length === 0) blocks = [{ kind: "p", text: raw.slice(0, 1500) }];
+  return { title: parsed?.title || "", blocks };
+}
+
 type AiEditOpts = {
   instruction?: string; // extra guidance from the editor (preview → chỉnh theo ý)
   summarize?: boolean;  // copyright-safe mode: summary + commentary + attribution
@@ -223,35 +255,7 @@ async function aiEdit(
     `\nTIÊU ĐỀ GỐC: ${title}\n\nNỘI DUNG:\n${clipped}`;
 
   const raw = await chatComplete(provider, apiKey, model, prompt);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let parsed: any;
-  try {
-    parsed = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? raw);
-  } catch {
-    parsed = null;
-  }
-
-  const KINDS = new Set(["h", "p", "list", "quote"]);
-  let blocks: Block[] = [];
-  if (parsed && Array.isArray(parsed.blocks)) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    blocks = parsed.blocks
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((b: any): Block | null => {
-        const kind = KINDS.has(b?.type) ? b.type : "p";
-        if (kind === "list") {
-          const items = (Array.isArray(b.items) ? b.items : String(b.text ?? "").split("\n")).map((s: string) => String(s).trim()).filter(Boolean);
-          return items.length ? { kind: "list", items } : null;
-        }
-        const text = String(b?.text ?? "").trim();
-        return text ? { kind, text } : null;
-      })
-      .filter(Boolean) as Block[];
-  } else if (parsed && Array.isArray(parsed.paragraphs)) {
-    // Backward-compat with the old paragraphs[] shape.
-    blocks = parsed.paragraphs.filter(Boolean).map((p: string) => ({ kind: "p", text: p }) as Block);
-  }
-  if (blocks.length === 0) blocks = [{ kind: "p", text: raw.slice(0, 1500) }];
+  const { title: genTitle, blocks } = blocksFromRaw(raw);
 
   // Attribution — always cite the source (required for the copyright-safe path,
   // added whenever a source is provided). Avoid duplicating if the model wrote one.
@@ -261,7 +265,7 @@ async function aiEdit(
     if (!already) blocks.push({ kind: "quote", text: cite });
   }
 
-  return { title: parsed?.title || title || "Bài nhập tự động", blocks, aiUsed: true };
+  return { title: genTitle || title || "Bài nhập tự động", blocks, aiUsed: true };
 }
 
 // Core: run AI edit over raw {title,text} → create a post + log history.
@@ -355,6 +359,84 @@ export async function reeditPost(slug: string, instruction?: string): Promise<In
   });
 
   return { slug, title: title || post.title, status: post.status === "published" ? "published" : "draft", aiUsed, source: "reedit" };
+}
+
+// Commission an ORIGINAL article from a brief — AI writes the content from
+// scratch (e.g. "đào tạo nhân viên về DNS từ CoreDNS đến DNS nội bộ/global").
+// Not editing a source: this is authored content, so no attribution needed.
+export async function generateArticle(
+  brief: string,
+  opts?: { title?: string; cat?: string; audience?: string; forcePublish?: boolean },
+): Promise<IngestResult> {
+  const settings = await getSettings();
+  const provider = getProvider(settings.aiProvider);
+  const apiKey = settings.aiApiKey || ENV_AI_API_KEY;
+  const model = settings.aiModel || ENV_AI_MODEL || DEFAULT_MODEL;
+
+  let title = opts?.title?.trim() || "";
+  let blocks: Block[];
+  let aiUsed = false;
+
+  if (!apiKey) {
+    blocks = [
+      { kind: "p", text: "[AI chưa cấu hình khóa — chưa sinh nội dung. Đây là đề bài đã đặt:]" },
+      { kind: "p", text: brief.slice(0, 1500) },
+    ];
+    title = title || "Bài đặt hàng (chưa cấu hình AI)";
+  } else {
+    const prompt =
+      `Bạn là chuyên gia kỹ thuật kiêm biên tập viên của blog FPT-IS Next Gen Service. Hãy TỰ VIẾT một bài viết HOÀN CHỈNH, nguyên gốc, bằng tiếng Việt theo ĐỀ BÀI (brief) dưới đây. Đây là nội dung do bạn soạn (không phải biên tập lại nguồn nào).\n` +
+      `PHONG CÁCH & BỐ CỤC:\n` +
+      `- Tiếng Việt kỹ thuật, chuyên nghiệp, chính xác; giữ thuật ngữ tiếng Anh phổ biến.\n` +
+      `- Nếu là bài đào tạo/hướng dẫn: trình bày từ khái niệm nền tảng → chi tiết → ví dụ/thực hành thực tế → lưu ý & khuyến nghị.\n` +
+      `- Chia phần rõ ràng: mỗi phần một TIÊU ĐỀ PHỤ (heading); dùng bullet khi liệt kê; có thể dùng trích dẫn/nhấn mạnh khi cần. Bài nên có 4–8 heading, đủ sâu để dùng đào tạo.\n` +
+      (opts?.audience?.trim() ? `- Đối tượng người đọc: ${opts.audience.trim()}.\n` : "") +
+      `Trả về JSON THUẦN theo schema (không thêm chữ ngoài JSON):\n` +
+      `{"title":"...","blocks":[{"type":"h","text":"..."},{"type":"p","text":"..."},{"type":"list","items":["..."]},{"type":"quote","text":"..."}]}\n` +
+      `type chỉ nhận: "h","p","list","quote".\n\n` +
+      `ĐỀ BÀI: ${brief.slice(0, 4000)}`;
+    const raw = await chatComplete(provider, apiKey, model, prompt);
+    const out = blocksFromRaw(raw);
+    title = title || out.title || "Bài đặt hàng";
+    blocks = out.blocks;
+    aiUsed = true;
+  }
+
+  const publish = opts?.forcePublish ?? false;
+  const status: "draft" | "published" = publish ? "published" : "draft";
+  const slug = await availableSlug(slugify(title));
+
+  const saved = await upsertPost({
+    slug,
+    title,
+    cat: opts?.cat || "SRE",
+    tone: "#0072BC",
+    excerpt: (blocks.find((b) => b.kind === "p")?.text ?? "").slice(0, 160),
+    author: "AI Studio",
+    role: "Biên soạn",
+    initials: "AI",
+    date: todayVN(),
+    read: readingTime(blocks),
+    tags: ["ai-generate"],
+    coverUrl: "",
+    blocks,
+    status,
+  });
+  if (status === "published") await notifyPublished(saved).catch(() => {});
+
+  await addHistory({
+    at: new Date().toISOString(),
+    mode: "generate",
+    source: "đặt hàng",
+    url: "",
+    title,
+    slug,
+    status,
+    aiUsed,
+    note: `brief: ${brief.slice(0, 120)}`,
+  });
+
+  return { slug, title, status, aiUsed, source: "đặt hàng" };
 }
 
 // Ingest a single URL → a post (fetch + strip HTML, then AI edit).

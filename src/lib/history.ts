@@ -5,7 +5,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 
-export type IngestMode = "manual" | "cron" | "discover" | "file" | "reedit";
+export type IngestMode = "manual" | "cron" | "discover" | "file" | "reedit" | "generate";
 
 export interface HistoryEntry {
   at: string; // ISO timestamp

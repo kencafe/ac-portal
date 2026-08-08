@@ -194,6 +194,11 @@ export default function CmsApp() {
   const [pasteSrcUrl, setPasteSrcUrl] = useState("");
   const [pasteSummarize, setPasteSummarize] = useState(true);
   const [urlSummarize, setUrlSummarize] = useState(false);
+  // Commission an article (AI writes from a brief)
+  const [genBrief, setGenBrief] = useState("");
+  const [genTitle, setGenTitle] = useState("");
+  const [genCat, setGenCat] = useState("SRE");
+  const [genAudience, setGenAudience] = useState("");
   // Editor preview toggle (manual review before publishing)
   const [showPreview, setShowPreview] = useState(false);
   const [reeditInstruction, setReeditInstruction] = useState("");
@@ -435,6 +440,27 @@ export default function CmsApp() {
       loadHistory();
     } catch (e) { alert((e as Error).message); }
     setPreviewBusy(false);
+  }
+  async function aiGenerate(publish: boolean) {
+    if (genBrief.trim().length < 10) { aiLogLine("❌ Đề bài quá ngắn"); return; }
+    setAiBusy(true);
+    aiLogLine(`⏳ AI đang soạn bài theo đề: ${genBrief.trim().slice(0, 60)}…`);
+    try {
+      const res = await fetch("/api/v1/ai/generate", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brief: genBrief, title: genTitle.trim(), cat: genCat, audience: genAudience.trim(), publish }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        aiLogLine(`✅ ${d.title} → ${d.status}${d.aiUsed ? "" : " (AI chưa cấu hình khóa)"}`);
+        setGenBrief(""); setGenTitle(""); setGenAudience("");
+        refreshPosts(); loadHistory();
+        if (!publish && d.slug) { setAiBusy(false); openInEditor(d.slug, true); return; }
+      } else {
+        aiLogLine(`❌ ${d.error || res.status}`);
+      }
+    } catch (e) { aiLogLine(`❌ ${(e as Error).message}`); }
+    setAiBusy(false);
   }
   async function aiIngestPaste(publish: boolean) {
     if (pasteText.trim().length < 40) { aiLogLine("❌ Nội dung quá ngắn"); return; }
@@ -708,6 +734,26 @@ export default function CmsApp() {
     const feeds = settings?.aiFeeds ?? [];
     return (
       <div style={{ display: "grid", gap: 16, maxWidth: 860 }}>
+        {/* Commission — AI writes an original article from a brief */}
+        <section style={{ ...panelPad, borderColor: COLORS.brandBlue }}>
+          <PanelHead>📝 Đặt hàng bài viết → AI tự soạn nội dung</PanelHead>
+          <div style={{ fontSize: 12.5, color: COLORS.ink3, margin: "6px 0 12px" }}>
+            Mô tả đề bài, AI sẽ <b>tự viết bài hoàn chỉnh</b> theo phong cách blog (không cần nguồn). Hợp cho bài đào tạo/hướng dẫn nội bộ. VD: <i>“Đào tạo nhân viên về DNS: từ CoreDNS, DNS nội bộ đến DNS global — kèm ví dụ thực tế”</i>.
+          </div>
+          <textarea style={{ ...input, height: "auto", minHeight: 96, padding: "10px 12px", lineHeight: 1.6, marginBottom: 8 }} placeholder="Đề bài / yêu cầu nội dung… (càng chi tiết, bài càng đúng ý)" value={genBrief} onChange={(e) => setGenBrief(e.target.value)} disabled={aiBusy} />
+          <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+            <input style={{ ...input, flex: 2, minWidth: 180 }} placeholder="Tiêu đề (tuỳ chọn — để trống AI tự đặt)" value={genTitle} onChange={(e) => setGenTitle(e.target.value)} disabled={aiBusy} />
+            <select style={{ ...input, flex: 1, minWidth: 130 }} value={genCat} onChange={(e) => setGenCat(e.target.value)} disabled={aiBusy}>
+              {CATS.map((c) => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+          <input style={{ ...input, marginBottom: 12 }} placeholder="Đối tượng người đọc (tuỳ chọn — vd: kỹ sư mới, quản trị hệ thống)" value={genAudience} onChange={(e) => setGenAudience(e.target.value)} disabled={aiBusy} />
+          <div style={{ display: "flex", gap: 10 }}>
+            <button type="button" onClick={() => aiGenerate(false)} disabled={aiBusy || genBrief.trim().length < 10} style={{ ...btnSm, opacity: aiBusy || genBrief.trim().length < 10 ? 0.5 : 1 }}>Soạn → Nháp (xem trước)</button>
+            <button type="button" onClick={() => aiGenerate(true)} disabled={aiBusy || genBrief.trim().length < 10} style={{ ...btnBlue, opacity: aiBusy || genBrief.trim().length < 10 ? 0.5 : 1 }}>✨ Soạn &amp; Xuất bản</button>
+          </div>
+        </section>
+
         {/* Manual hot-news */}
         <section style={panelPad}>
           <PanelHead>Dán link → AI biên tập & xuất bản ngay (tin hot)</PanelHead>
@@ -917,7 +963,7 @@ export default function CmsApp() {
                   {aiHistory.map((h, i) => (
                     <tr key={i} style={{ borderBottom: `1px solid ${COLORS.split}` }}>
                       <td style={{ padding: "6px 8px", whiteSpace: "nowrap", color: COLORS.ink3 }}>{new Date(h.at).toLocaleString("vi-VN")}</td>
-                      <td style={{ padding: "6px 8px", color: COLORS.ink3 }}>{h.mode === "discover" ? "AI tự tìm" : h.mode === "cron" ? "Lịch" : h.mode === "file" ? "Từ file" : h.mode === "reedit" ? "Biên tập lại" : "Thủ công"}</td>
+                      <td style={{ padding: "6px 8px", color: COLORS.ink3 }}>{h.mode === "discover" ? "AI tự tìm" : h.mode === "cron" ? "Lịch" : h.mode === "file" ? "Từ file" : h.mode === "reedit" ? "Biên tập lại" : h.mode === "generate" ? "Đặt hàng" : "Thủ công"}</td>
                       <td style={{ padding: "6px 8px" }}><a href={h.url} target="_blank" rel="noreferrer" style={{ color: COLORS.brandBlue }}>{h.title}</a></td>
                       <td style={{ padding: "6px 8px" }}><span style={{ fontSize: 11, fontWeight: 600, padding: "1px 7px", borderRadius: 8, background: h.status === "published" ? "#E9F6E3" : h.status === "draft" ? "#FEF1E9" : "#F1F3F5", color: h.status === "published" ? "#3F7F27" : h.status === "draft" ? "#C25A17" : COLORS.ink3 }}>{h.status === "published" ? "Đã xuất bản" : h.status === "draft" ? "Nháp" : h.status}</span></td>
                       <td style={{ padding: "6px 8px", color: COLORS.ink3 }}>{h.aiUsed ? "✓" : "—"}</td>
