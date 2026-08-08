@@ -45,6 +45,20 @@ oc -n ac-portal-dev create secret generic ns-web-webhook-secret \
   --from-literal=secretToken="$(openssl rand -hex 20)"
 ```
 
+## 3b. Namespace quota for in-namespace builds
+
+The Docker build pod requests up to 8Gi. `ac-portal-prod` shipped with an 8Gi
+total `limits.memory` quota, which the build exceeds alongside running pods.
+Raise it (or run "build once in ac-portal-dev, promote image" instead):
+
+```bash
+oc -n ac-portal-prod patch resourcequota ac-portal-quota --type=merge \
+  -p '{"spec":{"hard":{"limits.memory":"16Gi","requests.memory":"12Gi","limits.cpu":"8","requests.cpu":"6"}}}'
+```
+
+`ac-portal-dev` already has ample quota (48Gi). Also grant `pipelines-scc` and
+mirror scanner images once per cluster (§1–§2).
+
 ## 4. GitHub webhook
 
 Point `https://<ns-web-el route>/` (see `oc -n ac-portal-dev get route ns-web-el`)

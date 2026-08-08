@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 # Multi-stage build for the FPT-IS Next Gen Service site (Next.js standalone).
-# Public UBI mirror so no registry pull-secret is required in-cluster.
-FROM registry.access.redhat.com/ubi9/nodejs-20:latest AS base
+# Base is mirrored into the internal registry (nodes pull it fast/reliably;
+# external registry.access.redhat.com pulls were slow on some nodes).
+FROM image-registry.openshift-image-registry.svc:5000/ac-portal-dev/ubi9-nodejs-20:latest AS base
 
 # ---- deps: full install (build needs devDependencies) ----
 FROM base AS deps
