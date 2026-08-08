@@ -11,6 +11,7 @@ import {
   SIDEBAR, TOPBAR, POSTS_VIEW_UI, ADMIN_UI,
 } from "@/data/cms";
 import { COLORS, RADIUS } from "@/lib/tokens";
+import { PROVIDERS_PUBLIC } from "@/lib/providers";
 
 type View = "posts" | "editor" | "taxonomy" | "feeds" | "inbox" | "translate" | "api" | "admin" | "aistudio";
 
@@ -35,6 +36,7 @@ type SiteSettings = {
   aiScheduleEnabled: boolean;
   aiScheduleHour: number;
   aiFeeds: string[];
+  aiProvider: string;
   aiModel: string;
   aiApiKeySet: boolean;
   aiApiKeyHint: string;
@@ -174,7 +176,8 @@ export default function CmsApp() {
   const [aiLog, setAiLog] = useState<string[]>([]);
   const [aiFeedInput, setAiFeedInput] = useState("");
 
-  // AI provider config (Cấu hình API): paste token → get models → choose → save
+  // AI provider config (Cấu hình API): pick provider → paste token → get models → choose → save
+  const [aiProviderSel, setAiProviderSel] = useState("anthropic");
   const [aiKeyInput, setAiKeyInput] = useState("");
   const [aiKeyShow, setAiKeyShow] = useState(false);
   const [aiModelList, setAiModelList] = useState<{ id: string; name: string }[]>([]);
@@ -209,7 +212,7 @@ export default function CmsApp() {
   useEffect(() => {
     refreshPosts();
     fetch("/api/v1/me", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then(setMe); }).catch(() => {});
-    fetch("/api/v1/settings", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then((s: SiteSettings) => { setSettings(s); setAiModelSel(s.aiModel || ""); }); }).catch(() => {});
+    fetch("/api/v1/settings", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then((s: SiteSettings) => { setSettings(s); setAiModelSel(s.aiModel || ""); setAiProviderSel(s.aiProvider || "anthropic"); }); }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -237,7 +240,7 @@ export default function CmsApp() {
       const res = await fetch("/api/v1/ai/models", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(aiKeyInput.trim() ? { token: aiKeyInput.trim() } : {}),
+        body: JSON.stringify({ provider: aiProviderSel, ...(aiKeyInput.trim() ? { token: aiKeyInput.trim() } : {}) }),
       });
       const d = await res.json();
       if (res.ok && Array.isArray(d.models)) {
@@ -255,7 +258,7 @@ export default function CmsApp() {
   async function aiSaveConfig() {
     if (!settings) return;
     setAiCfgBusy(true);
-    const body: Record<string, unknown> = { aiModel: aiModelSel };
+    const body: Record<string, unknown> = { aiProvider: aiProviderSel, aiModel: aiModelSel };
     if (aiKeyInput.trim()) body.aiApiKey = aiKeyInput.trim();
     try {
       const res = await fetch("/api/v1/settings", {
@@ -267,8 +270,9 @@ export default function CmsApp() {
         const s: SiteSettings = await res.json();
         setSettings(s);
         setAiModelSel(s.aiModel || "");
+        setAiProviderSel(s.aiProvider || "anthropic");
         setAiKeyInput("");
-        setAiCfgMsg(`✅ Đã lưu · model: ${s.aiModel}${s.aiApiKeySet ? ` · token: ${s.aiApiKeyHint}` : ""}`);
+        setAiCfgMsg(`✅ Đã lưu · ${s.aiProvider} · model: ${s.aiModel}${s.aiApiKeySet ? ` · token: ${s.aiApiKeyHint}` : ""}`);
       } else {
         const d = await res.json().catch(() => ({}));
         setAiCfgMsg(`❌ ${d.error || res.status}`);
@@ -992,6 +996,7 @@ export default function CmsApp() {
   function ApiView() {
     const activeModels = API_PROVIDERS.find((p) => p.name === provider)?.models ?? [];
     const canEditAi = me?.isAdmin ?? true;
+    const curProvider = PROVIDERS_PUBLIC.find((p) => p.id === aiProviderSel) ?? PROVIDERS_PUBLIC[0];
     const dropdownModels =
       aiModelList.length > 0
         ? aiModelList
@@ -1005,23 +1010,44 @@ export default function CmsApp() {
           <PanelHead
             right={
               <span style={{ fontSize: 12.5, color: settings?.aiApiKeySet ? COLORS.brandGreen : COLORS.ink3 }}>
+                {settings?.aiProvider ? `${settings.aiProvider} · ` : ""}
                 {settings?.aiApiKeySet ? `Token: ${settings.aiApiKeyHint}` : "Chưa có token"}
-                {settings?.aiModel ? ` · Model: ${settings.aiModel}` : ""}
+                {settings?.aiModel ? ` · ${settings.aiModel}` : ""}
               </span>
             }
           >
-            Kết nối Anthropic (đang dùng)
+            Kết nối AI (đang dùng)
           </PanelHead>
           <div style={{ fontSize: 12.5, color: COLORS.ink3, margin: "6px 0 14px" }}>
-            Dán API token → <b>Lấy model</b> để tải danh sách từ Anthropic → chọn model → <b>Lưu</b>. Token được lưu phía server và không hiển thị lại.
+            Chọn nhà cung cấp → dán API token → <b>Lấy model</b> để tải danh sách từ nhà cung cấp → chọn model → <b>Lưu model</b>. Endpoint tự điền theo nhà cung cấp; token lưu phía server và không hiển thị lại.
           </div>
-          <label style={label}>API token</label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 14 }}>
+            <div>
+              <label style={label}>Nhà cung cấp</label>
+              <select
+                value={aiProviderSel}
+                onChange={(e) => { setAiProviderSel(e.target.value); setAiModelList([]); setAiModelSel(""); setAiCfgMsg(""); }}
+                disabled={!canEditAi}
+                style={input}
+              >
+                {PROVIDERS_PUBLIC.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={label}>Endpoint (tự điền)</label>
+              <input readOnly value={curProvider.endpoint} style={{ ...input, fontFamily: "monospace", color: COLORS.ink3 }} />
+            </div>
+          </div>
+          <label style={label}>
+            API token{" "}
+            <a href={curProvider.keyUrl} target="_blank" rel="noreferrer" style={{ color: COLORS.brandBlue, fontWeight: 500 }}>· lấy token ở đâu?</a>
+          </label>
           <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
             <input
               type={aiKeyShow ? "text" : "password"}
               value={aiKeyInput}
               onChange={(e) => setAiKeyInput(e.target.value)}
-              placeholder={settings?.aiApiKeySet ? "•••••• (đã lưu — dán mới để thay)" : "sk-ant-…"}
+              placeholder={settings?.aiApiKeySet && settings.aiProvider === aiProviderSel ? "•••••• (đã lưu — dán mới để thay)" : curProvider.keyHint}
               disabled={!canEditAi || aiCfgBusy}
               style={{ ...input, flex: 1, fontFamily: "monospace" }}
             />
@@ -1041,7 +1067,7 @@ export default function CmsApp() {
                 <option key={m.id} value={m.id}>{m.name} ({m.id})</option>
               ))}
             </select>
-            <button type="button" onClick={aiSaveConfig} disabled={!canEditAi || aiCfgBusy || !aiModelSel} style={{ ...btnBlue, opacity: canEditAi && aiModelSel && !aiCfgBusy ? 1 : 0.5 }}>Lưu</button>
+            <button type="button" onClick={aiSaveConfig} disabled={!canEditAi || aiCfgBusy || !aiModelSel} style={{ ...btnBlue, opacity: canEditAi && aiModelSel && !aiCfgBusy ? 1 : 0.5 }}>Lưu model</button>
           </div>
           {aiCfgMsg && <div style={{ fontSize: 12.5, color: COLORS.ink2, marginTop: 10 }}>{aiCfgMsg}</div>}
           {!canEditAi && <div style={{ fontSize: 12.5, color: COLORS.ink3, marginTop: 8 }}>Chỉ Quản trị mới sửa được cấu hình AI.</div>}

@@ -10,11 +10,11 @@
 
 import { upsertPost } from "@/lib/store";
 import { getSettings } from "@/lib/settings";
+import { getProvider, chatComplete } from "@/lib/providers";
 import type { Block } from "@/data/posts";
 
 const ENV_AI_API_KEY = process.env.AI_API_KEY || process.env.ANTHROPIC_API_KEY || "";
 const ENV_AI_MODEL = process.env.AI_MODEL || "";
-const AI_BASE = process.env.AI_BASE_URL || "https://api.anthropic.com";
 const DEFAULT_MODEL = "claude-sonnet-5";
 
 export type IngestResult = {
@@ -82,8 +82,10 @@ async function aiEditTranslate(
 ): Promise<{ title: string; blocks: Block[]; aiUsed: boolean }> {
   const clipped = text.slice(0, 12000);
 
-  // Token + model come from the CMS "Cấu hình API" (settings) first, then env.
+  // Provider + token + model come from the CMS "Cấu hình API" (settings) first,
+  // then env. The provider decides Anthropic-style vs OpenAI-compatible calls.
   const settings = await getSettings();
+  const provider = getProvider(settings.aiProvider);
   const apiKey = settings.aiApiKey || ENV_AI_API_KEY;
   const model = settings.aiModel || ENV_AI_MODEL || DEFAULT_MODEL;
 
@@ -101,23 +103,7 @@ async function aiEditTranslate(
     `Trả về JSON thuần: {"title": "...", "paragraphs": ["...", "..."]}. ` +
     `Giữ giọng văn chuyên nghiệp, súc tích.\n\nTIÊU ĐỀ GỐC: ${title}\n\nNỘI DUNG:\n${clipped}`;
 
-  const res = await fetch(`${AI_BASE}/v1/messages`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 2000,
-      messages: [{ role: "user", content: prompt }],
-    }),
-    signal: AbortSignal.timeout(60000),
-  });
-  if (!res.ok) throw new Error(`AI ${model} → HTTP ${res.status}: ${await res.text()}`);
-  const data = await res.json();
-  const raw = data?.content?.[0]?.text ?? "";
+  const raw = await chatComplete(provider, apiKey, model, prompt);
   let parsed: { title?: string; paragraphs?: string[] };
   try {
     parsed = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? raw);

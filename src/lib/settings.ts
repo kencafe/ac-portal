@@ -18,9 +18,10 @@ export type Settings = {
   aiScheduleEnabled: boolean;
   aiScheduleHour: number; // 0–23, cluster TZ (default 5 = 05:00)
   aiFeeds: string[]; // RSS/Atom source URLs the daily job pulls from
-  // AI provider config (Anthropic Messages API).
+  // AI provider config.
+  aiProvider: string; // provider id from lib/providers (e.g. "anthropic", "xai", "qwen")
   aiModel: string; // selected model id, e.g. "claude-sonnet-5"
-  aiApiKey: string; // Anthropic token — SECRET; never returned by the API (see publicSettings)
+  aiApiKey: string; // token for the active provider — SECRET; never returned (see publicSettings)
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -33,6 +34,7 @@ export const DEFAULT_SETTINGS: Settings = {
   aiScheduleEnabled: false,
   aiScheduleHour: 5,
   aiFeeds: [],
+  aiProvider: "anthropic",
   aiModel: "claude-sonnet-5",
   aiApiKey: "",
 };
