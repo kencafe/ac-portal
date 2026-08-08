@@ -112,6 +112,8 @@ spec:
             - --allowed-group=blog-admin
             - --email-domain=*
             - --skip-provider-button=true
+            # Allow the post-logout redirect (rd=) to the Keycloak RP-logout URL.
+            - --whitelist-domain=sso.appcarrier.cloud
             - --pass-access-token=true
             - --set-xauthrequest=true
             - --pass-user-headers=true

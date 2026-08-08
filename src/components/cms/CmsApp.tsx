@@ -7,7 +7,7 @@ import {
   FEEDS, Feed, FEEDS_UI, FEEDS_STATS,
   INBOX, InboxItem, INBOX_UI,
   TRANSLATE_UI, TRANSLATE_CONFIG, GLOSSARY, GLOSSARY_UI, PREPUBLISH_CHECKLIST,
-  API_PROVIDERS, API_DEFAULTS, API_UI, PUBLIC_API,
+  API_UI, PUBLIC_API,
   SIDEBAR, TOPBAR, POSTS_VIEW_UI, ADMIN_UI,
 } from "@/data/cms";
 import { COLORS, RADIUS } from "@/lib/tokens";
@@ -32,10 +32,13 @@ type SiteSettings = {
   postsPerPage: number;
   defaultLanguage: "vi" | "en";
   requireApprovalToPublish: boolean;
-  autoPublishTranslations: boolean;
+  autoPublishAiPosts: boolean;
   aiScheduleEnabled: boolean;
   aiScheduleHour: number;
   aiFeeds: string[];
+  aiTopics: string[];
+  aiAutoPublish: boolean;
+  aiDiscoverCount: number;
   aiProvider: string;
   aiModel: string;
   aiApiKeySet: boolean;
@@ -158,11 +161,6 @@ export default function CmsApp() {
   const [depth, setDepth] = useState(TRANSLATE_CONFIG.depthDefault);
 
   // API config
-  const [provider, setProvider] = useState(API_DEFAULTS.activeProvider);
-  const [api, setApi] = useState({ ...API_DEFAULTS });
-  const [showKey, setShowKey] = useState(false);
-  const [tested, setTested] = useState(false);
-  const [apiSaved, setApiSaved] = useState(false);
   const [rotated, setRotated] = useState(false);
 
   // Account (from oauth-proxy) + site settings
@@ -184,6 +182,11 @@ export default function CmsApp() {
   const [aiModelSel, setAiModelSel] = useState("");
   const [aiCfgBusy, setAiCfgBusy] = useState(false);
   const [aiCfgMsg, setAiCfgMsg] = useState("");
+
+  // AI auto-discovery + ingest history
+  type HistItem = { at: string; mode: string; source: string; url: string; title: string; slug: string; status: string; aiUsed: boolean; note?: string };
+  const [aiHistory, setAiHistory] = useState<HistItem[]>([]);
+  const [aiTopicsInput, setAiTopicsInput] = useState("");
 
   function makeDraft(): SeedPost {
     return { ...NEW_DRAFT_DEFAULTS, blocks: [["p", ""]] } as SeedPost;
@@ -212,7 +215,8 @@ export default function CmsApp() {
   useEffect(() => {
     refreshPosts();
     fetch("/api/v1/me", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then(setMe); }).catch(() => {});
-    fetch("/api/v1/settings", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then((s: SiteSettings) => { setSettings(s); setAiModelSel(s.aiModel || ""); setAiProviderSel(s.aiProvider || "anthropic"); }); }).catch(() => {});
+    fetch("/api/v1/settings", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then((s: SiteSettings) => { setSettings(s); setAiModelSel(s.aiModel || ""); setAiProviderSel(s.aiProvider || "anthropic"); setAiTopicsInput((s.aiTopics || []).join(", ")); }); }).catch(() => {});
+    fetch("/api/v1/ai/history", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then((d) => setAiHistory(d.results || [])); }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -286,10 +290,52 @@ export default function CmsApp() {
   function aiLogLine(s: string) {
     setAiLog((l) => [s, ...l].slice(0, 30));
   }
+  async function loadHistory() {
+    try {
+      const r = await fetch("/api/v1/ai/history", { cache: "no-store" });
+      if (r.ok) setAiHistory((await r.json()).results || []);
+    } catch { /* ignore */ }
+  }
+  async function saveDiscoverCfg() {
+    if (!settings) return;
+    const topics = aiTopicsInput.split(",").map((t) => t.trim()).filter(Boolean);
+    try {
+      const res = await fetch("/api/v1/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aiTopics: topics, aiAutoPublish: settings.aiAutoPublish, aiDiscoverCount: settings.aiDiscoverCount }),
+      });
+      if (res.ok) {
+        const s: SiteSettings = await res.json();
+        setSettings(s);
+        setAiTopicsInput((s.aiTopics || []).join(", "));
+        setSettingsSaved(true);
+        setTimeout(() => setSettingsSaved(false), 2500);
+      }
+    } catch { /* ignore */ }
+  }
+  async function aiDiscover() {
+    setAiBusy(true);
+    aiLogLine("⏳ AI đang tự tìm bài phù hợp…");
+    try {
+      const res = await fetch("/api/v1/ai/discover", { method: "POST" });
+      const d = await res.json();
+      if (res.ok) {
+        aiLogLine(`✨ Quét ${d.candidates} bài · chọn & xử lý ${d.picked}`);
+        refreshPosts();
+        loadHistory();
+      } else {
+        aiLogLine(`❌ ${d.error || res.status}`);
+      }
+    } catch (e) {
+      aiLogLine(`❌ ${(e as Error).message}`);
+    }
+    setAiBusy(false);
+  }
   async function aiIngest(publish: boolean) {
     if (!aiUrl.trim()) return;
     setAiBusy(true);
-    aiLogLine(`⏳ ${publish ? "Dịch & xuất bản" : "Dịch → nháp"}: ${aiUrl}`);
+    aiLogLine(`⏳ ${publish ? "Biên tập & xuất bản" : "Biên tập → nháp"}: ${aiUrl}`);
     try {
       const res = await fetch("/api/v1/ai/ingest", {
         method: "POST",
@@ -322,15 +368,30 @@ export default function CmsApp() {
     }
     setAiBusy(false);
   }
+  // Persist the feed list immediately so adding/removing a source "just works"
+  // (no separate save step) — this was the cause of "RSS không hoạt động".
+  async function persistFeeds(feeds: string[]) {
+    if (!settings) return;
+    setSettings({ ...settings, aiFeeds: feeds });
+    try {
+      const res = await fetch("/api/v1/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aiFeeds: feeds }),
+      });
+      if (res.ok) setSettings(await res.json());
+    } catch { /* keep optimistic state */ }
+  }
   function addFeed() {
     const u = aiFeedInput.trim();
     if (!u || !settings) return;
-    setSettings({ ...settings, aiFeeds: [...(settings.aiFeeds || []), u] });
+    if ((settings.aiFeeds || []).includes(u)) { setAiFeedInput(""); return; }
+    persistFeeds([...(settings.aiFeeds || []), u]);
     setAiFeedInput("");
   }
   function removeFeed(u: string) {
     if (!settings) return;
-    setSettings({ ...settings, aiFeeds: (settings.aiFeeds || []).filter((f) => f !== u) });
+    persistFeeds((settings.aiFeeds || []).filter((f) => f !== u));
   }
 
   async function togglePublish(slug: string) {
@@ -338,6 +399,15 @@ export default function CmsApp() {
     const next: PostStatus = cur?.status === "Đã xuất bản" ? "Bản nháp" : "Đã xuất bản";
     setPosts((ps) => ps.map((p) => (p.slug === slug ? { ...p, status: next } : p))); // optimistic
     await fetch(`/api/v1/posts/${slug}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: CMS2ST[next] }) }).catch(() => {});
+    refreshPosts();
+  }
+  async function deletePost(slug: string, title: string) {
+    if (!window.confirm(`Xoá vĩnh viễn bài "${title}"? Hành động này không hoàn tác được.`)) return;
+    setPosts((ps) => ps.filter((p) => p.slug !== slug)); // optimistic
+    const res = await fetch(`/api/v1/posts/${slug}`, { method: "DELETE" }).catch(() => null);
+    if (!res || !res.ok) {
+      alert(res?.status === 403 ? "Chỉ Quản trị mới được xoá bài." : "Xoá thất bại.");
+    }
     refreshPosts();
   }
   function editPost(p: SeedPost) {
@@ -449,9 +519,9 @@ export default function CmsApp() {
       <div style={{ display: "grid", gap: 16, maxWidth: 860 }}>
         {/* Manual hot-news */}
         <section style={panelPad}>
-          <PanelHead>Dán link → AI biên tập, dịch & xuất bản ngay (tin hot)</PanelHead>
+          <PanelHead>Dán link → AI biên tập & xuất bản ngay (tin hot)</PanelHead>
           <div style={{ fontSize: 12.5, color: COLORS.ink3, margin: "6px 0 12px" }}>
-            AI đọc bài từ URL, biên tập + dịch sang tiếng Việt, rồi tạo bài. Dùng cho tin nóng cần đăng ngay.
+            AI đọc bài từ URL rồi biên tập lại theo phong cách của blog, tạo bài hoàn chỉnh. Dùng cho tin nóng cần đăng ngay.
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <input
@@ -461,11 +531,9 @@ export default function CmsApp() {
               onChange={(e) => setAiUrl(e.target.value)}
               disabled={aiBusy}
             />
-            <button type="button" onClick={() => aiIngest(false)} disabled={aiBusy || !aiUrl} style={{ ...btnSm, opacity: aiBusy || !aiUrl ? 0.5 : 1 }}>
-              Dịch → Nháp
-            </button>
+            <button type="button" onClick={() => aiIngest(false)} disabled={aiBusy || !aiUrl} style={{ ...btnSm, opacity: aiBusy || !aiUrl ? 0.5 : 1 }}>Biên tập → Nháp</button>
             <button type="button" onClick={() => aiIngest(true)} disabled={aiBusy || !aiUrl} style={{ ...btnBlue, opacity: aiBusy || !aiUrl ? 0.5 : 1 }}>
-              ✨ Dịch & Xuất bản ngay
+              ✨ Biên tập & Xuất bản ngay
             </button>
           </div>
         </section>
@@ -517,7 +585,41 @@ export default function CmsApp() {
                 </div>
               ))}
               <div style={{ fontSize: 11.5, color: COLORS.ink3, marginTop: 10 }}>
-                CronJob OpenShift <code>ac-portal-ai-ingest</code> gọi endpoint lúc {String(settings.aiScheduleHour).padStart(2, "0")}:00. Bài mới ra {settings.autoPublishTranslations ? "xuất bản ngay" : "dạng nháp chờ duyệt"} (đổi ở Quản trị).
+                CronJob OpenShift <code>ac-portal-ai-ingest</code> gọi endpoint lúc {String(settings.aiScheduleHour).padStart(2, "0")}:00. Bài mới ra {settings.autoPublishAiPosts ? "xuất bản ngay" : "dạng nháp chờ duyệt"} (đổi ở Quản trị).
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Auto-discover — AI finds good articles and publishes them */}
+        <section style={{ ...panelPad, borderColor: COLORS.brandGreen }}>
+          <PanelHead
+            right={
+              <button type="button" onClick={aiDiscover} disabled={aiBusy || (settings?.aiFeeds?.length ?? 0) === 0} style={{ ...btnBlue, height: 30, opacity: aiBusy || !(settings?.aiFeeds?.length) ? 0.5 : 1 }}>
+                ✨ Tự tìm & xuất bản ngay
+              </button>
+            }
+          >
+            AI tự tìm bài hay & xuất bản
+          </PanelHead>
+          <div style={{ fontSize: 12.5, color: COLORS.ink3, margin: "6px 0 14px" }}>
+            AI quét các nguồn ở trên, bỏ bài đã lấy (theo lịch sử), tự chọn bài <b>phù hợp & chất lượng nhất</b> theo chủ đề rồi biên tập — chạy hằng ngày lúc {String(settings?.aiScheduleHour ?? 5).padStart(2, "0")}:00 hoặc bấm chạy ngay. Bạn không cần vào tìm bài.
+          </div>
+          {settings && (
+            <div>
+              <label style={label}>Chủ đề quan tâm (cách nhau bởi dấu phẩy)</label>
+              <input style={{ ...input, marginBottom: 12 }} value={aiTopicsInput} onChange={(e) => setAiTopicsInput(e.target.value)} disabled={!isAdmin} placeholder="cloud, AI, DevOps, Kubernetes, security" />
+              <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5 }}>
+                  <input type="checkbox" checked={settings.aiAutoPublish} disabled={!isAdmin} onChange={(e) => setSettings({ ...settings, aiAutoPublish: e.target.checked })} />
+                  Tự động xuất bản (không thì lưu nháp chờ duyệt)
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5 }}>
+                  Số bài mỗi lần
+                  <input type="number" min={1} max={10} value={settings.aiDiscoverCount} disabled={!isAdmin} onChange={(e) => setSettings({ ...settings, aiDiscoverCount: Math.max(1, Math.min(10, Number(e.target.value) || 1)) })} style={{ ...input, width: 64, height: 32 }} />
+                </label>
+                <button type="button" onClick={saveDiscoverCfg} disabled={!isAdmin} style={{ ...btnBlue, height: 32, marginLeft: "auto", opacity: isAdmin ? 1 : 0.5 }}>Lưu cấu hình</button>
+                {settingsSaved && <span style={{ fontSize: 12.5, color: COLORS.brandGreen }}>Đã lưu</span>}
               </div>
             </div>
           )}
@@ -525,12 +627,42 @@ export default function CmsApp() {
 
         {/* Activity log */}
         <section style={panelPad}>
-          <PanelHead>Nhật ký</PanelHead>
+          <PanelHead>Nhật ký (phiên hiện tại)</PanelHead>
           {aiLog.length === 0 ? (
             <div style={{ fontSize: 12.5, color: COLORS.ink3, marginTop: 8 }}>Chưa có hoạt động.</div>
           ) : (
             <div style={{ marginTop: 8, fontSize: 12.5, fontFamily: "monospace", color: COLORS.ink2, display: "grid", gap: 4 }}>
               {aiLog.map((l, i) => <div key={i}>{l}</div>)}
+            </div>
+          )}
+        </section>
+
+        {/* Ingest history — persistent */}
+        <section style={panelPad}>
+          <PanelHead right={<button type="button" onClick={loadHistory} style={{ ...btnSm, height: 30 }}>↻ Tải lại</button>}>
+            Lịch sử lấy bài ({aiHistory.length})
+          </PanelHead>
+          <div style={{ fontSize: 12.5, color: COLORS.ink3, margin: "6px 0 10px" }}>Đã lấy bài nào, từ đâu, khi nào, trạng thái gì — để bạn theo dõi dù không đăng nhập thường xuyên.</div>
+          {aiHistory.length === 0 ? (
+            <div style={{ fontSize: 12.5, color: COLORS.ink3 }}>Chưa có lịch sử.</div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+                <thead>
+                  <tr>{["Thời gian", "Nguồn", "Tiêu đề", "Trạng thái", "AI"].map((h) => <th key={h} style={{ textAlign: "left", padding: "6px 8px", color: COLORS.ink3, fontWeight: 600, borderBottom: `1px solid ${COLORS.split}`, whiteSpace: "nowrap" }}>{h}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {aiHistory.map((h, i) => (
+                    <tr key={i} style={{ borderBottom: `1px solid ${COLORS.split}` }}>
+                      <td style={{ padding: "6px 8px", whiteSpace: "nowrap", color: COLORS.ink3 }}>{new Date(h.at).toLocaleString("vi-VN")}</td>
+                      <td style={{ padding: "6px 8px", color: COLORS.ink3 }}>{h.mode === "discover" ? "AI tự tìm" : h.mode === "cron" ? "Lịch" : "Thủ công"}</td>
+                      <td style={{ padding: "6px 8px" }}><a href={h.url} target="_blank" rel="noreferrer" style={{ color: COLORS.brandBlue }}>{h.title}</a></td>
+                      <td style={{ padding: "6px 8px" }}><span style={{ fontSize: 11, fontWeight: 600, padding: "1px 7px", borderRadius: 8, background: h.status === "published" ? "#E9F6E3" : h.status === "draft" ? "#FEF1E9" : "#F1F3F5", color: h.status === "published" ? "#3F7F27" : h.status === "draft" ? "#C25A17" : COLORS.ink3 }}>{h.status === "published" ? "Đã xuất bản" : h.status === "draft" ? "Nháp" : h.status}</span></td>
+                      <td style={{ padding: "6px 8px", color: COLORS.ink3 }}>{h.aiUsed ? "✓" : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </section>
@@ -606,8 +738,8 @@ export default function CmsApp() {
                 {toggle(settings.requireApprovalToPublish, () => set("requireApprovalToPublish", !settings.requireApprovalToPublish))}
               </div>
               <div style={{ ...row, borderBottom: "none" }}>
-                <span>{ADMIN_UI.site.fields.autoPublishTranslations}</span>
-                {toggle(settings.autoPublishTranslations, () => set("autoPublishTranslations", !settings.autoPublishTranslations))}
+                <span>{ADMIN_UI.site.fields.autoPublishAiPosts}</span>
+                {toggle(settings.autoPublishAiPosts, () => set("autoPublishAiPosts", !settings.autoPublishAiPosts))}
               </div>
             </div>
           )}
@@ -674,6 +806,7 @@ export default function CmsApp() {
                   <div style={{ display: "flex", gap: 6 }}>
                     <button type="button" onClick={() => editPost(p)} style={{ ...btnSm, height: 28, padding: "0 10px" }}>{POSTS_VIEW_UI.editButton}</button>
                     <button type="button" onClick={() => togglePublish(p.slug)} style={{ ...btnSm, height: 28, padding: "0 10px" }}>{p.status === "Đã xuất bản" ? POSTS_VIEW_UI.hideButton : POSTS_VIEW_UI.publishButton}</button>
+                    {(me?.isAdmin ?? true) && <button type="button" onClick={() => deletePost(p.slug, p.title)} title="Xoá vĩnh viễn" style={{ ...btnSm, height: 28, padding: "0 10px", color: "#C0392B", borderColor: "#E7B4AC" }}>Xoá</button>}
                   </div>
                 </div>
               ))}
@@ -994,7 +1127,6 @@ export default function CmsApp() {
   }
 
   function ApiView() {
-    const activeModels = API_PROVIDERS.find((p) => p.name === provider)?.models ?? [];
     const canEditAi = me?.isAdmin ?? true;
     const curProvider = PROVIDERS_PUBLIC.find((p) => p.id === aiProviderSel) ?? PROVIDERS_PUBLIC[0];
     const dropdownModels =
@@ -1073,52 +1205,6 @@ export default function CmsApp() {
           {!canEditAi && <div style={{ fontSize: 12.5, color: COLORS.ink3, marginTop: 8 }}>Chỉ Quản trị mới sửa được cấu hình AI.</div>}
         </section>
 
-        <div style={panel}>
-          <PanelHead>{API_UI.providersPanelHead}</PanelHead>
-          <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-            {API_PROVIDERS.map((p) => {
-              const active = p.name === provider;
-              return (
-                <button key={p.name} type="button" onClick={() => { setProvider(p.name); setApi((a) => ({ ...a, model: p.models[0] })); }} style={{ textAlign: "left", cursor: "pointer", padding: 14, borderRadius: 8, border: `1px solid ${active ? COLORS.brandBlue : COLORS.split}`, background: active ? "#F4F9FD" : "#fff" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${active ? COLORS.brandBlue : COLORS.border}`, background: active ? COLORS.brandBlue : "#fff" }} />
-                    <span style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink }}>{p.name}</span>
-                    <span style={{ marginLeft: "auto", fontSize: 11.5, color: active ? COLORS.brandBlue : COLORS.ink3 }}>{active ? API_UI.providerStateInUse : API_UI.providerStateUnconfigured}</span>
-                  </div>
-                  <div style={{ fontSize: 12.5, color: COLORS.ink3, marginTop: 6, paddingLeft: 24 }}>{p.desc}</div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div style={panel}>
-          <PanelHead>{API_UI.connectionPanelHead.replace("{provider}", provider)}</PanelHead>
-          <div style={{ padding: 16 }}>
-            <label style={label}>{API_UI.fields.endpoint.label}</label>
-            <input value={api.endpoint} onChange={(e) => setApi({ ...api, endpoint: e.target.value })} style={{ ...input, marginBottom: 14 }} />
-            <label style={label}>{API_UI.fields.apiKey.label}</label>
-            <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
-              <input type={showKey ? "text" : "password"} value={api.key} onChange={(e) => setApi({ ...api, key: e.target.value })} style={{ ...input, fontFamily: "monospace" }} />
-              <button type="button" onClick={() => setShowKey(!showKey)} style={btnSm}>{showKey ? API_UI.keyHide : API_UI.keyShow}</button>
-            </div>
-            <div style={{ fontSize: 12, color: COLORS.ink3, marginBottom: 14 }}>{API_UI.fields.apiKeyHint}</div>
-            <label style={label}>{API_UI.fields.model}</label>
-            <select value={api.model} onChange={(e) => setApi({ ...api, model: e.target.value })} style={{ ...input, marginBottom: 14 }}>{activeModels.map((m) => <option key={m}>{m}</option>)}</select>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
-              <div><label style={label}>{API_UI.fields.temperature}</label><input value={api.temp} onChange={(e) => setApi({ ...api, temp: e.target.value })} style={input} /></div>
-              <div><label style={label}>{API_UI.fields.maxTokens}</label><input value={api.maxTokens} onChange={(e) => setApi({ ...api, maxTokens: e.target.value })} style={input} /></div>
-              <div><label style={label}>{API_UI.fields.timeout}</label><input value={api.timeout} onChange={(e) => setApi({ ...api, timeout: e.target.value })} style={input} /></div>
-            </div>
-            <label style={label}>{API_UI.fields.systemPrompt}</label>
-            <textarea value={api.prompt} onChange={(e) => setApi({ ...api, prompt: e.target.value })} rows={4} style={{ ...input, height: "auto", padding: "10px 12px", lineHeight: 1.6, marginBottom: 14 }} />
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <button type="button" onClick={() => setTested(true)} style={btnSm}>{API_UI.testButton}</button>
-              {tested && <span style={{ fontSize: 13, color: COLORS.brandGreen }}>{API_UI.testResult}</span>}
-              <button type="button" onClick={() => setApiSaved(true)} style={{ ...btnBlue, marginLeft: "auto" }}>{apiSaved ? API_UI.saveButtonDone : API_UI.saveButton}</button>
-            </div>
-          </div>
-        </div>
 
         <div style={panel}>
           <PanelHead>{API_UI.limitsPanelHead}</PanelHead>

@@ -28,8 +28,8 @@ spec:
                 - >
                   curl -sS -X POST
                   -H "X-Cron-Token: $AI_CRON_TOKEN"
-                  http://ac-portal.$(NAMESPACE).svc:3000/api/v1/ai/run-feeds
-                  && echo "\nAI ingest triggered"
+                  http://ac-portal.$(NAMESPACE).svc:3000/api/v1/ai/discover
+                  && echo "\nAI discover+publish triggered"
               env:
                 - name: NAMESPACE
                   valueFrom: { fieldRef: { fieldPath: metadata.namespace } }

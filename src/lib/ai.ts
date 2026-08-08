@@ -11,6 +11,7 @@
 import { upsertPost } from "@/lib/store";
 import { getSettings } from "@/lib/settings";
 import { getProvider, chatComplete } from "@/lib/providers";
+import { addHistory, seenUrls, type IngestMode } from "@/lib/history";
 import type { Block } from "@/data/posts";
 
 const ENV_AI_API_KEY = process.env.AI_API_KEY || process.env.ANTHROPIC_API_KEY || "";
@@ -62,21 +63,37 @@ async function fetchText(url: string): Promise<string> {
 
 // Extract up to `limit` item links from an RSS/Atom feed.
 export function parseFeedLinks(xml: string, limit = 5): string[] {
-  const links: string[] = [];
-  const items = xml.match(/<(item|entry)[\s\S]*?<\/\1>/gi) || [];
-  for (const it of items) {
-    const link =
-      it.match(/<link[^>]*href=["']([^"']+)["']/i)?.[1] ||
-      it.match(/<link>([^<]+)<\/link>/i)?.[1] ||
-      it.match(/<guid[^>]*>([^<]+)<\/guid>/i)?.[1];
-    if (link) links.push(link.trim());
-    if (links.length >= limit) break;
-  }
-  return links;
+  return parseFeedItems(xml, limit).map((i) => i.url);
 }
 
-// AI edit + translate to Vietnamese. Returns a title + content blocks.
-async function aiEditTranslate(
+export type FeedItem = { title: string; url: string };
+
+// Extract {title, link} pairs from an RSS/Atom feed.
+export function parseFeedItems(xml: string, limit = 20): FeedItem[] {
+  const out: FeedItem[] = [];
+  const items = xml.match(/<(item|entry)[\s\S]*?<\/\1>/gi) || [];
+  for (const it of items) {
+    const url = (
+      it.match(/<link[^>]*href=["']([^"']+)["']/i)?.[1] ||
+      it.match(/<link>([^<]+)<\/link>/i)?.[1] ||
+      it.match(/<guid[^>]*>([^<]+)<\/guid>/i)?.[1] ||
+      ""
+    ).trim();
+    const title = (it.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "")
+      .replace(/<!\[CDATA\[|\]\]>/g, "")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&amp;/g, "&")
+      .trim();
+    if (url) out.push({ title: title || url, url });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+// AI biên tập: rewrite/clean up the raw content into a publish-ready Vietnamese
+// article (the AI plays the editor's role instead of a person). Returns a title
+// + content blocks.
+async function aiEdit(
   title: string,
   text: string,
 ): Promise<{ title: string; blocks: Block[]; aiUsed: boolean }> {
@@ -90,18 +107,24 @@ async function aiEditTranslate(
   const model = settings.aiModel || ENV_AI_MODEL || DEFAULT_MODEL;
 
   if (!apiKey) {
-    // Honest offline fallback — NOT a real translation.
+    // Honest offline fallback — the AI editor hasn't run.
     const blocks: Block[] = [
-      { kind: "p", text: "[AI chưa cấu hình khóa — đây là nội dung gốc chưa dịch]" },
+      { kind: "p", text: "[AI chưa cấu hình khóa — chưa biên tập, đây là nội dung gốc]" },
       { kind: "p", text: clipped.slice(0, 1500) },
     ];
     return { title: title || "Bài nhập tự động", blocks, aiUsed: false };
   }
 
   const prompt =
-    `Bạn là biên tập viên kỹ thuật. Hãy biên tập lại và DỊCH SANG TIẾNG VIỆT bài viết sau. ` +
-    `Trả về JSON thuần: {"title": "...", "paragraphs": ["...", "..."]}. ` +
-    `Giữ giọng văn chuyên nghiệp, súc tích.\n\nTIÊU ĐỀ GỐC: ${title}\n\nNỘI DUNG:\n${clipped}`;
+    `Bạn là biên tập viên kỹ thuật của blog FPT-IS Next Gen Service. Hãy BIÊN TẬP LẠI nội dung sau thành một bài viết hoàn chỉnh, chuẩn để xuất bản, bằng tiếng Việt.\n` +
+    `PHONG CÁCH NHÀ (bắt buộc bám theo):\n` +
+    `- Tiếng Việt kỹ thuật, chuyên nghiệp, súc tích; câu ngắn gọn, đi thẳng vấn đề, không sáo rỗng, không câu view.\n` +
+    `- Tiêu đề rõ nghĩa, đúng trọng tâm. Mở bài nêu ngay bối cảnh/insight thực dụng (kiểu SRE/DevOps).\n` +
+    `- Giữ nguyên thuật ngữ tiếng Anh phổ biến (Kubernetes, SRE, latency, error budget…) khi tự nhiên hơn là dịch cứng.\n` +
+    `- Bố cục mạch lạc theo đoạn; mỗi đoạn một ý; ưu tiên nội dung có giá trị hành động.\n` +
+    `- Nếu nội dung gốc là tiếng nước ngoài thì viết lại bằng tiếng Việt theo phong cách trên (không dịch word-by-word).\n` +
+    `Trả về JSON thuần: {"title": "...", "paragraphs": ["...", "..."]}. Không thêm chữ ngoài JSON.\n\n` +
+    `TIÊU ĐỀ GỐC: ${title}\n\nNỘI DUNG:\n${clipped}`;
 
   const raw = await chatComplete(provider, apiKey, model, prompt);
   let parsed: { title?: string; paragraphs?: string[] };
@@ -116,20 +139,20 @@ async function aiEditTranslate(
   return { title: parsed.title || title || "Bài nhập tự động", blocks, aiUsed: true };
 }
 
-// Ingest a single URL → a post. `forcePublish` overrides the settings default
-// (used by the manual "hot news" button).
-export async function ingestUrl(
-  url: string,
-  opts?: { forcePublish?: boolean; cat?: string },
+// Core: run AI edit over raw {title,text} → create a post + log history.
+// Shared by URL ingest and file (Word/PDF) ingest.
+export async function ingestText(
+  rawTitle: string,
+  text: string,
+  opts?: { forcePublish?: boolean; cat?: string; mode?: IngestMode; source?: string; note?: string; url?: string },
 ): Promise<IngestResult> {
   const settings = await getSettings();
-  const html = await fetchText(url);
-  const { title: rawTitle, text } = stripHtml(html);
-  const { title, blocks, aiUsed } = await aiEditTranslate(rawTitle, text);
+  const { title, blocks, aiUsed } = await aiEdit(rawTitle, text);
 
-  const publish = opts?.forcePublish ?? settings.autoPublishTranslations;
+  const publish = opts?.forcePublish ?? settings.autoPublishAiPosts;
   const status: "draft" | "published" = publish ? "published" : "draft";
   const slug = slugify(title);
+  const url = opts?.url ?? opts?.source ?? "";
 
   await upsertPost({
     slug,
@@ -148,21 +171,47 @@ export async function ingestUrl(
     status,
   });
 
-  return { slug, title, status, aiUsed, source: url };
+  await addHistory({
+    at: new Date().toISOString(),
+    mode: opts?.mode ?? "manual",
+    source: opts?.source ?? url ?? "file",
+    url,
+    title,
+    slug,
+    status,
+    aiUsed,
+    note: opts?.note,
+  });
+
+  return { slug, title, status, aiUsed, source: url || (opts?.source ?? "file") };
 }
 
-// Run the daily job over a list of feed URLs. Returns per-item results.
+// Ingest a single URL → a post (fetch + strip HTML, then AI edit).
+export async function ingestUrl(
+  url: string,
+  opts?: { forcePublish?: boolean; cat?: string; mode?: IngestMode; source?: string; note?: string },
+): Promise<IngestResult> {
+  const html = await fetchText(url);
+  const { title: rawTitle, text } = stripHtml(html);
+  return ingestText(rawTitle, text, { ...opts, url, source: opts?.source ?? url });
+}
+
+// Run over a list of feed URLs (manual "Chạy nguồn ngay"). Returns per-item results.
 export async function runFeeds(feedUrls: string[], perFeed = 3): Promise<IngestResult[]> {
   const out: IngestResult[] = [];
+  const seen = await seenUrls();
   for (const feed of feedUrls) {
     try {
       const xml = await fetchText(feed);
       const links = parseFeedLinks(xml, perFeed);
       for (const link of links) {
+        if (seen.has(link)) continue;
         try {
-          out.push(await ingestUrl(link));
+          out.push(await ingestUrl(link, { mode: "cron", source: feed }));
         } catch (e) {
-          console.error(`[ai] ingest failed ${link}:`, (e as Error).message);
+          const msg = (e as Error).message;
+          console.error(`[ai] ingest failed ${link}:`, msg);
+          await addHistory({ at: new Date().toISOString(), mode: "cron", source: feed, url: link, title: link, slug: "", status: "error", aiUsed: false, note: msg.slice(0, 200) });
         }
       }
     } catch (e) {
@@ -170,4 +219,95 @@ export async function runFeeds(feedUrls: string[], perFeed = 3): Promise<IngestR
     }
   }
   return out;
+}
+
+// Ask the AI to pick the most relevant/high-quality candidates for the given
+// topics. Returns the chosen indices. Falls back to the first N when no AI key.
+async function pickBest(
+  candidates: FeedItem[],
+  topics: string[],
+  count: number,
+): Promise<number[]> {
+  const settings = await getSettings();
+  const apiKey = settings.aiApiKey || ENV_AI_API_KEY;
+  if (!apiKey || candidates.length === 0) {
+    return candidates.slice(0, count).map((_, i) => i);
+  }
+  const provider = getProvider(settings.aiProvider);
+  const model = settings.aiModel || ENV_AI_MODEL || DEFAULT_MODEL;
+  const list = candidates.map((c, i) => `${i}. ${c.title}`).join("\n");
+  const prompt =
+    `Chủ đề quan tâm: ${topics.join(", ")}.\n` +
+    `Dưới đây là các bài viết ứng viên (theo số thứ tự). Chọn tối đa ${count} bài PHÙ HỢP NHẤT và CHẤT LƯỢNG NHẤT với các chủ đề trên. ` +
+    `Chỉ trả về JSON: {"picks":[<các số thứ tự>]}. Không giải thích.\n\n${list}`;
+  try {
+    const raw = await chatComplete(provider, apiKey, model, prompt);
+    const parsed = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? "{}");
+    const picks: number[] = Array.isArray(parsed.picks) ? parsed.picks : [];
+    const valid = picks.filter((n) => Number.isInteger(n) && n >= 0 && n < candidates.length).slice(0, count);
+    return valid.length ? valid : candidates.slice(0, count).map((_, i) => i);
+  } catch {
+    return candidates.slice(0, count).map((_, i) => i);
+  }
+}
+
+export type DiscoverResult = { candidates: number; picked: number; results: IngestResult[] };
+
+// Auto-discovery: gather candidates from the configured feeds, drop anything
+// already handled (history), let the AI pick the best matches for the topics,
+// then translate + (optionally) publish them, logging each to history.
+export async function discoverAndPublish(): Promise<DiscoverResult> {
+  const settings = await getSettings();
+  const feeds = settings.aiFeeds ?? [];
+  const topics = settings.aiTopics ?? [];
+  const count = Math.max(1, settings.aiDiscoverCount || 3);
+  const seen = await seenUrls();
+
+  // 1. Gather + dedupe candidates.
+  const candidates: FeedItem[] = [];
+  for (const feed of feeds) {
+    try {
+      const xml = await fetchText(feed);
+      for (const it of parseFeedItems(xml, 15)) {
+        if (!seen.has(it.url) && !candidates.some((c) => c.url === it.url)) candidates.push(it);
+      }
+    } catch (e) {
+      console.error(`[ai] discover feed failed ${feed}:`, (e as Error).message);
+    }
+  }
+  if (candidates.length === 0) return { candidates: 0, picked: 0, results: [] };
+
+  // 2. AI picks the best for the topics.
+  const picks = await pickBest(candidates, topics, count);
+
+  // 3. Ingest + (auto)publish the picks.
+  const results: IngestResult[] = [];
+  for (const idx of picks) {
+    const c = candidates[idx];
+    try {
+      results.push(
+        await ingestUrl(c.url, {
+          forcePublish: settings.aiAutoPublish,
+          mode: "discover",
+          source: "discover",
+          note: `topics: ${topics.join(", ")}`,
+        }),
+      );
+    } catch (e) {
+      const msg = (e as Error).message;
+      console.error(`[ai] discover ingest failed ${c.url}:`, msg);
+      await addHistory({
+        at: new Date().toISOString(),
+        mode: "discover",
+        source: "discover",
+        url: c.url,
+        title: c.title,
+        slug: "",
+        status: "error",
+        aiUsed: false,
+        note: msg.slice(0, 200),
+      });
+    }
+  }
+  return { candidates: candidates.length, picked: results.length, results };
 }

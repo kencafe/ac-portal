@@ -12,12 +12,16 @@ export type Settings = {
   defaultLanguage: "vi" | "en";
   // 4-eyes: when true a post must be approved before it can be published.
   requireApprovalToPublish: boolean;
-  // Auto-publish AI-translated drafts (off by default — human in the loop).
-  autoPublishTranslations: boolean;
+  // Auto-publish AI-edited drafts (off by default — human in the loop).
+  autoPublishAiPosts: boolean;
   // AI auto-ingest daily schedule.
   aiScheduleEnabled: boolean;
   aiScheduleHour: number; // 0–23, cluster TZ (default 5 = 05:00)
   aiFeeds: string[]; // RSS/Atom source URLs the daily job pulls from
+  // AI auto-discovery: pick the most relevant/high-quality unseen articles and publish.
+  aiTopics: string[]; // topics/keywords describing what counts as a "good" article
+  aiAutoPublish: boolean; // publish discovered articles automatically (vs draft)
+  aiDiscoverCount: number; // how many articles to publish per discovery run
   // AI provider config.
   aiProvider: string; // provider id from lib/providers (e.g. "anthropic", "xai", "qwen")
   aiModel: string; // selected model id, e.g. "claude-sonnet-5"
@@ -30,10 +34,13 @@ export const DEFAULT_SETTINGS: Settings = {
   postsPerPage: 9,
   defaultLanguage: "vi",
   requireApprovalToPublish: true,
-  autoPublishTranslations: false,
+  autoPublishAiPosts: false,
   aiScheduleEnabled: false,
   aiScheduleHour: 5,
   aiFeeds: [],
+  aiTopics: ["cloud", "AI", "DevOps", "SRE", "Kubernetes", "security"],
+  aiAutoPublish: false,
+  aiDiscoverCount: 3,
   aiProvider: "anthropic",
   aiModel: "claude-sonnet-5",
   aiApiKey: "",

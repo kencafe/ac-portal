@@ -693,7 +693,7 @@ export const SIDEBAR = {
       group: 'Nhập nội dung',
       items: [
         { key: 'feeds', label: 'Nguồn RSS', icon: '⟳', count: '{feedCount}' }, // active feeds (4)
-        { key: 'inbox', label: 'Hàng chờ dịch', icon: '↓', badge: '{pendingCount}' }, // pending (5)
+        { key: 'inbox', label: 'Hàng chờ biên tập', icon: '↓', badge: '{pendingCount}' }, // pending (5)
         { key: 'aistudio', label: 'AI tự động', icon: '✨' },
       ],
     },
@@ -728,8 +728,8 @@ export const TOPBAR = {
     editor: 'Trình soạn thảo',
     taxonomy: 'Chuyên mục & tag',
     feeds: 'Nguồn RSS',
-    inbox: 'Hàng chờ dịch',
-    translate: 'Bản dịch AI',
+    inbox: 'Hàng chờ biên tập',
+    translate: 'AI biên tập',
     api: 'Cấu hình API',
     admin: 'Quản trị hệ thống',
     aistudio: 'AI tự động',
@@ -758,7 +758,7 @@ export const ADMIN_UI = {
       postsPerPage: 'Số bài mỗi trang',
       defaultLanguage: 'Ngôn ngữ mặc định',
       requireApprovalToPublish: 'Bắt buộc duyệt trước khi xuất bản (4 mắt)',
-      autoPublishTranslations: 'Tự động xuất bản bản dịch AI',
+      autoPublishAiPosts: 'Tự động xuất bản bài AI biên tập',
     },
   },
   access: {
