@@ -32,7 +32,7 @@ spec:
         mkdir -p reports
         echo "== Gitleaks secret scan =="
         gitleaks detect --source=. --redact -v --exit-code=0 \
-          --report-format=sarif --report-path=reports/gitleaks.sarif || true
+          --report-format=json --report-path=reports/gitleaks.json || true
 ---
 apiVersion: tekton.dev/v1
 kind: Task
@@ -179,7 +179,7 @@ spec:
         zap-baseline.py -t $(params.TARGET_URL) -I -m 2 -J reports/zap.json || true
         if [ -s reports/zap.json ]; then
           echo "Uploading ZAP report to DefectDojo…"
-          curl -sk -m 60 -H "Host: $DD_HOST" -H "Authorization: Token $DD_TOKEN" \
+          curl -sk -m 60 -H "Host: $DD_HOST" -H "Authorization: Token $DD_TOKEN" -H "Accept: application/json" \
             -F "scan_type=ZAP Scan" -F "file=@reports/zap.json" \
             -F "auto_create_context=true" -F "product_name=AC-Portal" \
             -F "engagement_name=$(params.ENGAGEMENT)" -F "active=true" -F "verified=false" \
@@ -217,7 +217,7 @@ spec:
         command -v curl >/dev/null 2>&1 || (apk add --no-cache curl >/dev/null 2>&1 || true)
         imp() {
           typ="$1"; f="$2"; [ -s "$f" ] || { echo "skip $typ ($f missing)"; return; }
-          curl -sk -m 60 -H "Host: $DD_HOST" -H "Authorization: Token $DD_TOKEN" \
+          curl -sk -m 60 -H "Host: $DD_HOST" -H "Authorization: Token $DD_TOKEN" -H "Accept: application/json" \
             -F "scan_type=$typ" -F "file=@$f" \
             -F "auto_create_context=true" -F "product_name=AC-Portal" \
             -F "engagement_name=$(params.ENGAGEMENT)" -F "active=true" -F "verified=false" \
@@ -226,7 +226,7 @@ spec:
         imp "Dependency Check Scan" reports/dependency-check-report.json
         imp "Semgrep JSON Report"   reports/semgrep.sarif
         imp "Trivy Scan"            reports/trivy-image.json
-        imp "Gitleaks Scan"         reports/gitleaks.sarif
+        imp "Gitleaks Scan"         reports/gitleaks.json
 ---
 # oc runner with enough memory for `oc apply -k` (kustomize) + start-build.
 apiVersion: tekton.dev/v1
