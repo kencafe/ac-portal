@@ -59,6 +59,22 @@ oc -n ac-portal-prod patch resourcequota ac-portal-quota --type=merge \
 `ac-portal-dev` already has ample quota (48Gi). Also grant `pipelines-scc` and
 mirror scanner images once per cluster (§1–§2).
 
+## 3c. CMS admin auth (OpenShift OAuth)
+
+The CMS route (`ac-portal-cms` → `cms-<env>.appcarrier.cloud`) is fronted by an
+`oauth-proxy` sidecar using OpenShift login. Create the cookie secret per env:
+
+```bash
+oc -n ac-portal-<env> create secret generic ns-web-oauth \
+  --from-literal=session_secret="$(openssl rand -base64 32)"
+```
+
+Access: browse `https://cms-<env>.appcarrier.cloud/cms` → OpenShift login. The
+`--openshift-sar` gate only admits users who can **update deployments in
+ac-portal-dev** (project admins/editors). Adjust the SAR in
+`k8s/base/deployment.yaml` (oauth-proxy args) to change who is allowed. The
+public site stays open on the main route.
+
 ## 4. GitHub webhook
 
 Point `https://<ns-web-el route>/` (see `oc -n ac-portal-dev get route ns-web-el`)

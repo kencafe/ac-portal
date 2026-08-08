@@ -21,6 +21,7 @@ spec:
         # registry digest (lookupPolicy.local) for Deployment pods.
         alpha.image.policy.openshift.io/resolve-names: "*"
     spec:
+      serviceAccountName: ns-web-cms
       containers:
         - name: ac-portal
           image: ac-portal:latest
@@ -71,7 +72,41 @@ spec:
               drop: ["ALL"]
             seccompProfile:
               type: RuntimeDefault
+        # OpenShift OAuth sidecar — protects the CMS route (login + SAR gate).
+        - name: oauth-proxy
+          image: image-registry.openshift-image-registry.svc:5000/openshift/oauth-proxy:v4.4
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          args:
+            - --http-address=:8080
+            - --https-address=
+            - --provider=openshift
+            - --openshift-service-account=ns-web-cms
+            - --upstream=http://localhost:3000
+            - --cookie-secret-file=/etc/proxy/secrets/session_secret
+            - --cookie-secure=true
+            - '--openshift-sar={"namespace":"ac-portal-dev","resource":"deployments","group":"apps","verb":"update"}'
+            - --email-domain=*
+            - --pass-user-headers=true
+          volumeMounts:
+            - name: oauth-cookie
+              mountPath: /etc/proxy/secrets
+          resources:
+            requests: { memory: "64Mi", cpu: "50m" }
+            limits: { memory: "128Mi", cpu: "200m" }
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
       volumes:
         - name: content-store
           persistentVolumeClaim:
             claimName: ns-web-data
+        - name: oauth-cookie
+          secret:
+            secretName: ns-web-oauth

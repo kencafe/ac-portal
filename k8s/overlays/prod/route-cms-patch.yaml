@@ -1,0 +1,6 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: ac-portal-cms
+spec:
+  host: cms.appcarrier.cloud

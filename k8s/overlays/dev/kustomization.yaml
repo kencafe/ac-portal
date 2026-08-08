@@ -5,6 +5,7 @@ resources:
   - ../../base
 patches:
   - path: route-patch.yaml
+  - path: route-cms-patch.yaml
   - path: deployment-patch.yaml
   - path: configmap-patch.yaml
 labels:

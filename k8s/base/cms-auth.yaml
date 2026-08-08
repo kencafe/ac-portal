@@ -1,0 +1,50 @@
+# OpenShift-native auth for the CMS admin. An oauth-proxy sidecar (added to the
+# Deployment) fronts the app for the CMS route only; users authenticate with
+# their OpenShift account, and the SAR restricts access to users who can edit
+# the ac-portal-dev namespace (i.e. project admins/editors).
+#
+# The public site keeps serving on the main `ac-portal` route (port 3000);
+# the CMS route `ac-portal-cms` goes through oauth-proxy (port 8443).
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ns-web-cms
+  labels: { app: ac-portal }
+  annotations:
+    # Build the OAuth redirect from the CMS route automatically.
+    serviceaccounts.openshift.io/oauth-redirectreference.primary: '{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"ac-portal-cms"}}'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ac-portal-cms
+  labels: { app: ac-portal, component: cms-auth }
+spec:
+  selector:
+    app: ac-portal
+    component: frontend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: ac-portal-cms
+  labels: { app: ac-portal, component: cms-auth }
+spec:
+  # host is set per-environment in the overlays
+  to:
+    kind: Service
+    name: ac-portal-cms
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

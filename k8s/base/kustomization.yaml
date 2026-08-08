@@ -12,6 +12,7 @@ resources:
   - deployment.yaml
   - service.yaml
   - route.yaml
+  - cms-auth.yaml
 
 commonLabels:
   app: ac-portal
