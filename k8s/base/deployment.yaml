@@ -35,6 +35,12 @@ spec:
             - secretRef:
                 name: ns-web-secrets
                 optional: true
+          env:
+            - name: DATA_DIR
+              value: /app/.data
+          volumeMounts:
+            - name: content-store
+              mountPath: /app/.data
           resources:
             requests:
               memory: "256Mi"
@@ -65,3 +71,7 @@ spec:
               drop: ["ALL"]
             seccompProfile:
               type: RuntimeDefault
+      volumes:
+        - name: content-store
+          persistentVolumeClaim:
+            claimName: ns-web-data

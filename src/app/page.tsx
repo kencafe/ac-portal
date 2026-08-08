@@ -14,6 +14,9 @@ import BlogTeasers from "@/components/landing/BlogTeasers";
 import Cases from "@/components/landing/Cases";
 import Contact from "@/components/landing/Contact";
 
+// Render per-request so newly published CMS posts appear immediately.
+export const dynamic = "force-dynamic";
+
 const nav = HEADER.nav.map((n) => ({ label: n.label, href: rewriteHref(n.href) }));
 const cta = { label: HEADER.ctaButton.label, href: HEADER.ctaButton.href };
 

@@ -8,6 +8,7 @@ resources:
   - imagestream.yaml
   - buildconfig.yaml
   - configmap.yaml
+  - data-pvc.yaml
   - deployment.yaml
   - service.yaml
   - route.yaml

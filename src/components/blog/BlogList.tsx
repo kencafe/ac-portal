@@ -2,7 +2,7 @@
 
 import { CSSProperties, useMemo, useState } from "react";
 import Link from "next/link";
-import { POSTS, CATS, LIST_HERO, SECTION_HEADERS, EMPTY_STATE, SUBSCRIBE_PANEL, READ_MORE_LABEL, Post } from "@/data/posts";
+import { CATS, LIST_HERO, SECTION_HEADERS, EMPTY_STATE, SUBSCRIBE_PANEL, READ_MORE_LABEL, Post } from "@/data/posts";
 import { COLORS, CONTENT_MAX, GRAD, RADIUS } from "@/lib/tokens";
 import { card } from "@/lib/ui";
 import { routes } from "@/lib/routes";
@@ -64,19 +64,20 @@ function PostCard({ post }: { post: Post }) {
   );
 }
 
-export default function BlogList() {
+export default function BlogList({ posts }: { posts: Post[] }) {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState("Tất cả");
   const [subscribed, setSubscribed] = useState(false);
 
-  const featured = useMemo(() => POSTS.find((p) => p.featured), []);
+  const featured = useMemo(() => posts.find((p) => p.featured) ?? posts[0], [posts]);
   const q = query.trim().toLowerCase();
 
   const filtered = useMemo(
     () =>
-      POSTS.filter((p) => (cat === "Tất cả" || p.cat === cat))
-        .filter((p) => !q || (p.title + " " + p.excerpt + " " + p.tags.join(" ")).toLowerCase().includes(q)),
-    [cat, q],
+      posts
+        .filter((p) => cat === "Tất cả" || p.cat === cat)
+        .filter((p) => !q || (p.title + " " + p.excerpt + " " + (p.tags ?? []).join(" ")).toLowerCase().includes(q)),
+    [posts, cat, q],
   );
 
   const showFeatured = cat === "Tất cả" && !q;

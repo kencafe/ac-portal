@@ -1,6 +1,6 @@
 "use client";
 
-import { CSSProperties, useMemo, useState } from "react";
+import { CSSProperties, useEffect, useMemo, useState } from "react";
 import {
   SEED, SeedPost, PostStatus, CATS, TONE, CATEGORIES, TAGS, TAXONOMY_UI,
   KINDS, EDITOR_UI, NEW_DRAFT_DEFAULTS, BlockKind,
@@ -8,7 +8,7 @@ import {
   INBOX, InboxItem, INBOX_UI,
   TRANSLATE_UI, TRANSLATE_CONFIG, GLOSSARY, GLOSSARY_UI, PREPUBLISH_CHECKLIST,
   API_PROVIDERS, API_DEFAULTS, API_UI, PUBLIC_API,
-  POSTS_STATS, SIDEBAR, TOPBAR, POSTS_VIEW_UI,
+  SIDEBAR, TOPBAR, POSTS_VIEW_UI,
 } from "@/data/cms";
 import { COLORS, RADIUS } from "@/lib/tokens";
 
@@ -59,6 +59,52 @@ function PanelHead({ children, right }: { children: React.ReactNode; right?: Rea
   );
 }
 
+// ── Mapping between CMS labels and the store's post shape ──────────────
+const ST2CMS: Record<string, PostStatus> = { published: "Đã xuất bản", review: "Chờ duyệt", draft: "Bản nháp" };
+const CMS2ST: Record<string, string> = { "Đã xuất bản": "published", "Chờ duyệt": "review", "Bản nháp": "draft" };
+
+function cmsBlocksToStore(b: [BlockKind, string][]) {
+  return b.map(([k, t]) => (k === "list" ? { kind: k, items: t.split("\n").map((s) => s.trim()).filter(Boolean) } : { kind: k, text: t }));
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function storeToCms(p: any): SeedPost {
+  return {
+    slug: p.slug,
+    title: p.title ?? p.slug,
+    cat: p.cat ?? "SRE",
+    status: ST2CMS[p.status] ?? "Bản nháp",
+    date: p.date ?? "[Ngày đăng]",
+    author: p.author ?? "",
+    excerpt: p.excerpt ?? "",
+    tags: p.tags ?? [],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    blocks: (p.blocks ?? []).map((bl: any) =>
+      bl.kind === "list" ? (["list", (bl.items ?? []).join("\n")] as [BlockKind, string]) : ([bl.kind, bl.text ?? ""] as [BlockKind, string]),
+    ),
+  };
+}
+
+async function apiSave(draft: SeedPost) {
+  const payload = {
+    slug: draft.slug || `bai-${Date.now()}`,
+    title: draft.title,
+    cat: draft.cat,
+    tone: TONE[draft.cat] ?? "#0072BC",
+    status: CMS2ST[draft.status] ?? "draft",
+    date: draft.date,
+    author: draft.author,
+    role: "",
+    initials: (draft.author || "NS").split(" ").map((w) => w[0]).join("").slice(0, 3).toUpperCase() || "NS",
+    read: `${Math.max(1, Math.round((draft.blocks.reduce((n, b) => n + (b[1]?.length ?? 0), 0)) / 900))} phút đọc`,
+    excerpt: draft.excerpt,
+    tags: draft.tags,
+    coverUrl: `assets/cover-${draft.slug || "post"}.png`,
+    blocks: cmsBlocksToStore(draft.blocks),
+  };
+  const res = await fetch("/api/v1/posts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  return res.ok;
+}
+
 export default function CmsApp() {
   const [view, setView] = useState<View>("posts");
   const [posts, setPosts] = useState<SeedPost[]>(SEED);
@@ -105,8 +151,27 @@ export default function CmsApp() {
   const feedCount = feeds.filter((f) => f.active).length;
   const pendingCount = inbox.filter((i) => i.status !== "Đã đăng").length;
 
-  function togglePublish(slug: string) {
-    setPosts((ps) => ps.map((p) => (p.slug === slug ? { ...p, status: p.status === "Đã xuất bản" ? "Bản nháp" : "Đã xuất bản" } : p)));
+  async function refreshPosts() {
+    try {
+      const res = await fetch("/api/v1/posts?status=all", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.results)) setPosts(data.results.map(storeToCms));
+    } catch {
+      /* keep seed */
+    }
+  }
+  useEffect(() => {
+    refreshPosts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function togglePublish(slug: string) {
+    const cur = posts.find((p) => p.slug === slug);
+    const next: PostStatus = cur?.status === "Đã xuất bản" ? "Bản nháp" : "Đã xuất bản";
+    setPosts((ps) => ps.map((p) => (p.slug === slug ? { ...p, status: next } : p))); // optimistic
+    await fetch(`/api/v1/posts/${slug}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: CMS2ST[next] }) }).catch(() => {});
+    refreshPosts();
   }
   function editPost(p: SeedPost) {
     setDraft({ ...p });
@@ -118,13 +183,10 @@ export default function CmsApp() {
     setSaved(false);
     setView("editor");
   }
-  function saveDraft() {
-    setPosts((ps) => {
-      const exists = ps.some((p) => p.slug === draft.slug && draft.slug);
-      if (exists) return ps.map((p) => (p.slug === draft.slug ? draft : p));
-      return [{ ...draft, slug: draft.slug || `bai-${ps.length + 1}` }, ...ps];
-    });
-    setSaved(true);
+  async function saveDraft() {
+    const ok = await apiSave(draft);
+    setSaved(ok);
+    await refreshPosts();
   }
 
   function openTranslate(item: InboxItem) {
@@ -204,9 +266,15 @@ export default function CmsApp() {
 
   // ── Views ──────────────────────────────────────────────────────────────
   function PostsView() {
+    const liveStats = [
+      { label: "Tổng bài viết", value: posts.length },
+      { label: "Đã xuất bản", value: posts.filter((p) => p.status === "Đã xuất bản").length, color: "#57A336" },
+      { label: "Bản nháp", value: posts.filter((p) => p.status === "Bản nháp").length, color: "#F37021" },
+      { label: "Chờ duyệt", value: posts.filter((p) => p.status === "Chờ duyệt").length, color: "#0072BC" },
+    ];
     return (
       <>
-        <StatTiles tiles={POSTS_STATS} />
+        <StatTiles tiles={liveStats} />
         <div style={panel}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 14, borderBottom: `1px solid ${COLORS.split}`, flexWrap: "wrap" }}>
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={POSTS_VIEW_UI.searchPlaceholder} style={{ ...input, width: 240, height: 34 }} />

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { POSTS, HEADER, ARTICLE_PAGE, SECTION_HEADERS, getRelatedPosts, Post, Block } from "@/data/posts";
+import { HEADER, ARTICLE_PAGE, SECTION_HEADERS, Post, Block } from "@/data/posts";
+import { getPost, listPublished } from "@/lib/store";
 import { COLORS, CONTENT_MAX, RADIUS } from "@/lib/tokens";
 import { card, btnPrimary, btnDefault } from "@/lib/ui";
 import { rewriteHref, routes } from "@/lib/routes";
@@ -10,13 +11,11 @@ import BrandStripe from "@/components/shared/BrandStripe";
 import SiteHeader from "@/components/shared/SiteHeader";
 import SiteFooter from "@/components/shared/SiteFooter";
 
-export function generateStaticParams() {
-  return POSTS.map((p) => ({ slug: p.slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const p = POSTS.find((x) => x.slug === slug);
+  const p = await getPost(slug);
   if (!p) return { title: "Bài viết" };
   return { title: p.title, description: p.excerpt };
 }
@@ -74,9 +73,9 @@ function RelatedCard({ post }: { post: Post }) {
 
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const post = POSTS.find((p) => p.slug === slug);
-  if (!post) notFound();
-  const related = getRelatedPosts(post.slug);
+  const post = await getPost(slug);
+  if (!post || post.status !== "published") notFound();
+  const related = (await listPublished()).filter((p) => p.slug !== post.slug).slice(0, 3);
 
   return (
     <LangProvider>
