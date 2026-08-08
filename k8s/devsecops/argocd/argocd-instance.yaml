@@ -1,0 +1,39 @@
+# Namespaced ArgoCD instance provisioned by the Red Hat OpenShift GitOps operator
+# (operator + CRDs are installed cluster-wide). This runs a dev-grade, single-replica
+# ArgoCD entirely inside ac-portal-dev. Server route is created separately with the
+# golden edge-TLS cert (route.yaml) so we keep server.insecure=true behind edge term.
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+  namespace: ac-portal-dev
+spec:
+  # Run server plain-HTTP; TLS is terminated at the OpenShift edge route (golden cert).
+  server:
+    insecure: true
+    replicas: 1
+    route:
+      enabled: false
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { cpu: 500m, memory: 256Mi }
+  repo:
+    replicas: 1
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { cpu: 500m, memory: 512Mi }
+  controller:
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { cpu: 1000m, memory: 1Gi }
+  redis:
+    resources:
+      requests: { cpu: 50m, memory: 64Mi }
+      limits: { cpu: 250m, memory: 256Mi }
+  # No SSO/dex, no applicationset, no notifications -> minimal pod footprint.
+  # Local admin login only (dev). RBAC default policy: read-only, admin via local acct.
+  rbac:
+    defaultPolicy: role:readonly
+    policy: |
+      g, admin, role:admin
+    scopes: '[groups]'

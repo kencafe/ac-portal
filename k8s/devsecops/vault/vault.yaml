@@ -1,0 +1,86 @@
+# Dev-grade single-pod HashiCorp Vault for ac-portal-dev.
+# Runs in `-dev` mode: in-memory storage (no PVC), mlock disabled, KV v2 mounted at secret/.
+# Root token is injected from Secret `vault-root` (created live with `oc create secret`,
+# NOT committed). Image mirrored from docker.io/hashicorp/vault via the internal registry.
+# TLS is terminated at the OpenShift edge route (golden cert); Vault itself serves HTTP.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault
+  namespace: ac-portal-dev
+  labels: { app: vault, component: devsecops }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: vault }
+  template:
+    metadata:
+      labels: { app: vault, component: devsecops }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: vault
+          image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/vault:1.17
+          # -dev-no-store-token: don't write ~/.vault-token (HOME=/ is read-only under
+          # the restricted SCC arbitrary UID). HOME set to /tmp as belt-and-suspenders.
+          args: ["server", "-dev", "-dev-listen-address=0.0.0.0:8200", "-dev-no-store-token"]
+          env:
+            - name: VAULT_DEV_ROOT_TOKEN_ID
+              valueFrom:
+                secretKeyRef: { name: vault-root, key: root-token }
+            - name: VAULT_ADDR
+              value: "http://127.0.0.1:8200"
+            - name: HOME
+              value: "/tmp"
+            # dev mode disables mlock already; belt-and-suspenders for the config path
+            - name: SKIP_SETCAP
+              value: "true"
+          ports:
+            - { containerPort: 8200, name: http }
+          readinessProbe:
+            httpGet:
+              path: "/v1/sys/health?standbyok=true"
+              port: 8200
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: "/v1/sys/health?standbyok=true"
+              port: 8200
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities: { drop: ["ALL"] }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault
+  namespace: ac-portal-dev
+  labels: { app: vault }
+spec:
+  selector: { app: vault }
+  ports:
+    - { name: http, port: 8200, targetPort: 8200 }
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: vault
+  namespace: ac-portal-dev
+  labels: { app: vault }
+spec:
+  host: vault-dev.appcarrier.cloud
+  to: { kind: Service, name: vault, weight: 100 }
+  port: { targetPort: http }
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

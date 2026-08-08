@@ -1,0 +1,125 @@
+# DefectDojo data tier: PostgreSQL (SCLorg image, reused from the ac-portal-dev
+# `postgres:16` imagestream = quay.io/sclorg/postgresql-16-c9s) + Redis (celery broker).
+# Postgres gets one PVC; Redis uses emptyDir (broker state is disposable in dev).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: defectdojo-postgres
+  namespace: ac-portal-dev
+  labels: { app: defectdojo, component: db }
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: ac-bronze-single
+  resources:
+    requests:
+      storage: 3Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: defectdojo-postgres
+  namespace: ac-portal-dev
+  labels: { app: defectdojo, component: db }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: defectdojo, component: db }
+  template:
+    metadata:
+      labels: { app: defectdojo, component: db }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: postgres
+          image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/postgres:16
+          env:
+            - name: POSTGRESQL_DATABASE
+              value: defectdojo
+            - name: POSTGRESQL_USER
+              value: defectdojo
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: defectdojo-secret, key: DD_DATABASE_PASSWORD }
+          ports:
+            - { containerPort: 5432, name: pg }
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/pgsql/data
+          readinessProbe:
+            exec: { command: ["/usr/bin/pg_isready", "-U", "defectdojo"] }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: defectdojo-postgres }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: defectdojo-postgres
+  namespace: ac-portal-dev
+  labels: { app: defectdojo, component: db }
+spec:
+  selector: { app: defectdojo, component: db }
+  ports:
+    - { name: pg, port: 5432, targetPort: 5432 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: defectdojo-redis
+  namespace: ac-portal-dev
+  labels: { app: defectdojo, component: redis }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: defectdojo, component: redis }
+  template:
+    metadata:
+      labels: { app: defectdojo, component: redis }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: redis
+          image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/redis:7
+          args: ["--save", "", "--appendonly", "no"]
+          ports:
+            - { containerPort: 6379, name: redis }
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            tcpSocket: { port: 6379 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: defectdojo-redis
+  namespace: ac-portal-dev
+  labels: { app: defectdojo, component: redis }
+spec:
+  selector: { app: defectdojo, component: redis }
+  ports:
+    - { name: redis, port: 6379, targetPort: 6379 }

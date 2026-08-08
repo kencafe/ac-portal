@@ -1,0 +1,94 @@
+# Vault -> Kubernetes Secret sync.
+# ESO is NOT installed in this cluster, and we must NOT edit the ac-portal Deployment.
+# The app already mounts Secret `ns-web-secrets` via an *optional* envFrom secretRef,
+# so this CronJob reads secrets from Vault (KV v2, secret/ac-portal/*) and writes them
+# into `ns-web-secrets`. The app picks them up on its next rollout (documented for the human).
+#
+# Auth: uses the Vault root token from Secret `vault-root`. Fine for a dev-mode Vault whose
+# root token id is deterministic (VAULT_DEV_ROOT_TOKEN_ID) and survives pod restarts.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-sync
+  namespace: ac-portal-dev
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: vault-sync-secret-writer
+  namespace: ac-portal-dev
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vault-sync-secret-writer
+  namespace: ac-portal-dev
+subjects:
+  - kind: ServiceAccount
+    name: vault-sync
+    namespace: ac-portal-dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: vault-sync-secret-writer
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vault-sync
+  namespace: ac-portal-dev
+  labels: { app: vault-sync, component: devsecops }
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels: { app: vault-sync }
+        spec:
+          serviceAccountName: vault-sync
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: sync
+              image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+              env:
+                - name: VAULT_ADDR
+                  value: "http://vault.ac-portal-dev.svc:8200"
+                - name: VAULT_TOKEN
+                  valueFrom:
+                    secretKeyRef: { name: vault-root, key: root-token }
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: 50m, memory: 256Mi }
+                limits: { cpu: 500m, memory: 512Mi }
+              command: ["/bin/bash", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  echo "Reading secret/ac-portal/ai from Vault…"
+                  # KV v2 read; extract AI_API_KEY with python3 (present in the ubi cli image).
+                  resp=$(curl -sS -H "X-Vault-Token: $VAULT_TOKEN" \
+                    "$VAULT_ADDR/v1/secret/data/ac-portal/ai")
+                  AI_API_KEY=$(printf '%s' "$resp" | python3 -c \
+                    'import sys,json;print(json.load(sys.stdin)["data"]["data"]["AI_API_KEY"])')
+                  echo "Fetched AI_API_KEY (len=${#AI_API_KEY}); writing into Secret ns-web-secrets…"
+                  # Two sequential oc calls (NOT piped) so only one oc process is resident
+                  # at a time — piping two oc invocations OOM-kills a small container.
+                  oc create secret generic ns-web-secrets \
+                    --from-literal=AI_API_KEY="$AI_API_KEY" \
+                    --dry-run=client -o yaml > /tmp/ns-web-secrets.yaml
+                  oc apply -f /tmp/ns-web-secrets.yaml
+                  echo "Sync complete."

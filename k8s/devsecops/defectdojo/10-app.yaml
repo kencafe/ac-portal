@@ -1,0 +1,196 @@
+# DefectDojo application tier (minimal footprint):
+#   - ConfigMap: non-secret DD_* env shared by all app pods
+#   - initializer Job: runs DB migrations + creates the admin user (runs once)
+#   - uwsgi Deployment: the Django app (uwsgi protocol on :3031)
+#   - celeryworker Deployment: async task worker (needed for import-scan dedupe/notifs)
+#   - nginx Deployment: HTTP frontend (:8080) that uwsgi_pass -> uwsgi:3031
+# celery-beat is intentionally omitted (scheduled tasks not needed for CI import-scan).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: defectdojo-config
+  namespace: ac-portal-dev
+  labels: { app: defectdojo }
+data:
+  DD_DEBUG: "False"
+  DD_ALLOWED_HOSTS: "*"
+  DD_CELERY_BROKER_URL: "redis://defectdojo-redis:6379/0"
+  DD_DATABASE_ENGINE: "django.db.backends.postgresql"
+  DD_DATABASE_HOST: "defectdojo-postgres"
+  DD_DATABASE_PORT: "5432"
+  DD_DATABASE_NAME: "defectdojo"
+  DD_DATABASE_USER: "defectdojo"
+  DD_ADMIN_USER: "admin"
+  DD_ADMIN_MAIL: "admin@appcarrier.cloud"
+  DD_ADMIN_FIRST_NAME: "AC"
+  DD_ADMIN_LAST_NAME: "Portal"
+  DD_INITIALIZE: "true"
+  DD_UWSGI_HOST: "defectdojo-uwsgi"
+  DD_UWSGI_PORT: "3031"
+  DD_SITE_URL: "https://defectdojo-dev.appcarrier.cloud"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: defectdojo-initializer
+  namespace: ac-portal-dev
+  labels: { app: defectdojo, component: initializer }
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels: { app: defectdojo, component: initializer }
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: initializer
+          image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/defectdojo-django:latest
+          command: ["/entrypoint-initializer.sh"]
+          envFrom:
+            - configMapRef: { name: defectdojo-config }
+            - secretRef: { name: defectdojo-secret }
+          resources:
+            requests: { cpu: 100m, memory: 512Mi }
+            limits: { cpu: "1", memory: 1Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: defectdojo-uwsgi
+  namespace: ac-portal-dev
+  labels: { app: defectdojo, component: uwsgi }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: defectdojo, component: uwsgi }
+  template:
+    metadata:
+      labels: { app: defectdojo, component: uwsgi }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: uwsgi
+          image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/defectdojo-django:latest
+          command: ["/entrypoint-uwsgi.sh"]
+          envFrom:
+            - configMapRef: { name: defectdojo-config }
+            - secretRef: { name: defectdojo-secret }
+          ports:
+            - { containerPort: 3031, name: uwsgi }
+          resources:
+            requests: { cpu: 100m, memory: 512Mi }
+            limits: { cpu: "1", memory: 1Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: defectdojo-uwsgi
+  namespace: ac-portal-dev
+  labels: { app: defectdojo, component: uwsgi }
+spec:
+  selector: { app: defectdojo, component: uwsgi }
+  ports:
+    - { name: uwsgi, port: 3031, targetPort: 3031 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: defectdojo-celeryworker
+  namespace: ac-portal-dev
+  labels: { app: defectdojo, component: celeryworker }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: defectdojo, component: celeryworker }
+  template:
+    metadata:
+      labels: { app: defectdojo, component: celeryworker }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: celeryworker
+          image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/defectdojo-django:latest
+          command: ["/entrypoint-celery-worker.sh"]
+          envFrom:
+            - configMapRef: { name: defectdojo-config }
+            - secretRef: { name: defectdojo-secret }
+          resources:
+            requests: { cpu: 100m, memory: 384Mi }
+            limits: { cpu: "1", memory: 768Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: defectdojo-nginx
+  namespace: ac-portal-dev
+  labels: { app: defectdojo, component: nginx }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: defectdojo, component: nginx }
+  template:
+    metadata:
+      labels: { app: defectdojo, component: nginx }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: nginx
+          image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/defectdojo-nginx:latest
+          envFrom:
+            - configMapRef: { name: defectdojo-config }
+          ports:
+            - { containerPort: 8080, name: http }
+          readinessProbe:
+            httpGet: { path: /login, port: 8080 }
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: defectdojo
+  namespace: ac-portal-dev
+  labels: { app: defectdojo, component: nginx }
+spec:
+  selector: { app: defectdojo, component: nginx }
+  ports:
+    - { name: http, port: 8080, targetPort: 8080 }
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: defectdojo
+  namespace: ac-portal-dev
+  labels: { app: defectdojo }
+spec:
+  host: defectdojo-dev.appcarrier.cloud
+  to: { kind: Service, name: defectdojo, weight: 100 }
+  port: { targetPort: http }
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

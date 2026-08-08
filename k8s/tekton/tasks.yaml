@@ -167,11 +167,11 @@ spec:
         limits: { memory: 2Gi, cpu: "1" }
       env:
         - name: DD_URL
-          valueFrom: { secretKeyRef: { name: defectdojo-creds, key: DD_URL } }
+          valueFrom: { secretKeyRef: { name: ns-web-defectdojo, key: DD_URL } }
         - name: DD_HOST
-          valueFrom: { secretKeyRef: { name: defectdojo-creds, key: DD_HOST } }
+          valueFrom: { secretKeyRef: { name: ns-web-defectdojo, key: DD_HOST } }
         - name: DD_TOKEN
-          valueFrom: { secretKeyRef: { name: defectdojo-creds, key: DD_TOKEN } }
+          valueFrom: { secretKeyRef: { name: ns-web-defectdojo, key: DD_TOKEN } }
       script: |
         #!/bin/bash
         mkdir -p reports
@@ -205,11 +205,11 @@ spec:
       workingDir: $(workspaces.source.path)
       env:
         - name: DD_URL
-          valueFrom: { secretKeyRef: { name: defectdojo-creds, key: DD_URL } }
+          valueFrom: { secretKeyRef: { name: ns-web-defectdojo, key: DD_URL } }
         - name: DD_HOST
-          valueFrom: { secretKeyRef: { name: defectdojo-creds, key: DD_HOST } }
+          valueFrom: { secretKeyRef: { name: ns-web-defectdojo, key: DD_HOST } }
         - name: DD_TOKEN
-          valueFrom: { secretKeyRef: { name: defectdojo-creds, key: DD_TOKEN } }
+          valueFrom: { secretKeyRef: { name: ns-web-defectdojo, key: DD_TOKEN } }
       script: |
         #!/bin/sh
         # trivy image ships curl-less; use wget? Use the openshift cli image instead would lack curl too.

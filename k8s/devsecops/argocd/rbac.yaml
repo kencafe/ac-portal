@@ -1,0 +1,17 @@
+# Grant the ArgoCD application-controller admin rights ONLY within ac-portal-dev,
+# so it can create/update the ac-portal workload objects it syncs. Namespace-scoped
+# RoleBinding (not ClusterRoleBinding) keeps the blast radius to this namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-app-controller-admin
+  namespace: ac-portal-dev
+  labels: { app: argocd, component: devsecops }
+subjects:
+  - kind: ServiceAccount
+    name: argocd-argocd-application-controller
+    namespace: ac-portal-dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin

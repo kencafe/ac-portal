@@ -1,0 +1,43 @@
+# AppProject + Application for the namespaced ArgoCD instance in ac-portal-dev.
+# Scope is deliberately tight: this project may only deploy the ac-portal repo into
+# the local ac-portal-dev namespace. Sync is MANUAL (syncPolicy left empty) so the
+# first reconcile against pre-existing live objects does not prune/self-heal anything.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: ac-portal
+  namespace: ac-portal-dev
+spec:
+  description: ac-portal dev GitOps project (namespaced, self-contained)
+  sourceRepos:
+    - https://github.com/kencafe/ac-portal
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: ac-portal-dev
+  # No cluster-scoped resources managed by this project.
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ac-portal-dev
+  namespace: ac-portal-dev
+  # Keep the app around if the CR is deleted mid-experiment.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: ac-portal
+  source:
+    repoURL: https://github.com/kencafe/ac-portal
+    targetRevision: dev
+    path: k8s/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ac-portal-dev
+  # MANUAL sync only. No automated prune/selfHeal on first sync so ArgoCD will not
+  # fight the objects already applied live in ac-portal-dev. Flip on later once the
+  # live state and Git are confirmed to match.
+  syncPolicy: {}
