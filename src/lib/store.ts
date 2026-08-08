@@ -13,7 +13,13 @@ import { POSTS, type Post, type Block } from "@/data/posts";
 export type Status = "draft" | "review" | "published";
 // `notified` guards the on-publish mailer so subscribers aren't emailed twice
 // if a post is unpublished and re-published.
-export type StoredPost = Post & { status: Status; notified?: boolean; featuredAt?: string };
+export type StoredPost = Post & { status: Status; notified?: boolean; featuredAt?: string; publishedAt?: string };
+
+// Formatted VN timestamp "HH:mm · DD/MM/YYYY" (pod TZ = Asia/Ho_Chi_Minh).
+export function fmtVN(d = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getHours())}:${p(d.getMinutes())} · ${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
 const FILE = path.join(DATA_DIR, "posts.json");
@@ -111,6 +117,8 @@ export async function upsertPost(input: Partial<StoredPost> & { slug: string }):
           status: "draft",
         };
   const merged: StoredPost = { ...base, ...input, slug: input.slug };
+  // Stamp publish time the first time a post becomes published.
+  if (merged.status === "published" && !merged.publishedAt) merged.publishedAt = fmtVN();
   if (idx >= 0) all[idx] = merged;
   else all.unshift(merged);
   await writeAll(all);
@@ -121,7 +129,8 @@ export async function setStatus(slug: string, status: Status): Promise<StoredPos
   const all = await readAll();
   const idx = all.findIndex((p) => p.slug === slug);
   if (idx < 0) return undefined;
-  all[idx] = { ...all[idx], status };
+  const publishedAt = status === "published" && !all[idx].publishedAt ? fmtVN() : all[idx].publishedAt;
+  all[idx] = { ...all[idx], status, publishedAt };
   await writeAll(all);
   return all[idx];
 }

@@ -305,7 +305,7 @@ export const LIST_HERO = {
   h1: 'Ghi chép từ các vị trí chiến đấu trong hạm đội',
   sub: 'Field notes from across the fleet',
   lead:
-    'Kinh nghiệm vận hành hạ tầng Cloud, AI và bảo mật của đội FPT-IS Next Gen Service — viết bởi người trực ca, không phải bởi bộ phận marketing.',
+    'Kinh nghiệm vận hành hạ tầng Cloud, AI và bảo mật của đội FPT-IS Next Gen Service — viết bởi tất cả các vị trí chiến đấu trong thủy thủ đoàn.',
   searchPlaceholder: 'Tìm bài viết…',
   // countLabel is computed at runtime: `${filtered.length} bài viết`
   countLabelSuffix: 'bài viết',

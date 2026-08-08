@@ -101,10 +101,11 @@ export default async function ArticlePage({ params, searchParams }: { params: Pr
           <span style={{ color: COLORS.ink2 }}>{post.cat}</span>
         </nav>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, fontSize: 13, color: COLORS.ink3 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, fontSize: 13, color: COLORS.ink3, flexWrap: "wrap" }}>
           <span style={{ fontWeight: 600, color: post.tone }}>{post.cat}</span>
           <span>·</span>
-          <span>{post.date}</span>
+          <span>Soạn: {post.date}</span>
+          {post.publishedAt && (<><span>·</span><span>Đăng: {post.publishedAt}</span></>)}
           <span>·</span>
           <span>{post.read}</span>
         </div>

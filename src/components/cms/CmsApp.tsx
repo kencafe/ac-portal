@@ -1264,7 +1264,7 @@ export default function CmsApp() {
               <h1 style={{ fontSize: 28, fontWeight: 700, lineHeight: 1.25, color: COLORS.ink, margin: "0 0 10px" }}>{draft.title || "(chưa có tiêu đề)"}</h1>
               <div style={{ fontSize: 13, color: COLORS.ink3, marginBottom: 6 }}>{draft.author || "AI Studio"} · {draft.date || "—"}</div>
               {draft.excerpt && <p style={{ fontSize: 16, lineHeight: 1.7, color: COLORS.ink2, fontStyle: "italic", margin: "0 0 20px" }}>{draft.excerpt}</p>}
-              <div style={{ height: 200, borderRadius: RADIUS.card, background: `linear-gradient(135deg, ${TONE[draft.cat] ?? COLORS.brandBlue} 0%, ${TONE[draft.cat] ?? COLORS.brandBlue}80 100%)`, marginBottom: 24 }} />
+              <div style={{ marginBottom: 24 }}><CoverArt coverUrl={draft.coverUrl} title={draft.title} cat={draft.cat} tone={TONE[draft.cat] ?? "#0072BC"} height={280} rounded showTitle={false} /></div>
               {draft.blocks.map((b, i) => {
                 const text = b[1] || "";
                 if (b[0] === "h") return <h2 key={i} style={{ fontSize: 20, fontWeight: 700, color: COLORS.ink, margin: "22px 0 8px" }}>{text}</h2>;
@@ -1367,7 +1367,7 @@ export default function CmsApp() {
                 <button type="button" onClick={() => { setDraft({ ...draft, coverUrl: "" }); setCoverMsg("Dùng ảnh minh hoạ tự động."); }} disabled={coverBusy} style={btnSm}>Ảnh tự động</button>
               </div>
               {coverMsg && <div style={{ fontSize: 12, color: COLORS.ink2, marginTop: 10 }}>{coverMsg}</div>}
-              <div style={{ fontSize: 11.5, color: COLORS.ink3, marginTop: 8 }}>Ưu tiên: link/upload của bạn → ảnh AI (cần billing) → ảnh minh hoạ tự động.</div>
+              <div style={{ fontSize: 11.5, color: COLORS.ink3, marginTop: 8 }}>Ảnh đã chọn/tạo hiển thị ở khung trên và <b>áp dụng khi bấm “Lưu bài viết”</b>. Ưu tiên: link/upload → ảnh AI → ảnh minh hoạ tự động.</div>
             </div>
           </div>
 
