@@ -1,0 +1,233 @@
+/* FPT IS NS Content Hub — Keycloak login theme
+   High-fidelity reproduction of the design handoff. Light mode, centered card. */
+
+:root {
+  --ns-primary: #0072BC;
+  --ns-primary-hover: #338FCB;
+  --ns-primary-active: #005A96;
+  --ns-primary-tint: #E6F1F9;
+  --ns-accent: #F37021;
+  --ns-accent-tint: #FDEDE3;
+  --ns-green: #57A336;
+  --ns-green-dark: #3F7F27;
+  --ns-green-tint: #EAF5E4;
+  --ns-warn-bg: #FFF7E6;
+  --ns-warn-border: #FFE0A3;
+  --ns-warn-text: #8A5A00;
+  --ns-warn-icon: #D97706;
+  --ns-err-text: #D4380D;
+  --ns-card: #FFFFFF;
+  --ns-footer: #FAFAFA;
+  --ns-input-border: #D9D9D9;
+  --ns-hairline: rgba(5,5,5,0.06);
+  --ns-hairline-2: rgba(5,5,5,0.08);
+  --ns-text: rgba(0,0,0,0.88);
+  --ns-label: rgba(0,0,0,0.72);
+  --ns-muted: rgba(0,0,0,0.5);
+  --ns-muted-2: rgba(0,0,0,0.45);
+  --ns-faint: rgba(0,0,0,0.35);
+  --ns-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --ns-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+.ns-body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--ns-sans);
+  font-size: 14px;
+  line-height: 1.5714;
+  color: var(--ns-text);
+  background: linear-gradient(180deg, #E6F1F9 0%, #F5F5F5 100%);
+  -webkit-font-smoothing: antialiased;
+}
+
+.ns-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+/* ---- Card ---- */
+.ns-card {
+  width: 100%;
+  max-width: 384px;
+  background: var(--ns-card);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0,21,41,0.10);
+  overflow: hidden;
+}
+.ns-stripe { height: 3px; }
+.ns-stripe--brand { background: linear-gradient(90deg, #F37021 0 33.34%, #0072BC 33.34% 66.67%, #57A336 66.67% 100%); }
+.ns-stripe--error { background: var(--ns-accent); }
+
+.ns-card-body { padding: 28px; }
+.ns-card-body--form { padding: 28px; }
+.ns-card-body--centered { padding: 32px 28px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+
+/* ---- Brand header ---- */
+.ns-brand { display: flex; align-items: center; gap: 9px; }
+.ns-logo { width: 32px; height: 32px; border-radius: 8px; display: block; }
+.ns-wordmark { display: flex; flex-direction: column; line-height: 1.15; }
+.ns-wordmark-1 { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; color: var(--ns-text); }
+.ns-wordmark-2 { font-size: 9px; font-weight: 600; letter-spacing: 0.12em; color: var(--ns-primary); }
+
+/* ---- Titles ---- */
+.ns-title { margin: 20px 0 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; color: var(--ns-text); }
+.ns-title--tight { margin-top: 0; }
+.ns-title--sm { margin: 18px 0 0; font-size: 20px; letter-spacing: 0; }
+.ns-subtitle { margin: 6px 0 0; font-size: 13px; color: var(--ns-muted-2); }
+.ns-subtitle--relaxed { margin-top: 8px; line-height: 1.6; color: var(--ns-muted); text-wrap: pretty; }
+.ns-card-body--centered .ns-subtitle b { color: rgba(0,0,0,0.75); font-weight: 600; }
+
+/* ---- Back link ---- */
+.ns-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ns-muted-2); text-decoration: none; transition: color .18s; margin-bottom: 18px; }
+.ns-back:hover, .ns-back:focus-visible { color: var(--ns-primary); }
+
+/* ---- Status icon (centered screens) ---- */
+.ns-icon { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 12px; }
+.ns-icon--info { background: var(--ns-primary-tint); color: var(--ns-primary); }
+.ns-icon--error { background: var(--ns-accent-tint); color: var(--ns-accent); }
+.ns-icon--success { background: var(--ns-green-tint); color: var(--ns-green-dark); }
+
+/* ---- IdP block ---- */
+.ns-idp-group { display: grid; gap: 8px; margin-top: 22px; }
+.ns-idp {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; height: 40px; padding: 0 12px;
+  border: 1px solid var(--ns-input-border); border-radius: 6px; background: #fff;
+  font-size: 14px; font-weight: 500; color: rgba(0,0,0,0.85); text-decoration: none;
+  cursor: pointer; transition: all .18s;
+}
+.ns-idp:hover, .ns-idp:focus-visible { border-color: var(--ns-primary); color: var(--ns-primary); }
+.ns-idp--fpt:hover, .ns-idp--fptaccount:hover, .ns-idp--fpt:focus-visible { border-color: var(--ns-accent); color: var(--ns-accent); }
+.ns-idp--ldap:hover, .ns-idp--ad:hover, .ns-idp--ldap:focus-visible { border-color: var(--ns-green); color: var(--ns-green); }
+.ns-g { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--ns-input-border); font-size: 10px; font-weight: 700; color: rgba(0,0,0,0.6); }
+.ns-idp-dot { width: 16px; height: 16px; border-radius: 4px; background: linear-gradient(135deg, #F37021 0 33%, #0072BC 33% 66%, #57A336 66% 100%); }
+
+/* ---- Divider ---- */
+.ns-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0 16px; }
+.ns-divider-line { flex: 1; height: 1px; background: var(--ns-hairline-2); }
+.ns-divider-text { font-size: 12px; color: var(--ns-faint); }
+
+/* ---- Local account badge ---- */
+.ns-badge-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.ns-badge {
+  display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px;
+  border-radius: 4px; background: var(--ns-primary-tint);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ns-primary-active);
+}
+.ns-badge-note { font-size: 12px; color: rgba(0,0,0,0.4); }
+
+/* ---- Forms ---- */
+.ns-form { display: grid; gap: 14px; }
+.ns-form--center { width: 100%; margin: 0; }
+.ns-field { display: block; }
+.ns-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ns-label { display: block; font-size: 13px; font-weight: 500; color: var(--ns-label); margin-bottom: 6px; }
+
+.ns-input {
+  width: 100%; height: 40px; padding: 8px 12px;
+  border: 1px solid var(--ns-input-border); border-radius: 6px;
+  font-family: var(--ns-sans); font-size: 14px; color: var(--ns-text); background: #fff;
+  outline: none; transition: all .18s;
+}
+.ns-input::placeholder { color: rgba(0,0,0,0.25); }
+.ns-input:focus, .ns-input:focus-visible { border-color: var(--ns-primary); box-shadow: 0 0 0 2px rgba(0,114,188,0.12); }
+.ns-input--pw { padding-right: 40px; }
+.ns-input--error { border-color: var(--ns-err-text); }
+.ns-input--error:focus { box-shadow: 0 0 0 2px rgba(212,56,13,0.12); }
+
+.ns-field-error { display: block; margin-top: 6px; font-size: 12px; color: var(--ns-err-text); }
+
+/* ---- Password toggle ---- */
+.ns-pw-wrap { position: relative; display: flex; align-items: center; }
+.ns-pw-wrap .ns-input { width: 100%; }
+.ns-pw-toggle {
+  position: absolute; right: 4px; display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border: none; background: transparent; color: rgba(0,0,0,0.4);
+  border-radius: 6px; cursor: pointer; transition: all .18s;
+}
+.ns-pw-toggle:hover, .ns-pw-toggle:focus-visible { color: var(--ns-primary); background: rgba(0,114,188,0.06); }
+.ns-pw-toggle:focus-visible { outline: 2px solid rgba(0,114,188,0.4); outline-offset: 1px; }
+
+/* ---- Password strength meter ---- */
+.ns-pw-meter { display: flex; gap: 4px; margin-top: 8px; }
+.ns-pw-meter span { flex: 1; height: 3px; border-radius: 2px; background: rgba(5,5,5,0.10); transition: background .18s; }
+.ns-pw-meter span.ns-on { background: var(--ns-green); }
+.ns-pw-label { display: block; margin-top: 6px; font-size: 12px; color: var(--ns-muted-2); }
+.ns-pw-label strong { font-weight: 500; }
+.ns-pw-label .ns-str-weak { color: var(--ns-err-text); }
+.ns-pw-label .ns-str-fair { color: var(--ns-green-dark); }
+.ns-pw-label .ns-str-strong { color: var(--ns-green-dark); }
+
+/* ---- Row: remember + forgot ---- */
+.ns-row-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ns-check { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(0,0,0,0.65); cursor: pointer; }
+.ns-check input { width: 15px; height: 15px; accent-color: var(--ns-primary); margin: 0; }
+
+/* ---- Buttons ---- */
+.ns-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 100%; height: 40px; border-radius: 6px; border: none;
+  font-family: var(--ns-sans); font-size: 14px; font-weight: 600; cursor: pointer;
+  text-decoration: none; transition: all .18s;
+}
+.ns-btn--primary { background: var(--ns-primary); color: #fff; }
+.ns-btn--primary:hover, .ns-btn--primary:focus-visible { background: var(--ns-primary-hover); }
+.ns-btn--primary:active { background: var(--ns-primary-active); }
+.ns-btn--secondary { background: #fff; border: 1px solid var(--ns-input-border); color: rgba(0,0,0,0.85); font-weight: 500; }
+.ns-btn--secondary:hover, .ns-btn--secondary:focus-visible { border-color: var(--ns-primary); color: var(--ns-primary); }
+.ns-btn--ghost { background: transparent; color: var(--ns-muted); font-size: 13px; font-weight: 500; }
+.ns-btn--ghost:hover, .ns-btn--ghost:focus-visible { background: rgba(0,114,188,0.06); color: var(--ns-primary); }
+.ns-btn:focus-visible { outline: 2px solid rgba(0,114,188,0.4); outline-offset: 2px; }
+
+.ns-stack { display: grid; gap: 8px; width: 100%; margin-top: 22px; }
+
+/* ---- Alerts ---- */
+.ns-alert { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 16px; padding: 10px 12px; border-radius: 6px; }
+.ns-alert svg { flex-shrink: 0; margin-top: 1px; }
+.ns-alert-text { font-size: 12.5px; line-height: 1.55; }
+.ns-alert--warning { background: var(--ns-warn-bg); border: 1px solid var(--ns-warn-border); color: var(--ns-warn-text); }
+.ns-alert--warning svg { stroke: var(--ns-warn-icon); }
+.ns-alert--error { background: var(--ns-accent-tint); border: 1px solid #F6C9AF; color: #9A3412; }
+.ns-alert--error svg { stroke: var(--ns-accent); }
+.ns-alert--success { background: var(--ns-green-tint); border: 1px solid #C6E3B4; color: var(--ns-green-dark); }
+.ns-alert--success svg { stroke: var(--ns-green-dark); }
+.ns-alert--info { background: var(--ns-primary-tint); border: 1px solid #C5DFF1; color: var(--ns-primary-active); }
+.ns-alert--info svg { stroke: var(--ns-primary); }
+
+/* Alerts on the form-mode card sit above the form; give them top spacing */
+.ns-card-body--form .ns-alert { margin-top: 20px; }
+
+/* ---- Info / help lines ---- */
+.ns-info-line { margin: 18px 0 0; text-align: center; font-size: 13px; color: var(--ns-muted-2); }
+.ns-help-line { margin: 16px 0 0; font-size: 12px; color: rgba(0,0,0,0.4); }
+.ns-ref { margin-top: 16px; font-size: 11px; color: rgba(0,0,0,0.3); font-family: var(--ns-mono); }
+
+/* ---- Links ---- */
+.ns-link { color: var(--ns-primary); text-decoration: none; transition: color .18s; }
+.ns-link:hover, .ns-link:focus-visible { color: var(--ns-primary-hover); }
+.ns-link--strong { font-weight: 500; }
+.ns-link--muted { color: var(--ns-muted-2); margin-top: 14px; }
+.ns-card-body--centered .ns-link--muted { display: inline-block; margin-top: 14px; font-size: 13px; }
+
+/* ---- Footer ---- */
+.ns-footer {
+  padding: 12px 28px; border-top: 1px solid var(--ns-hairline); background: var(--ns-footer);
+  display: flex; justify-content: space-between; gap: 12px; font-size: 11px; color: var(--ns-faint);
+}
+.ns-locale a { color: var(--ns-faint); text-decoration: none; }
+.ns-locale a:hover, .ns-locale a.ns-locale--active { color: var(--ns-primary); }
+
+/* ---- Responsive ---- */
+@media (max-width: 420px) {
+  .ns-wrap { padding: 16px 0; align-items: flex-start; }
+  .ns-card { max-width: 100%; border-radius: 0; box-shadow: none; }
+  .ns-card-body { padding: 20px; }
+  .ns-card-body--centered { padding: 24px 20px; }
+  .ns-grid-2 { grid-template-columns: 1fr; }
+}

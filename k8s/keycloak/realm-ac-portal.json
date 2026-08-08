@@ -2,7 +2,10 @@
   "realm": "ac-portal",
   "enabled": true,
   "displayName": "AppCarrier Portal",
-  "loginTheme": "keycloak",
+  "loginTheme": "fptis-ns",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["vi", "en"],
+  "defaultLocale": "vi",
   "sslRequired": "external",
   "registrationAllowed": false,
   "roles": {

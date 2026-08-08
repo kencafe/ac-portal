@@ -14,6 +14,31 @@ spec:
     metadata:
       labels: { app: keycloak, component: idp }
     spec:
+      initContainers:
+        # Restore the fptis-ns custom theme from the kc-theme ConfigMap into the
+        # themes emptyDir before Keycloak starts. ConfigMap keys are theme paths
+        # with '/' flattened to '__'; translate them back into a real tree.
+        # Base themes ship inside the distribution jars, so an emptyDir mounted
+        # at /opt/keycloak/themes only holds custom themes — parent=keycloak still
+        # resolves from the jars.
+        - name: theme-init
+          image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/keycloak:24
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              DEST=/themes/fptis-ns
+              rm -rf "$DEST"; mkdir -p "$DEST"
+              for src in /theme-src/*; do
+                key=$(basename "$src")
+                rel=$(printf '%s' "$key" | sed 's#__#/#g')
+                mkdir -p "$DEST/$(dirname "$rel")"
+                cp "$src" "$DEST/$rel"
+              done
+              echo "Theme restored:"; find "$DEST" -type f | sort
+          volumeMounts:
+            - { name: themes, mountPath: /themes }
+            - { name: theme-src, mountPath: /theme-src, readOnly: true }
       containers:
         - name: keycloak
           image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/keycloak:24
@@ -36,6 +61,9 @@ spec:
             - { name: KC_PROXY_HEADERS, value: "xforwarded" }
             - { name: KC_HEALTH_ENABLED, value: "true" }
             - { name: KC_METRICS_ENABLED, value: "true" }
+            # Dev: disable theme caching so edits show on a rollout without a rebuild.
+            - { name: KC_SPI_THEME_CACHE_THEMES, value: "false" }
+            - { name: KC_SPI_THEME_CACHE_TEMPLATES, value: "false" }
             # Bootstrap admin (Secret kc-admin)
             - name: KEYCLOAK_ADMIN
               valueFrom: { secretKeyRef: { name: kc-admin, key: username } }
@@ -45,6 +73,7 @@ spec:
             - { containerPort: 8080, name: http }
           volumeMounts:
             - { name: realm, mountPath: /opt/keycloak/data/import, readOnly: true }
+            - { name: themes, mountPath: /opt/keycloak/themes }
           # KC 24 serves /health on the main HTTP port (management port 9000 is
           # a KC 25+ feature).
           readinessProbe:
@@ -69,6 +98,10 @@ spec:
       volumes:
         - name: realm
           configMap: { name: kc-realm }
+        - name: themes
+          emptyDir: {}
+        - name: theme-src
+          configMap: { name: kc-theme }
 ---
 apiVersion: v1
 kind: Service
