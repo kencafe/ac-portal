@@ -82,7 +82,7 @@
   .pill.green { color: var(--green); background: color-mix(in srgb, var(--green) 16%, transparent); }
   .pill.orange { color: var(--orange); background: color-mix(in srgb, var(--orange) 16%, transparent); }
 
-  .note { margin-top: 20px; background: var(--surface-2); border: 1px solid var(--hair); border-left: 3px solid var(--orange); border-radius: 8px; padding: 14px 18px; font-size: 14px; color: var(--ink-2); }
+  .note { margin-top: 20px; background: var(--surface-2); border: 1px solid var(--hair); border-left: 3px solid var(--green); border-radius: 8px; padding: 14px 18px; font-size: 14px; color: var(--ink-2); }
   .svg-label { font-family: var(--sans); font-weight: 600; }
   .svg-sub { font-family: var(--sans); }
   .svg-mono { font-family: var(--mono); }
@@ -93,119 +93,115 @@
   <header class="masthead">
     <p class="eyebrow">FPT-IS Next Gen Service · AppCarrier</p>
     <h1>Kiến trúc hệ thống website & blog dịch thuật</h1>
-    <p class="sub">Next.js trên OpenShift, có Vault giữ token/secret và PostgreSQL lưu bài viết trước & sau khi dịch. Ba môi trường dev / staging / prod theo luồng DevSecOps của OWASP.</p>
+    <p class="sub">Next.js trên OpenShift. Đăng nhập quản trị qua <strong>Keycloak (SSO)</strong> + oauth2-proxy; <strong>AI tự động</strong> biên tập–dịch–xuất bản (lịch 05:00 hằng ngày hoặc dán link tin hot); Vault giữ token/secret, PostgreSQL lưu bài trước & sau dịch. Ba môi trường dev / staging / prod theo DevSecOps OWASP.</p>
   </header>
 
-  <!-- ============ FIGURE 1: RUNTIME / TRANSLATION DATA FLOW ============ -->
-  <h2><span class="sq" style="background:var(--blue)"></span>Luồng nội dung & dịch thuật <span class="en">Content &amp; translation data flow</span></h2>
-  <p class="lead">Bài từ nguồn RSS được lấy về và lưu <strong>bản gốc</strong> vào PostgreSQL; worker dịch phía server gọi mô hình AI (token lấy từ Vault) rồi ghi <strong>bản dịch</strong> trở lại cùng một bản ghi. API công khai chỉ đọc bài đã xuất bản để phục vụ web.</p>
+  <!-- ============ FIGURE 1: CONTENT + AI AUTO-INGEST DATA FLOW ============ -->
+  <h2><span class="sq" style="background:var(--blue)"></span>Luồng nội dung & AI tự động <span class="en">Content &amp; AI auto-ingest flow</span></h2>
+  <p class="lead">Hai đường vào: <strong>CronJob 05:00</strong> quét các nguồn RSS đã cấu hình, và <strong>dán link thủ công</strong> cho tin nóng. Cả hai gọi cùng pipeline AI (đọc bài → biên tập + dịch tiếng Việt, khoá AI lấy từ Vault) rồi ghi vào PostgreSQL ở trạng thái nháp hoặc xuất bản (theo cấu hình). API công khai chỉ đọc bài đã xuất bản.</p>
 
   <figure>
-    <svg viewBox="0 0 1000 560" role="img" aria-label="Sơ đồ luồng dữ liệu: nguồn RSS được ingest vào PostgreSQL làm bản gốc, translate worker gọi Claude với token từ Vault rồi ghi bản dịch, API công khai đọc bài đã xuất bản phục vụ Next.js và khách truy cập.">
+    <svg viewBox="0 0 1000 580" role="img" aria-label="Luồng AI auto-ingest: CronJob 05:00 và dán link thủ công đưa nội dung vào AI ingest pipeline, pipeline gọi Claude với khoá từ Vault rồi ghi bài vào PostgreSQL; API công khai đọc bài đã xuất bản phục vụ web; CMS truy cập qua oauth2-proxy sau xác thực Keycloak.">
       <defs>
-        <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M0 0L10 5L0 10z" fill="var(--blue)"/>
-        </marker>
-        <marker id="ao" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M0 0L10 5L0 10z" fill="var(--orange)"/>
-        </marker>
+        <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--blue)"/></marker>
+        <marker id="ao" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--orange)"/></marker>
+        <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--green)"/></marker>
       </defs>
 
       <!-- namespace container -->
-      <rect x="16" y="120" width="712" height="300" rx="12" fill="none" stroke="var(--hair)" stroke-width="1.5" stroke-dasharray="2 5"/>
-      <text x="30" y="140" class="svg-mono" font-size="11.5" fill="var(--ink-3)">OpenShift namespace · ac-portal-&lt;env&gt;</text>
+      <rect x="16" y="150" width="712" height="286" rx="12" fill="none" stroke="var(--hair)" stroke-width="1.5" stroke-dasharray="2 5"/>
+      <text x="30" y="170" class="svg-mono" font-size="11.5" fill="var(--ink-3)">OpenShift namespace · ac-portal-&lt;env&gt;</text>
 
       <!-- RSS sources -->
-      <rect x="770" y="34" width="200" height="58" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
-      <text x="870" y="58" text-anchor="middle" class="svg-label" font-size="13.5" fill="var(--ink)">Nguồn RSS / Atom</text>
-      <text x="870" y="76" text-anchor="middle" class="svg-sub" font-size="11.5" fill="var(--ink-3)">CNCF · K8s · Red Hat · SRE</text>
+      <rect x="770" y="26" width="200" height="52" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
+      <text x="870" y="48" text-anchor="middle" class="svg-label" font-size="13" fill="var(--ink)">Nguồn RSS / Atom</text>
+      <text x="870" y="65" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink-3)">cấu hình trong AI Studio</text>
+
+      <!-- Editor paste link -->
+      <rect x="770" y="94" width="200" height="52" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
+      <text x="870" y="116" text-anchor="middle" class="svg-label" font-size="13" fill="var(--ink)">Dán link (tin hot)</text>
+      <text x="870" y="133" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink-3)">Biên tập → xuất bản ngay</text>
 
       <!-- Claude -->
-      <rect x="770" y="150" width="200" height="60" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
-      <text x="870" y="175" text-anchor="middle" class="svg-label" font-size="13.5" fill="var(--ink)">Mô hình AI (Claude)</text>
-      <text x="870" y="193" text-anchor="middle" class="svg-sub" font-size="11.5" fill="var(--ink-3)">gọi phía server</text>
+      <rect x="770" y="200" width="200" height="56" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
+      <text x="870" y="223" text-anchor="middle" class="svg-label" font-size="13" fill="var(--ink)">Mô hình AI (Claude)</text>
+      <text x="870" y="240" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink-3)">Messages API · phía server</text>
 
-      <!-- Ingest -->
-      <rect x="40" y="168" width="180" height="64" rx="8" fill="var(--surface)" stroke="var(--blue)"/>
-      <text x="130" y="194" text-anchor="middle" class="svg-label" font-size="13.5" fill="var(--ink)">RSS Ingest</text>
-      <text x="130" y="212" text-anchor="middle" class="svg-sub" font-size="11.5" fill="var(--ink-3)">CronJob · chống trùng GUID</text>
+      <!-- CronJob -->
+      <rect x="40" y="196" width="180" height="60" rx="8" fill="var(--surface)" stroke="var(--blue)"/>
+      <text x="130" y="220" text-anchor="middle" class="svg-label" font-size="13" fill="var(--ink)">CronJob 05:00</text>
+      <text x="130" y="238" text-anchor="middle" class="svg-mono" font-size="10" fill="var(--ink-3)">ac-portal-ai-ingest</text>
 
-      <!-- Translate worker -->
-      <rect x="300" y="168" width="200" height="64" rx="8" fill="var(--surface)" stroke="var(--blue)"/>
-      <text x="400" y="194" text-anchor="middle" class="svg-label" font-size="13.5" fill="var(--ink)">Translate Worker</text>
-      <text x="400" y="212" text-anchor="middle" class="svg-sub" font-size="11.5" fill="var(--ink-3)">dịch + từ điển thuật ngữ</text>
+      <!-- AI pipeline -->
+      <rect x="300" y="188" width="200" height="76" rx="8" fill="var(--surface)" stroke="var(--blue)"/>
+      <text x="400" y="212" text-anchor="middle" class="svg-label" font-size="13" fill="var(--ink)">AI ingest pipeline</text>
+      <text x="400" y="230" text-anchor="middle" class="svg-sub" font-size="10.5" fill="var(--ink-3)">fetch → biên tập → dịch</text>
+      <text x="400" y="247" text-anchor="middle" class="svg-mono" font-size="9.5" fill="var(--ink-3)">/api/v1/ai/{ingest,run-feeds}</text>
 
       <!-- Public API -->
-      <rect x="300" y="300" width="200" height="60" rx="8" fill="var(--surface)" stroke="var(--blue)"/>
-      <text x="400" y="325" text-anchor="middle" class="svg-label" font-size="13.5" fill="var(--ink)">Public API</text>
-      <text x="400" y="343" text-anchor="middle" class="svg-mono" font-size="11" fill="var(--ink-3)">GET /api/v1/posts · read-only</text>
+      <rect x="300" y="320" width="200" height="58" rx="8" fill="var(--surface)" stroke="var(--blue)"/>
+      <text x="400" y="344" text-anchor="middle" class="svg-label" font-size="13" fill="var(--ink)">Public API</text>
+      <text x="400" y="362" text-anchor="middle" class="svg-mono" font-size="10" fill="var(--ink-3)">GET /api/v1/posts · read-only</text>
 
-      <!-- Next.js web -->
-      <rect x="40" y="300" width="180" height="60" rx="8" fill="var(--surface)" stroke="var(--blue)"/>
-      <text x="130" y="325" text-anchor="middle" class="svg-label" font-size="13.5" fill="var(--ink)">Next.js Web + CMS</text>
-      <text x="130" y="343" text-anchor="middle" class="svg-sub" font-size="11.5" fill="var(--ink-3)">SSR · Content Studio</text>
+      <!-- Next.js web + CMS -->
+      <rect x="40" y="320" width="180" height="58" rx="8" fill="var(--surface)" stroke="var(--blue)"/>
+      <text x="130" y="344" text-anchor="middle" class="svg-label" font-size="12.5" fill="var(--ink)">Next.js Web + CMS</text>
+      <text x="130" y="362" text-anchor="middle" class="svg-sub" font-size="10.5" fill="var(--ink-3)">SSR · Content Studio</text>
 
       <!-- Postgres cylinder -->
       <g>
-        <path d="M540 168 a70 16 0 0 0 140 0 v104 a70 16 0 0 1 -140 0 z" fill="var(--surface-2)" stroke="var(--green)" stroke-width="1.5"/>
-        <ellipse cx="610" cy="168" rx="70" ry="16" fill="var(--surface)" stroke="var(--green)" stroke-width="1.5"/>
-        <text x="610" y="164" text-anchor="middle" class="svg-label" font-size="12.5" fill="var(--ink)">PostgreSQL</text>
-        <text x="610" y="205" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink-2)">posts · bản gốc + bản dịch</text>
-        <text x="610" y="224" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink-2)">feeds · inbox (hàng chờ)</text>
-        <text x="610" y="252" text-anchor="middle" class="svg-mono" font-size="10.5" fill="var(--ink-3)">CloudNativePG</text>
+        <path d="M540 196 a70 16 0 0 0 140 0 v96 a70 16 0 0 1 -140 0 z" fill="var(--surface-2)" stroke="var(--green)" stroke-width="1.5"/>
+        <ellipse cx="610" cy="196" rx="70" ry="16" fill="var(--surface)" stroke="var(--green)" stroke-width="1.5"/>
+        <text x="610" y="192" text-anchor="middle" class="svg-label" font-size="12.5" fill="var(--ink)">PostgreSQL</text>
+        <text x="610" y="228" text-anchor="middle" class="svg-sub" font-size="10.5" fill="var(--ink-2)">posts · gốc + bản dịch</text>
+        <text x="610" y="245" text-anchor="middle" class="svg-sub" font-size="10.5" fill="var(--ink-2)">feeds · settings</text>
+        <text x="610" y="272" text-anchor="middle" class="svg-mono" font-size="10" fill="var(--ink-3)">CloudNativePG</text>
       </g>
 
       <!-- Vault -->
-      <rect x="40" y="360" width="640" height="44" rx="8" fill="color-mix(in srgb, var(--orange) 8%, var(--surface))" stroke="var(--orange)"/>
-      <text x="58" y="380" class="svg-label" font-size="13" fill="var(--ink)">HashiCorp Vault</text>
-      <text x="58" y="396" class="svg-mono" font-size="10.5" fill="var(--ink-3)">vault.appcarrier.cloud</text>
-      <text x="662" y="388" text-anchor="end" class="svg-sub" font-size="11.5" fill="var(--ink-2)">AI keys · DB creds · public API key · webhook secret</text>
+      <rect x="40" y="376" width="640" height="44" rx="8" fill="color-mix(in srgb, var(--orange) 8%, var(--surface))" stroke="var(--orange)"/>
+      <text x="58" y="396" class="svg-label" font-size="13" fill="var(--ink)">HashiCorp Vault</text>
+      <text x="58" y="412" class="svg-mono" font-size="10.5" fill="var(--ink-3)">vault.appcarrier.cloud</text>
+      <text x="662" y="404" text-anchor="end" class="svg-sub" font-size="11.5" fill="var(--ink-2)">AI key · DB creds · cron token · OIDC client secret</text>
 
       <!-- Clients -->
-      <rect x="770" y="300" width="200" height="58" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
-      <text x="870" y="325" text-anchor="middle" class="svg-label" font-size="13.5" fill="var(--ink)">Khách truy cập</text>
-      <text x="870" y="343" text-anchor="middle" class="svg-sub" font-size="11.5" fill="var(--ink-3)">web &amp; blog công khai</text>
+      <rect x="770" y="320" width="200" height="58" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
+      <text x="870" y="344" text-anchor="middle" class="svg-label" font-size="13" fill="var(--ink)">Khách truy cập</text>
+      <text x="870" y="362" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink-3)">web &amp; blog công khai</text>
 
-      <!-- Editor -->
-      <rect x="540" y="452" width="188" height="52" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
-      <text x="634" y="474" text-anchor="middle" class="svg-label" font-size="13" fill="var(--ink)">Biên tập viên</text>
-      <text x="634" y="491" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink-3)">duyệt bản dịch · xuất bản</text>
+      <!-- Editor via oauth2-proxy -->
+      <rect x="540" y="470" width="200" height="60" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
+      <text x="640" y="493" text-anchor="middle" class="svg-label" font-size="13" fill="var(--ink)">Biên tập / Quản trị</text>
+      <text x="640" y="511" text-anchor="middle" class="svg-sub" font-size="10.5" fill="var(--ink-3)">qua oauth2-proxy + Keycloak</text>
 
-      <!-- ===== data-plane arrows (blue) ===== -->
-      <!-- RSS -> Ingest -->
-      <path d="M770 66 H240 Q220 66 160 168" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
-      <text x="300" y="60" class="svg-sub" font-size="11" fill="var(--ink-2)">poll định kỳ</text>
-      <!-- Ingest -> DB (insert original) -->
-      <path d="M220 200 H540" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
-      <text x="300" y="192" class="svg-sub" font-size="11" fill="var(--ink-2)">ghi bản gốc</text>
-      <!-- Worker <-> DB -->
-      <path d="M500 210 H540" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
-      <text x="505" y="204" class="svg-sub" font-size="10.5" fill="var(--ink-2)">đọc gốc / ghi bản dịch</text>
-      <!-- Worker -> Claude -->
-      <path d="M500 190 H600 Q760 190 770 182" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
-      <text x="600" y="150" class="svg-sub" font-size="11" fill="var(--ink-2)">dịch</text>
-      <!-- DB -> Public API (published) -->
-      <path d="M560 250 Q470 270 450 300" fill="none" stroke="var(--green)" stroke-width="1.7" marker-end="url(#ab)"/>
-      <text x="470" y="290" class="svg-sub" font-size="11" fill="var(--ink-2)">bài đã xuất bản</text>
-      <!-- Public API -> Next web -->
-      <path d="M300 330 H220" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
-      <text x="232" y="322" class="svg-sub" font-size="11" fill="var(--ink-2)">JSON</text>
-      <!-- Public API -> Clients -->
-      <path d="M500 330 H770" fill="none" stroke="var(--green)" stroke-width="1.7" marker-end="url(#ab)"/>
-      <text x="600" y="322" class="svg-sub" font-size="11" fill="var(--ink-2)">HTTPS · read-only</text>
-      <!-- Editor -> DB -->
-      <path d="M634 452 V300 Q634 280 610 272" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
-      <text x="642" y="430" class="svg-sub" font-size="11" fill="var(--ink-2)">duyệt · xuất bản</text>
+      <!-- arrows -->
+      <path d="M770 52 H250 Q225 52 160 196" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
+      <text x="300" y="46" class="svg-sub" font-size="11" fill="var(--ink-2)">05:00 · poll nguồn</text>
+      <path d="M770 120 Q560 120 500 200" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
+      <text x="600" y="112" class="svg-sub" font-size="11" fill="var(--ink-2)">URL tin hot</text>
+      <path d="M220 226 H300" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
+      <path d="M500 216 H600 Q760 216 770 222" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
+      <text x="600" y="200" class="svg-sub" font-size="11" fill="var(--ink-2)">dịch</text>
+      <path d="M500 240 H540" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
+      <text x="502" y="234" class="svg-sub" font-size="10" fill="var(--ink-2)">ghi bài</text>
+      <path d="M560 260 Q470 290 450 320" fill="none" stroke="var(--green)" stroke-width="1.7" marker-end="url(#ag)"/>
+      <text x="468" y="308" class="svg-sub" font-size="11" fill="var(--ink-2)">đã xuất bản</text>
+      <path d="M300 349 H220" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
+      <text x="232" y="342" class="svg-sub" font-size="11" fill="var(--ink-2)">JSON</text>
+      <path d="M500 349 H770" fill="none" stroke="var(--green)" stroke-width="1.7" marker-end="url(#ag)"/>
+      <text x="600" y="342" class="svg-sub" font-size="11" fill="var(--ink-2)">HTTPS · read-only</text>
+      <path d="M640 470 V378 Q640 350 610 292" fill="none" stroke="var(--blue)" stroke-width="1.7" marker-end="url(#ab)"/>
+      <text x="648" y="450" class="svg-sub" font-size="11" fill="var(--ink-2)">duyệt · xuất bản</text>
 
-      <!-- ===== secret-plane arrows (orange dashed) ===== -->
-      <path d="M400 360 V232" fill="none" stroke="var(--orange)" stroke-width="1.7" stroke-dasharray="4 4" marker-end="url(#ao)"/>
-      <text x="408" y="300" class="svg-sub" font-size="10.5" fill="var(--orange)">AI token</text>
-      <path d="M610 360 V272" fill="none" stroke="var(--orange)" stroke-width="1.7" stroke-dasharray="4 4" marker-end="url(#ao)"/>
-      <text x="618" y="320" class="svg-sub" font-size="10.5" fill="var(--orange)">DB creds</text>
-      <path d="M150 360 V232" fill="none" stroke="var(--orange)" stroke-width="1.7" stroke-dasharray="4 4" marker-end="url(#ao)"/>
-      <text x="120" y="300" text-anchor="end" class="svg-sub" font-size="10.5" fill="var(--orange)">secrets</text>
+      <!-- secret-plane (orange dashed) -->
+      <path d="M400 376 V264" fill="none" stroke="var(--orange)" stroke-width="1.7" stroke-dasharray="4 4" marker-end="url(#ao)"/>
+      <text x="408" y="330" class="svg-sub" font-size="10.5" fill="var(--orange)">AI key</text>
+      <path d="M610 376 V292" fill="none" stroke="var(--orange)" stroke-width="1.7" stroke-dasharray="4 4" marker-end="url(#ao)"/>
+      <text x="618" y="340" class="svg-sub" font-size="10.5" fill="var(--orange)">DB creds</text>
+      <path d="M150 376 V256" fill="none" stroke="var(--orange)" stroke-width="1.7" stroke-dasharray="4 4" marker-end="url(#ao)"/>
+      <text x="120" y="330" text-anchor="end" class="svg-sub" font-size="10.5" fill="var(--orange)">cron token</text>
     </svg>
-    <figcaption>Vault không bao giờ để lộ khoá xuống trình duyệt — mọi lệnh gọi mô hình AI đi qua worker phía server. Trình duyệt chỉ chạm tới Public API read-only.</figcaption>
+    <figcaption>Khoá AI không bao giờ xuống trình duyệt — mọi lệnh gọi mô hình đi qua server. Chưa cấu hình khoá thì pipeline vẫn chạy nhưng đánh dấu rõ “chưa dịch” thay vì bịa nội dung.</figcaption>
   </figure>
 
   <div class="legend">
@@ -214,39 +210,107 @@
     <span><i style="border-color:var(--orange); border-top-style:dashed"></i> Secret/token từ Vault</span>
   </div>
 
-  <!-- component responsibilities -->
   <div class="grid">
     <div class="card">
-      <h3><span class="dot" style="background:var(--green)"></span>PostgreSQL (CloudNativePG)</h3>
-      <p>Một bản ghi <code>post</code> giữ cả <code>original[]</code> và <code>translated[]</code> nên trạng thái trước/sau dịch nằm cạnh nhau, kèm <code>canonicalUrl</code>, <code>license</code>. Thêm bảng <code>feeds</code> và <code>inbox</code>.</p>
+      <h3><span class="dot" style="background:var(--blue)"></span>AI ingest pipeline</h3>
+      <p><code>lib/ai.ts</code>: fetch bài từ URL/RSS, gọi Claude Messages API biên tập + dịch tiếng Việt, ghi <code>post</code>. Chế độ lịch (CronJob) và thủ công (dán link) dùng chung pipeline.</p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--green)"></span>PostgreSQL</h3>
+      <p>Một <code>post</code> giữ bản gốc + bản dịch cạnh nhau, kèm trạng thái <code>draft/review/published</code>. Bảng <code>settings</code> lưu lịch AI &amp; danh sách nguồn.</p>
     </div>
     <div class="card">
       <h3><span class="dot" style="background:var(--orange)"></span>HashiCorp Vault</h3>
-      <p>Giữ API key nhà cung cấp AI, thông tin đăng nhập DB, khoá Public API read-only và webhook secret. App nhận secret qua Vault Agent — không hardcode trong mã nguồn.</p>
-    </div>
-    <div class="card">
-      <h3><span class="dot" style="background:var(--blue)"></span>Translate Worker</h3>
-      <p>Đọc bản gốc, gọi mô hình theo prompt hệ thống + từ điển thuật ngữ, tôn trọng hạn mức/ngân sách, ghi bản dịch. Nguồn <em>cần xin phép</em> chỉ tạo tóm tắt + link gốc.</p>
+      <p>Giữ API key AI, DB creds, cron token và OIDC client secret của Keycloak. App nhận secret qua Vault/OpenShift Secret — không hardcode.</p>
     </div>
     <div class="card">
       <h3><span class="dot" style="background:var(--blue)"></span>Public API + Web</h3>
-      <p>4 endpoint đọc: <code>/posts</code>, <code>/posts/{slug}</code>, <code>/categories</code>, <code>/feed.xml</code>. Next.js SSR phục vụ landing, service, blog; CMS sau xác thực Editor/Admin.</p>
+      <p>Endpoint đọc <code>/api/v1/posts</code> chỉ trả bài đã xuất bản. Next.js SSR phục vụ landing, service, blog; CMS nằm sau oauth2-proxy.</p>
     </div>
   </div>
 
-  <!-- ============ FIGURE 2: DEVSECOPS PIPELINE ============ -->
-  <h2><span class="sq" style="background:var(--orange)"></span>CI/CD DevSecOps trên OpenShift Pipelines <span class="en">OWASP-aligned · Tekton</span></h2>
-  <p class="lead">Mỗi push kích hoạt pipeline Tekton. Quét bảo mật chạy sớm (secret, SCA, SAST) rồi tới build &amp; quét image; <strong>DAST chạy trên môi trường staging đang chạy</strong> — cổng gate trước khi promote image đã quét sang prod.</p>
+  <!-- ============ FIGURE 2: AUTH & RBAC (KEYCLOAK) ============ -->
+  <h2><span class="sq" style="background:var(--cyan)"></span>Xác thực & phân quyền <span class="en">Keycloak SSO · oauth2-proxy · CMS RBAC</span></h2>
+  <p class="lead">Trang quản trị CMS được bảo vệ bởi <strong>oauth2-proxy</strong> (sidecar) nối tới <strong>Keycloak</strong> realm <code class="inline">ac-portal</code>. Người dùng đăng nhập tại <code class="inline">sso.appcarrier.cloud</code>; realm role (<code class="inline">blog-*</code>) được đẩy vào claim <code class="inline">groups</code> → header <code class="inline">X-Forwarded-Groups</code>, và app dùng đó để phân quyền theo từng hành động.</p>
 
   <figure>
-    <svg viewBox="0 0 1000 430" role="img" aria-label="Pipeline DevSecOps: pre-commit gồm gitleaks và lint; giai đoạn vulnerability scanning gồm SCA Trivy fs, SAST Semgrep, build buildah, quét image Trivy; deploy dev rồi staging, ZAP DAST chạy trên staging; sau đó promote sang prod kèm kiểm tra compliance kube-linter.">
+    <svg viewBox="0 0 1000 400" role="img" aria-label="Luồng xác thực: trình duyệt tới oauth2-proxy, nếu chưa đăng nhập chuyển hướng tới Keycloak realm ac-portal để đăng nhập; oauth2-proxy đặt header X-Forwarded-User và X-Forwarded-Groups rồi chuyển tiếp tới app Next.js; app map role và enforce RBAC; Keycloak dùng PostgreSQL riêng.">
       <defs>
-        <marker id="pb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M0 0L10 5L0 10z" fill="var(--ink-3)"/>
-        </marker>
+        <marker id="cb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--cyan)"/></marker>
+        <marker id="cg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--green)"/></marker>
       </defs>
 
-      <!-- phase columns -->
+      <rect x="30" y="150" width="150" height="60" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
+      <text x="105" y="176" text-anchor="middle" class="svg-label" font-size="13" fill="var(--ink)">Trình duyệt</text>
+      <text x="105" y="193" text-anchor="middle" class="svg-mono" font-size="10" fill="var(--ink-3)">cms.appcarrier.cloud</text>
+
+      <!-- pod box -->
+      <rect x="250" y="60" width="360" height="290" rx="12" fill="none" stroke="var(--hair)" stroke-dasharray="2 5"/>
+      <text x="266" y="80" class="svg-mono" font-size="11" fill="var(--ink-3)">CMS pod (ac-portal-&lt;env&gt;)</text>
+
+      <rect x="276" y="150" width="140" height="60" rx="8" fill="color-mix(in srgb, var(--cyan) 10%, var(--surface))" stroke="var(--cyan)"/>
+      <text x="346" y="174" text-anchor="middle" class="svg-label" font-size="12.5" fill="var(--ink)">oauth2-proxy</text>
+      <text x="346" y="191" text-anchor="middle" class="svg-sub" font-size="10" fill="var(--ink-3)">provider=oidc</text>
+
+      <rect x="446" y="150" width="140" height="60" rx="8" fill="var(--surface)" stroke="var(--blue)"/>
+      <text x="516" y="174" text-anchor="middle" class="svg-label" font-size="12.5" fill="var(--ink)">Next.js app</text>
+      <text x="516" y="191" text-anchor="middle" class="svg-sub" font-size="10" fill="var(--ink-3)">RBAC theo role</text>
+
+      <!-- Keycloak -->
+      <rect x="700" y="120" width="270" height="66" rx="8" fill="color-mix(in srgb, var(--cyan) 8%, var(--surface))" stroke="var(--cyan)"/>
+      <text x="835" y="146" text-anchor="middle" class="svg-label" font-size="13" fill="var(--ink)">Keycloak · realm ac-portal</text>
+      <text x="835" y="164" text-anchor="middle" class="svg-mono" font-size="10" fill="var(--ink-3)">sso.appcarrier.cloud</text>
+      <text x="835" y="179" text-anchor="middle" class="svg-sub" font-size="10" fill="var(--ink-3)">client ac-portal-cms · roles blog-*</text>
+
+      <!-- KC Postgres -->
+      <g>
+        <path d="M765 250 a55 13 0 0 0 110 0 v52 a55 13 0 0 1 -110 0 z" fill="var(--surface-2)" stroke="var(--green)" stroke-width="1.4"/>
+        <ellipse cx="820" cy="250" rx="55" ry="13" fill="var(--surface)" stroke="var(--green)" stroke-width="1.4"/>
+        <text x="820" y="247" text-anchor="middle" class="svg-label" font-size="11.5" fill="var(--ink)">PostgreSQL</text>
+        <text x="820" y="288" text-anchor="middle" class="svg-mono" font-size="9.5" fill="var(--ink-3)">kc-db</text>
+      </g>
+
+      <!-- arrows -->
+      <path d="M180 180 H276" fill="none" stroke="var(--cyan)" stroke-width="1.7" marker-end="url(#cb)"/>
+      <text x="200" y="172" class="svg-sub" font-size="10.5" fill="var(--ink-2)">/cms</text>
+      <path d="M346 150 V110 Q346 90 700 140" fill="none" stroke="var(--cyan)" stroke-width="1.7" marker-end="url(#cb)"/>
+      <text x="470" y="96" class="svg-sub" font-size="10.5" fill="var(--ink-2)">302 login (OIDC) nếu chưa xác thực</text>
+      <path d="M416 180 H446" fill="none" stroke="var(--green)" stroke-width="1.7" marker-end="url(#cg)"/>
+      <text x="431" y="230" text-anchor="middle" class="svg-sub" font-size="10" fill="var(--ink-2)">X-Forwarded-User</text>
+      <text x="431" y="244" text-anchor="middle" class="svg-sub" font-size="10" fill="var(--ink-2)">X-Forwarded-Groups</text>
+      <path d="M835 186 V237" fill="none" stroke="var(--green)" stroke-width="1.5" marker-end="url(#cg)"/>
+
+      <!-- roles legend -->
+      <g font-size="11" fill="var(--ink-2)">
+        <text x="30" y="270" class="svg-label" font-size="12" fill="var(--ink)">Realm roles → vai trò CMS</text>
+        <text x="30" y="292" class="svg-mono" font-size="10.5">blog-author · blog-translator · blog-editor</text>
+        <text x="30" y="310" class="svg-mono" font-size="10.5">blog-publisher · blog-admin</text>
+        <text x="30" y="332" font-size="10.5">admin mới sửa được cấu hình &amp; xoá bài</text>
+      </g>
+    </svg>
+    <figcaption>oauth2-proxy ghi đè mọi header <code class="inline">X-Forwarded-*</code> từ client nên app tin tưởng được role do proxy cấp. Chỉ user có role <code class="inline">blog-*</code> mới vào được CMS (<code class="inline">--allowed-group</code>).</figcaption>
+  </figure>
+
+  <table>
+    <thead><tr><th>Vai trò</th><th>Realm role (Keycloak)</th><th>Quyền chính</th></tr></thead>
+    <tbody>
+      <tr><td>Tác giả</td><td><code>blog-author</code></td><td>Tạo/sửa nháp của mình, gửi duyệt</td></tr>
+      <tr><td>Biên dịch</td><td><code>blog-translator</code></td><td>Sửa trường bản dịch (vi↔en)</td></tr>
+      <tr><td>Biên tập</td><td><code>blog-editor</code></td><td>Sửa mọi nháp, duyệt/trả lại; chạy AI ingest</td></tr>
+      <tr><td>Kiểm duyệt</td><td><code>blog-publisher</code></td><td>Xuất bản / gỡ xuất bản</td></tr>
+      <tr><td>Quản trị</td><td><code>blog-admin</code></td><td>Toàn quyền + xoá + cấu hình + lịch AI</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ============ FIGURE 3: DEVSECOPS PIPELINE ============ -->
+  <h2><span class="sq" style="background:var(--orange)"></span>CI/CD DevSecOps trên OpenShift Pipelines <span class="en">OWASP-aligned · Tekton</span></h2>
+  <p class="lead">Mỗi push kích hoạt pipeline Tekton. Quét bảo mật chạy sớm — <strong>SCA = OWASP Dependency-Check</strong>, SAST = Semgrep, secret = Gitleaks — rồi build &amp; quét image (<strong>Trivy chỉ quét image</strong>). Kết quả đẩy về <strong>DefectDojo</strong>. DAST (ZAP) chạy trên staging đang chạy làm cổng gate trước prod.</p>
+
+  <figure>
+    <svg viewBox="0 0 1000 430" role="img" aria-label="Pipeline DevSecOps: pre-commit gồm gitleaks; giai đoạn quét gồm SCA OWASP Dependency-Check, SAST Semgrep, build, quét image Trivy; kết quả đẩy DefectDojo; deploy dev rồi staging, ZAP DAST trên staging; promote prod kèm kube-linter.">
+      <defs>
+        <marker id="pb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--ink-3)"/></marker>
+      </defs>
       <g font-size="12" text-anchor="middle">
         <text x="130" y="30" class="svg-label" fill="var(--orange)">Pre-commit</text>
         <text x="410" y="30" class="svg-label" fill="var(--blue)">Vulnerability scanning (CI)</text>
@@ -254,32 +318,23 @@
       </g>
       <line x1="270" y1="44" x2="270" y2="300" stroke="var(--hair)" stroke-dasharray="2 5"/>
       <line x1="600" y1="44" x2="600" y2="300" stroke="var(--hair)" stroke-dasharray="2 5"/>
-
-      <!-- stage boxes -->
       <g class="svg-label" font-size="12" fill="var(--ink)" text-anchor="middle">
-        <!-- pre-commit -->
         <rect x="40" y="60" width="180" height="46" rx="7" fill="var(--surface-2)" stroke="var(--orange)"/><text x="130" y="82">git-clone</text><text x="130" y="98" class="svg-mono" font-size="10" fill="var(--ink-3)">Tekton ClusterTask</text>
         <rect x="40" y="120" width="180" height="46" rx="7" fill="var(--surface-2)" stroke="var(--orange)"/><text x="130" y="142">Secret scan</text><text x="130" y="158" class="svg-mono" font-size="10" fill="var(--ink-3)">Gitleaks</text>
-        <rect x="40" y="180" width="180" height="46" rx="7" fill="var(--surface-2)" stroke="var(--orange)"/><text x="130" y="202">Lint</text><text x="130" y="218" class="svg-mono" font-size="10" fill="var(--ink-3)">ESLint · next lint</text>
+        <rect x="40" y="180" width="180" height="46" rx="7" fill="var(--surface-2)" stroke="var(--orange)"/><text x="130" y="202">Compliance</text><text x="130" y="218" class="svg-mono" font-size="10" fill="var(--ink-3)">kube-linter</text>
 
-        <!-- CI scanning -->
-        <rect x="320" y="60" width="180" height="46" rx="7" fill="var(--surface-2)" stroke="var(--blue)"/><text x="410" y="82">SCA</text><text x="410" y="98" class="svg-mono" font-size="10" fill="var(--ink-3)">Trivy fs · npm audit</text>
+        <rect x="320" y="60" width="180" height="46" rx="7" fill="var(--surface-2)" stroke="var(--blue)"/><text x="410" y="82">SCA</text><text x="410" y="98" class="svg-mono" font-size="10" fill="var(--ink-3)">OWASP Dependency-Check</text>
         <rect x="320" y="120" width="180" height="46" rx="7" fill="var(--surface-2)" stroke="var(--blue)"/><text x="410" y="142">SAST</text><text x="410" y="158" class="svg-mono" font-size="10" fill="var(--ink-3)">Semgrep</text>
-        <rect x="320" y="180" width="180" height="46" rx="7" fill="var(--surface-2)" stroke="var(--blue)"/><text x="410" y="202">Build image</text><text x="410" y="218" class="svg-mono" font-size="10" fill="var(--ink-3)">Buildah → registry</text>
-        <rect x="320" y="240" width="180" height="46" rx="7" fill="var(--surface-2)" stroke="var(--blue)"/><text x="410" y="262">Image scan</text><text x="410" y="278" class="svg-mono" font-size="10" fill="var(--ink-3)">Trivy image</text>
+        <rect x="320" y="180" width="180" height="46" rx="7" fill="var(--surface-2)" stroke="var(--blue)"/><text x="410" y="202">Build image</text><text x="410" y="218" class="svg-mono" font-size="10" fill="var(--ink-3)">BuildConfig → registry</text>
+        <rect x="320" y="240" width="180" height="46" rx="7" fill="var(--surface-2)" stroke="var(--blue)"/><text x="410" y="262">Image scan</text><text x="410" y="278" class="svg-mono" font-size="10" fill="var(--ink-3)">Trivy image only</text>
 
-        <!-- deploy/dast -->
-        <rect x="640" y="60" width="200" height="46" rx="7" fill="var(--surface-2)" stroke="var(--green)"/><text x="740" y="82">Deploy dev</text><text x="740" y="98" class="svg-mono" font-size="10" fill="var(--ink-3)">dev.appcarrier.cloud</text>
-        <rect x="640" y="120" width="200" height="46" rx="7" fill="var(--surface-2)" stroke="var(--green)"/><text x="740" y="142">Deploy staging</text><text x="740" y="158" class="svg-mono" font-size="10" fill="var(--ink-3)">staging.appcarrier.cloud</text>
+        <rect x="640" y="60" width="200" height="46" rx="7" fill="var(--surface-2)" stroke="var(--green)"/><text x="740" y="82">DefectDojo</text><text x="740" y="98" class="svg-mono" font-size="10" fill="var(--ink-3)">import-scan (SARIF/JSON)</text>
+        <rect x="640" y="120" width="200" height="46" rx="7" fill="var(--surface-2)" stroke="var(--green)"/><text x="740" y="142">Deploy dev → staging</text><text x="740" y="158" class="svg-mono" font-size="10" fill="var(--ink-3)">set image (digest) · rollout</text>
         <rect x="640" y="180" width="200" height="46" rx="7" fill="color-mix(in srgb, var(--green) 10%, var(--surface))" stroke="var(--green)"/><text x="740" y="202">DAST gate</text><text x="740" y="218" class="svg-mono" font-size="10" fill="var(--ink-3)">OWASP ZAP → staging</text>
-        <rect x="640" y="240" width="200" height="46" rx="7" fill="var(--surface-2)" stroke="var(--green)"/><text x="740" y="262">Promote prod</text><text x="740" y="278" class="svg-mono" font-size="10" fill="var(--ink-3)">appcarrier.cloud + kube-linter</text>
+        <rect x="640" y="240" width="200" height="46" rx="7" fill="var(--surface-2)" stroke="var(--green)"/><text x="740" y="262">Promote prod</text><text x="740" y="278" class="svg-mono" font-size="10" fill="var(--ink-3)">appcarrier.cloud · re-patch TLS</text>
       </g>
-
-      <!-- flow arrows between phases -->
       <path d="M220 143 H320" fill="none" stroke="var(--ink-3)" stroke-width="1.6" marker-end="url(#pb)"/>
-      <path d="M500 200 H580 Q600 200 600 160 H640 V143" fill="none" stroke="var(--ink-3)" stroke-width="1.6" marker-end="url(#pb)"/>
-
-      <!-- branch -> env lane -->
+      <path d="M500 263 H560 Q600 263 600 160 H640 V143" fill="none" stroke="var(--ink-3)" stroke-width="1.6" marker-end="url(#pb)"/>
       <g font-size="12">
         <rect x="40" y="330" width="920" height="72" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
         <text x="60" y="356" class="svg-label" fill="var(--ink)">Branch → môi trường</text>
@@ -291,96 +346,98 @@
         <circle cx="722" cy="378" r="4" fill="var(--green)"/>
       </g>
     </svg>
-    <figcaption>Ánh xạ theo OWASP DevSecOps Guideline: pre-commit → vulnerability scanning → compliance auditing. Build image một lần, quét, rồi promote đúng image đó lên staging và prod (không build lại).</figcaption>
+    <figcaption>Theo OWASP DevSecOps Guideline: pre-commit → vulnerability scanning → compliance. Build image một lần, quét, đẩy kết quả về DefectDojo, rồi promote đúng image đó lên staging &amp; prod.</figcaption>
   </figure>
 
   <table>
     <thead><tr><th>Giai đoạn OWASP</th><th>Kiểm soát</th><th>Công cụ (mã nguồn mở)</th><th>Chạy ở</th></tr></thead>
     <tbody>
-      <tr><td>Pre-commit</td><td>Secret / leak scan</td><td><code>Gitleaks</code></td><td><span class="pill blue">mọi push</span></td></tr>
-      <tr><td>Pre-commit</td><td>Lint</td><td><code>ESLint</code></td><td><span class="pill blue">mọi push</span></td></tr>
-      <tr><td>Vulnerability scanning</td><td>SCA (dependencies)</td><td><code>Trivy fs</code> · <code>npm audit</code></td><td><span class="pill blue">CI</span></td></tr>
-      <tr><td>Vulnerability scanning</td><td>SAST</td><td><code>Semgrep</code></td><td><span class="pill blue">CI</span></td></tr>
-      <tr><td>Vulnerability scanning</td><td>Container image scan</td><td><code>Trivy image</code></td><td><span class="pill blue">sau build</span></td></tr>
+      <tr><td>Pre-commit</td><td>Secret / leak scan</td><td><code>Gitleaks</code></td><td><span class="pill blue">dev</span></td></tr>
+      <tr><td>Vulnerability scanning</td><td>SCA (dependencies)</td><td><code>OWASP Dependency-Check</code></td><td><span class="pill blue">dev</span></td></tr>
+      <tr><td>Vulnerability scanning</td><td>SAST</td><td><code>Semgrep</code></td><td><span class="pill blue">dev</span></td></tr>
+      <tr><td>Vulnerability scanning</td><td>Container image scan</td><td><code>Trivy</code> (image only)</td><td><span class="pill blue">sau build</span></td></tr>
       <tr><td>Vulnerability scanning</td><td>DAST</td><td><code>OWASP ZAP</code></td><td><span class="pill orange">staging</span></td></tr>
-      <tr><td>Compliance auditing</td><td>IaC / manifest policy</td><td><code>kube-linter</code> · <code>Trivy config</code></td><td><span class="pill green">trước prod</span></td></tr>
+      <tr><td>Compliance auditing</td><td>IaC / manifest policy</td><td><code>kube-linter</code></td><td><span class="pill blue">dev</span></td></tr>
+      <tr><td>Aggregation</td><td>Quản lý lỗ hổng</td><td><code>DefectDojo</code></td><td><span class="pill green">mọi lần quét</span></td></tr>
     </tbody>
   </table>
 
-  <!-- ============ FIGURE 3: AC-PORTAL PLATFORM CONTEXT ============ -->
+  <!-- ============ FIGURE 4: AC-PORTAL PLATFORM CONTEXT ============ -->
   <h2><span class="sq" style="background:var(--green)"></span>Bối cảnh nền tảng AC-portal <span class="en">AC-portal on OpenShift · platform topology</span></h2>
-  <p class="lead">Site này là một app trong AC-portal, chạy trên ba namespace OpenShift theo branch. Một CI hub (EventListener + Pipeline trong <code class="inline">ac-portal-dev</code>) build &amp; deploy sang cả ba, dùng chung các dịch vụ nền tảng: Ingress Router, Internal Registry, Vault và lưu trữ Ceph.</p>
+  <p class="lead">Site chạy trên ba namespace theo branch. CI hub (EventListener + Pipeline trong <code class="inline">ac-portal-dev</code>) build &amp; deploy sang cả ba. <strong>Keycloak</strong> (SSO dùng chung tại <code class="inline">sso.appcarrier.cloud</code>) cấp danh tính cho CMS ở mọi môi trường; các namespace dùng chung Ingress Router, Internal Registry, Vault và Ceph.</p>
 
   <figure>
-    <svg viewBox="0 0 1000 560" role="img" aria-label="Topology AC-portal: GitHub repo với 3 branch gửi webhook tới CI hub trong ac-portal-dev; CI hub build và deploy sang ba namespace dev/staging/prod, mỗi namespace có Route, app Next.js và PostgreSQL; các namespace dùng chung Ingress Router, Internal Registry, HashiCorp Vault và Ceph storage.">
+    <svg viewBox="0 0 1000 600" role="img" aria-label="Topology AC-portal: GitHub 3 branch gửi webhook tới CI hub trong ac-portal-dev; CI hub build và deploy sang ba namespace, mỗi namespace có Route, app Next.js + oauth2-proxy và PostgreSQL; Keycloak SSO trong ac-portal-dev phục vụ cả ba; dùng chung Ingress Router, Internal Registry, Vault, Ceph.">
       <defs>
         <marker id="b3b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--blue)"/></marker>
         <marker id="b3o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--orange)"/></marker>
+        <marker id="b3c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--cyan)"/></marker>
         <marker id="b3g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--ink-3)"/></marker>
       </defs>
 
-      <!-- GitHub -->
-      <rect x="360" y="24" width="280" height="52" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
-      <text x="500" y="46" text-anchor="middle" class="svg-label" font-size="13" fill="var(--ink)">GitHub · kencafe/ac-portal</text>
-      <text x="500" y="63" text-anchor="middle" class="svg-mono" font-size="10.5" fill="var(--ink-3)">branch: dev · staging · main</text>
+      <rect x="360" y="20" width="280" height="50" rx="8" fill="var(--surface-2)" stroke="var(--hair)"/>
+      <text x="500" y="42" text-anchor="middle" class="svg-label" font-size="13" fill="var(--ink)">GitHub · kencafe/ac-portal</text>
+      <text x="500" y="59" text-anchor="middle" class="svg-mono" font-size="10.5" fill="var(--ink-3)">branch: dev · staging · main</text>
 
-      <!-- CI hub -->
-      <rect x="330" y="108" width="340" height="52" rx="8" fill="color-mix(in srgb, var(--blue) 8%, var(--surface))" stroke="var(--blue)"/>
-      <text x="500" y="130" text-anchor="middle" class="svg-label" font-size="13" fill="var(--ink)">OpenShift Pipelines — CI hub</text>
-      <text x="500" y="147" text-anchor="middle" class="svg-mono" font-size="10.5" fill="var(--ink-3)">EventListener + ns-web-cicd · ac-portal-dev</text>
+      <rect x="330" y="100" width="340" height="50" rx="8" fill="color-mix(in srgb, var(--blue) 8%, var(--surface))" stroke="var(--blue)"/>
+      <text x="500" y="121" text-anchor="middle" class="svg-label" font-size="13" fill="var(--ink)">OpenShift Pipelines — CI hub</text>
+      <text x="500" y="138" text-anchor="middle" class="svg-mono" font-size="10.5" fill="var(--ink-3)">EventListener + ns-web-cicd · ac-portal-dev</text>
+      <path d="M500 70 V100" fill="none" stroke="var(--ink-3)" stroke-width="1.6" marker-end="url(#b3g)"/>
 
-      <path d="M500 76 V108" fill="none" stroke="var(--ink-3)" stroke-width="1.6" marker-end="url(#b3g)"/>
-      <text x="512" y="96" class="svg-sub" font-size="10.5" fill="var(--ink-2)">webhook push</text>
+      <!-- Keycloak SSO (shared) -->
+      <rect x="700" y="100" width="270" height="50" rx="8" fill="color-mix(in srgb, var(--cyan) 8%, var(--surface))" stroke="var(--cyan)"/>
+      <text x="835" y="121" text-anchor="middle" class="svg-label" font-size="12.5" fill="var(--ink)">Keycloak SSO (dùng chung)</text>
+      <text x="835" y="138" text-anchor="middle" class="svg-mono" font-size="10" fill="var(--ink-3)">sso.appcarrier.cloud · ac-portal-dev</text>
 
-      <!-- namespace columns -->
+      <!-- namespaces -->
       <g>
-        <!-- dev -->
-        <rect x="24" y="210" width="300" height="170" rx="10" fill="none" stroke="var(--hair)" stroke-dasharray="2 5"/>
-        <text x="40" y="230" class="svg-mono" font-size="11" fill="var(--blue)">ac-portal-dev</text>
-        <rect x="44" y="242" width="260" height="30" rx="6" fill="var(--surface-2)" stroke="var(--green)"/><text x="174" y="261" text-anchor="middle" class="svg-mono" font-size="10.5" fill="var(--ink)">Route · dev.appcarrier.cloud</text>
-        <rect x="44" y="280" width="124" height="42" rx="6" fill="var(--surface)" stroke="var(--blue)"/><text x="106" y="305" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink)">ns-web ×1</text>
-        <rect x="180" y="280" width="124" height="42" rx="6" fill="var(--surface)" stroke="var(--green)"/><text x="242" y="305" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink)">PostgreSQL</text>
-        <text x="174" y="345" text-anchor="middle" class="svg-mono" font-size="9.5" fill="var(--ink-3)">+ BuildConfig · Tekton</text>
+        <rect x="24" y="205" width="300" height="180" rx="10" fill="none" stroke="var(--hair)" stroke-dasharray="2 5"/>
+        <text x="40" y="225" class="svg-mono" font-size="11" fill="var(--blue)">ac-portal-dev</text>
+        <rect x="44" y="236" width="260" height="28" rx="6" fill="var(--surface-2)" stroke="var(--green)"/><text x="174" y="254" text-anchor="middle" class="svg-mono" font-size="10" fill="var(--ink)">Route · dev / cms-dev / blog-dev</text>
+        <rect x="44" y="272" width="124" height="44" rx="6" fill="var(--surface)" stroke="var(--blue)"/><text x="106" y="290" text-anchor="middle" class="svg-sub" font-size="10.5" fill="var(--ink)">app + oauth2</text><text x="106" y="305" text-anchor="middle" class="svg-sub" font-size="9.5" fill="var(--ink-3)">-proxy ×1</text>
+        <rect x="180" y="272" width="124" height="44" rx="6" fill="var(--surface)" stroke="var(--green)"/><text x="242" y="297" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink)">PostgreSQL</text>
+        <text x="174" y="352" text-anchor="middle" class="svg-mono" font-size="9" fill="var(--ink-3)">+ Keycloak · CronJob · Tekton</text>
 
-        <!-- staging -->
-        <rect x="350" y="210" width="300" height="170" rx="10" fill="none" stroke="var(--hair)" stroke-dasharray="2 5"/>
-        <text x="366" y="230" class="svg-mono" font-size="11" fill="var(--orange)">ac-portal-staging</text>
-        <rect x="370" y="242" width="260" height="30" rx="6" fill="var(--surface-2)" stroke="var(--green)"/><text x="500" y="261" text-anchor="middle" class="svg-mono" font-size="10.5" fill="var(--ink)">Route · staging.appcarrier.cloud</text>
-        <rect x="370" y="280" width="124" height="42" rx="6" fill="var(--surface)" stroke="var(--blue)"/><text x="432" y="305" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink)">ns-web ×1</text>
-        <rect x="506" y="280" width="124" height="42" rx="6" fill="var(--surface)" stroke="var(--green)"/><text x="568" y="305" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink)">PostgreSQL</text>
-        <text x="500" y="345" text-anchor="middle" class="svg-mono" font-size="9.5" fill="var(--orange)">← ZAP DAST gate</text>
+        <rect x="350" y="205" width="300" height="180" rx="10" fill="none" stroke="var(--hair)" stroke-dasharray="2 5"/>
+        <text x="366" y="225" class="svg-mono" font-size="11" fill="var(--orange)">ac-portal-staging</text>
+        <rect x="370" y="236" width="260" height="28" rx="6" fill="var(--surface-2)" stroke="var(--green)"/><text x="500" y="254" text-anchor="middle" class="svg-mono" font-size="10" fill="var(--ink)">Route · staging / cms / blog</text>
+        <rect x="370" y="272" width="124" height="44" rx="6" fill="var(--surface)" stroke="var(--blue)"/><text x="432" y="290" text-anchor="middle" class="svg-sub" font-size="10.5" fill="var(--ink)">app + oauth2</text><text x="432" y="305" text-anchor="middle" class="svg-sub" font-size="9.5" fill="var(--ink-3)">-proxy ×1</text>
+        <rect x="506" y="272" width="124" height="44" rx="6" fill="var(--surface)" stroke="var(--green)"/><text x="568" y="297" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink)">PostgreSQL</text>
+        <text x="500" y="352" text-anchor="middle" class="svg-mono" font-size="9.5" fill="var(--orange)">← ZAP DAST gate</text>
 
-        <!-- prod -->
-        <rect x="676" y="210" width="300" height="170" rx="10" fill="none" stroke="var(--hair)" stroke-dasharray="2 5"/>
-        <text x="692" y="230" class="svg-mono" font-size="11" fill="var(--green)">ac-portal-prod</text>
-        <rect x="696" y="242" width="260" height="30" rx="6" fill="var(--surface-2)" stroke="var(--green)"/><text x="826" y="261" text-anchor="middle" class="svg-mono" font-size="10.5" fill="var(--ink)">Route · appcarrier.cloud</text>
-        <rect x="696" y="280" width="124" height="42" rx="6" fill="var(--surface)" stroke="var(--blue)"/><text x="758" y="305" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink)">ns-web ×2</text>
-        <rect x="832" y="280" width="124" height="42" rx="6" fill="var(--surface)" stroke="var(--green)"/><text x="894" y="305" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink)">PostgreSQL</text>
+        <rect x="676" y="205" width="300" height="180" rx="10" fill="none" stroke="var(--hair)" stroke-dasharray="2 5"/>
+        <text x="692" y="225" class="svg-mono" font-size="11" fill="var(--green)">ac-portal-prod</text>
+        <rect x="696" y="236" width="260" height="28" rx="6" fill="var(--surface-2)" stroke="var(--green)"/><text x="826" y="254" text-anchor="middle" class="svg-mono" font-size="10" fill="var(--ink)">Route · appcarrier / cms / blog</text>
+        <rect x="696" y="272" width="124" height="44" rx="6" fill="var(--surface)" stroke="var(--blue)"/><text x="758" y="290" text-anchor="middle" class="svg-sub" font-size="10.5" fill="var(--ink)">app + oauth2</text><text x="758" y="305" text-anchor="middle" class="svg-sub" font-size="9.5" fill="var(--ink-3)">-proxy ×2</text>
+        <rect x="832" y="272" width="124" height="44" rx="6" fill="var(--surface)" stroke="var(--green)"/><text x="894" y="297" text-anchor="middle" class="svg-sub" font-size="11" fill="var(--ink)">PostgreSQL</text>
       </g>
 
-      <!-- CI hub -> namespaces -->
-      <path d="M420 160 Q300 180 174 242" fill="none" stroke="var(--blue)" stroke-width="1.6" marker-end="url(#b3b)"/>
-      <path d="M500 160 V242" fill="none" stroke="var(--blue)" stroke-width="1.6" marker-end="url(#b3b)"/>
-      <path d="M580 160 Q720 180 826 242" fill="none" stroke="var(--blue)" stroke-width="1.6" marker-end="url(#b3b)"/>
-      <text x="352" y="196" class="svg-sub" font-size="10" fill="var(--ink-2)">build &amp; deploy</text>
+      <path d="M420 150 Q300 180 174 236" fill="none" stroke="var(--blue)" stroke-width="1.6" marker-end="url(#b3b)"/>
+      <path d="M500 150 V236" fill="none" stroke="var(--blue)" stroke-width="1.6" marker-end="url(#b3b)"/>
+      <path d="M580 150 Q720 180 826 236" fill="none" stroke="var(--blue)" stroke-width="1.6" marker-end="url(#b3b)"/>
+      <text x="352" y="186" class="svg-sub" font-size="10" fill="var(--ink-2)">build &amp; deploy</text>
+
+      <!-- Keycloak serves all three (cyan dashed) -->
+      <path d="M835 150 V196 Q835 205 300 290" fill="none" stroke="var(--cyan)" stroke-width="1.4" stroke-dasharray="4 4" marker-end="url(#b3c)"/>
+      <text x="700" y="200" text-anchor="middle" class="svg-sub" font-size="10" fill="var(--cyan)">OIDC · cả 3 env</text>
 
       <!-- shared platform bar -->
-      <rect x="24" y="418" width="952" height="118" rx="10" fill="var(--surface-2)" stroke="var(--hair)"/>
-      <text x="40" y="440" class="svg-label" font-size="12.5" fill="var(--ink)">Nền tảng dùng chung · OpenShift (prod01.fis-cloud)</text>
+      <rect x="24" y="424" width="952" height="150" rx="10" fill="var(--surface-2)" stroke="var(--hair)"/>
+      <text x="40" y="446" class="svg-label" font-size="12.5" fill="var(--ink)">Nền tảng dùng chung · OpenShift (prod01.fis-cloud)</text>
       <g class="svg-label" font-size="11.5" fill="var(--ink)" text-anchor="middle">
-        <rect x="44" y="454" width="210" height="40" rx="6" fill="var(--surface)" stroke="var(--hair)"/><text x="149" y="479">Ingress Router</text>
-        <rect x="268" y="454" width="210" height="40" rx="6" fill="var(--surface)" stroke="var(--hair)"/><text x="373" y="479">Internal Registry</text>
-        <rect x="492" y="454" width="210" height="40" rx="6" fill="var(--surface)" stroke="var(--orange)"/><text x="597" y="479">HashiCorp Vault</text>
-        <rect x="716" y="454" width="216" height="40" rx="6" fill="var(--surface)" stroke="var(--hair)"/><text x="824" y="479">Ceph storage (RBD)</text>
+        <rect x="44" y="460" width="210" height="40" rx="6" fill="var(--surface)" stroke="var(--hair)"/><text x="149" y="485">Ingress Router</text>
+        <rect x="268" y="460" width="210" height="40" rx="6" fill="var(--surface)" stroke="var(--hair)"/><text x="373" y="485">Internal Registry</text>
+        <rect x="492" y="460" width="210" height="40" rx="6" fill="var(--surface)" stroke="var(--orange)"/><text x="597" y="485">HashiCorp Vault</text>
+        <rect x="716" y="460" width="216" height="40" rx="6" fill="var(--surface)" stroke="var(--hair)"/><text x="824" y="485">Ceph storage (RBD/CephFS)</text>
       </g>
-      <text x="500" y="520" text-anchor="middle" class="svg-sub" font-size="10.5" fill="var(--ink-3)">Registry cấp image · Vault cấp secret/token (dashed) · Router expose Route · Ceph cấp PVC cho PostgreSQL</text>
+      <text x="500" y="530" text-anchor="middle" class="svg-sub" font-size="10.5" fill="var(--ink-3)">Registry cấp image (mirror external) · Vault cấp secret/token · Router expose Route + TLS golden · Ceph cấp PVC</text>
+      <text x="500" y="552" text-anchor="middle" class="svg-mono" font-size="10" fill="var(--ink-3)">TLS: appcarrier.cloud (SAN *.appcarrier.cloud) · edge termination + redirect</text>
 
-      <!-- representative feeds from platform up -->
-      <path d="M373 454 V386" fill="none" stroke="var(--blue)" stroke-width="1.5" marker-end="url(#b3b)"/>
-      <path d="M597 454 V386" fill="none" stroke="var(--orange)" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#b3o)"/>
+      <path d="M373 460 V392" fill="none" stroke="var(--blue)" stroke-width="1.5" marker-end="url(#b3b)"/>
+      <path d="M597 460 V392" fill="none" stroke="var(--orange)" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#b3o)"/>
     </svg>
-    <figcaption>Cùng một image đã quét được promote qua ba namespace. DAST (ZAP) chỉ chạy ở staging làm cổng gate trước khi <code class="inline">main</code> đẩy lên prod (apex <code class="inline">appcarrier.cloud</code>).</figcaption>
+    <figcaption>Keycloak SSO đặt trong <code class="inline">ac-portal-dev</code> phục vụ CMS của cả ba môi trường. Cùng một image đã quét được promote qua ba namespace; DAST (ZAP) chỉ ở staging làm cổng gate trước prod.</figcaption>
   </figure>
 
-  <div class="note"><strong>Chưa triển khai (backend TODO theo README):</strong> ingest RSS, worker dịch phía server, cổng bản quyền, API công khai và xác thực CMS. Frontend hiện chạy trên React state; các mũi tên dữ liệu ở Sơ đồ 1 là kiến trúc mục tiêu để nối backend vào.</div>
+  <div class="note"><strong>Trạng thái hiện tại (dev):</strong> đã có store bài + Public API, CMS (soạn thảo, xuất bản, trang Quản trị), auto-hiển thị bài lên trang chủ, AI auto-ingest (lịch + dán link), xác thực Keycloak + RBAC, TLS hợp lệ. <strong>Còn lại:</strong> thêm bản ghi DNS <code class="inline">sso.appcarrier.cloud</code>, cắm khoá AI thật vào Vault, và promote đầy đủ sang staging/prod.</div>
 </div>
