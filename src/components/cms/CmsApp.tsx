@@ -51,6 +51,7 @@ type SiteSettings = {
   aiApiKeySet: boolean;
   aiApiKeyHint: string;
   aiImageEnabled: boolean;
+  aiImageProvider: "pollinations" | "gemini";
   aiImageModel: string;
 };
 
@@ -207,6 +208,7 @@ export default function CmsApp() {
   const [aiCfgMsg, setAiCfgMsg] = useState("");
   // Dedicated image model (runs alongside the text model; reuses the Gemini key)
   const [aiImageModelSel, setAiImageModelSel] = useState("gemini-2.5-flash-image");
+  const [aiImageProviderSel, setAiImageProviderSel] = useState("pollinations");
   const [aiImageMsg, setAiImageMsg] = useState("");
 
   // AI auto-discovery + ingest history
@@ -252,7 +254,7 @@ export default function CmsApp() {
   useEffect(() => {
     refreshPosts();
     fetch("/api/v1/me", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then(setMe); }).catch(() => {});
-    fetch("/api/v1/settings", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then((s: SiteSettings) => { setSettings(s); setAiModelSel(s.aiModel || ""); setAiProviderSel(s.aiProvider || "anthropic"); setAiTopicsInput((s.aiTopics || []).join(", ")); setRecipientsInput((s.mailExtraRecipients || []).join("\n")); setAiImageModelSel(s.aiImageModel || "gemini-2.5-flash-image"); }); }).catch(() => {});
+    fetch("/api/v1/settings", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then((s: SiteSettings) => { setSettings(s); setAiModelSel(s.aiModel || ""); setAiProviderSel(s.aiProvider || "anthropic"); setAiTopicsInput((s.aiTopics || []).join(", ")); setRecipientsInput((s.mailExtraRecipients || []).join("\n")); setAiImageModelSel(s.aiImageModel || "gemini-2.5-flash-image"); setAiImageProviderSel(s.aiImageProvider || "pollinations"); }); }).catch(() => {});
     loadSubscribers();
     fetch("/api/v1/ai/history", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then((d) => setAiHistory(d.results || [])); }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -666,8 +668,21 @@ export default function CmsApp() {
 
   const navActive = (key: string) => key === view;
 
+  const aiWorking = aiBusy || coverBusy || previewBusy || !!reeditBusy;
+  const lastLog = aiLog[0] || "";
   return (
     <div style={{ display: "grid", gridTemplateColumns: "232px minmax(0, 1fr)", minHeight: "100vh", background: COLORS.pageBg }}>
+      {/* Global AI progress toast */}
+      {aiWorking && (
+        <div style={{ position: "fixed", right: 20, bottom: 20, zIndex: 50, background: "#0b1f3a", color: "#fff", borderRadius: 10, padding: "12px 16px", boxShadow: "0 10px 30px -8px rgba(0,0,0,0.4)", maxWidth: 380, display: "flex", gap: 12, alignItems: "center" }}>
+          <span style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "#fff", borderRadius: "50%", display: "inline-block", animation: "nsspin 0.8s linear infinite", flexShrink: 0 }} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>AI đang xử lý…</div>
+            {lastLog && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lastLog}</div>}
+          </div>
+          <style>{"@keyframes nsspin{to{transform:rotate(360deg)}}"}</style>
+        </div>
+      )}
       {/* Sidebar */}
       <aside style={{ background: "#fff", borderRight: `1px solid ${COLORS.split}`, position: "sticky", top: 0, height: "100vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 18px 14px", borderBottom: `1px solid ${COLORS.split}` }}>
@@ -1338,11 +1353,17 @@ export default function CmsApp() {
               </div>
               <label style={label}>Dán link ảnh</label>
               <input style={{ ...input, marginBottom: 10 }} placeholder="https://…/anh.jpg" value={draft.coverUrl?.startsWith("http") ? draft.coverUrl : ""} onChange={(e) => setDraft({ ...draft, coverUrl: e.target.value })} disabled={coverBusy} />
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-                <input ref={coverFileRef} type="file" accept="image/*" disabled={coverBusy} onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadCover(f); }} style={{ fontSize: 12.5, flex: 1, minWidth: 140 }} />
+              <input ref={coverFileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadCover(f); }} />
+              <div
+                onClick={() => !coverBusy && coverFileRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); }}
+                onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f && !coverBusy) uploadCover(f); }}
+                style={{ height: 90, border: `1px dashed ${COLORS.border}`, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", color: COLORS.ink3, fontSize: 12.5, padding: 12, cursor: coverBusy ? "default" : "pointer", marginBottom: 10 }}
+              >
+                {coverBusy ? "⏳ Đang xử lý ảnh…" : "📤 Kéo ảnh vào đây, hoặc bấm để chọn ảnh từ máy"}
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button type="button" onClick={genCoverAI} disabled={coverBusy || !draft.title} style={{ ...btnSm, opacity: coverBusy || !draft.title ? 0.5 : 1 }}>✨ Tạo ảnh bằng AI</button>
+                <button type="button" onClick={genCoverAI} disabled={coverBusy || !draft.title} style={{ ...btnBlue, opacity: coverBusy || !draft.title ? 0.5 : 1 }}>✨ Tạo ảnh bằng AI</button>
                 <button type="button" onClick={() => { setDraft({ ...draft, coverUrl: "" }); setCoverMsg("Dùng ảnh minh hoạ tự động."); }} disabled={coverBusy} style={btnSm}>Ảnh tự động</button>
               </div>
               {coverMsg && <div style={{ fontSize: 12, color: COLORS.ink2, marginTop: 10 }}>{coverMsg}</div>}
@@ -1375,14 +1396,6 @@ export default function CmsApp() {
             </div>
           </div>
 
-          <div style={panel}>
-            <PanelHead>{EDITOR_UI.coverPanelHead}</PanelHead>
-            <div style={{ padding: 16 }}>
-              <div style={{ height: 140, border: `1px dashed ${COLORS.border}`, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", color: COLORS.ink3, fontSize: 13, padding: 12 }}>{EDITOR_UI.coverDropText}</div>
-              <div style={{ fontSize: 12, color: COLORS.ink3, marginTop: 8 }}>{EDITOR_UI.coverHint}</div>
-              <div style={{ fontSize: 12, color: COLORS.ink3, marginTop: 4, fontFamily: "monospace" }}>{EDITOR_UI.coverPathTemplate.replace("{slug}", draft.slug || "slug")}</div>
-            </div>
-          </div>
         </div>
       </div>
     );
@@ -1519,11 +1532,11 @@ export default function CmsApp() {
   }
 
 
-  async function saveImageCfg(enabled: boolean, model: string) {
+  async function saveImageCfg(enabled: boolean, provider: string, model: string) {
     setAiImageMsg("⏳ Đang lưu…");
     try {
-      const res = await fetch("/api/v1/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aiImageEnabled: enabled, aiImageModel: model }) });
-      if (res.ok) { setSettings(await res.json()); setAiImageMsg(enabled ? `✅ Đã bật — dùng model ảnh: ${model}` : "✅ Đã tắt tạo ảnh AI (dùng ảnh bìa title-card)"); }
+      const res = await fetch("/api/v1/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aiImageEnabled: enabled, aiImageProvider: provider, aiImageModel: model }) });
+      if (res.ok) { setSettings(await res.json()); setAiImageMsg(enabled ? `✅ Đã bật — nguồn ảnh: ${provider === "gemini" ? "Gemini (" + model + ")" : "Pollinations (miễn phí)"}` : "✅ Đã tắt tạo ảnh AI (dùng ảnh minh hoạ tự động)"); }
       else { const d = await res.json().catch(() => ({})); setAiImageMsg(`❌ ${d.error || res.status}`); }
     } catch (e) { setAiImageMsg(`❌ ${(e as Error).message}`); }
   }
@@ -1609,24 +1622,36 @@ export default function CmsApp() {
 
         {/* Image model — runs alongside the text model */}
         <section style={{ ...panelPad, gridColumn: "1 / -1" }}>
-          <PanelHead right={<span style={{ fontSize: 12.5, color: settings?.aiImageEnabled ? COLORS.brandGreen : COLORS.ink3 }}>{settings?.aiImageEnabled ? `Đang bật · ${settings?.aiImageModel}` : "Đang tắt (dùng ảnh title-card)"}</span>}>
-            Model tạo ảnh bìa (chạy song song với model bài viết)
+          <PanelHead right={<span style={{ fontSize: 12.5, color: settings?.aiImageEnabled ? COLORS.brandGreen : COLORS.ink3 }}>{settings?.aiImageEnabled ? `Đang bật · ${settings?.aiImageProvider === "gemini" ? "Gemini" : "Pollinations"}` : "Đang tắt"}</span>}>
+            Tạo ảnh bìa bằng AI (chạy song song với model bài viết)
           </PanelHead>
           <div style={{ fontSize: 12.5, color: COLORS.ink3, margin: "6px 0 14px" }}>
-            <b>Model bài viết</b> (ở trên) lo phần chữ; <b>model ảnh</b> (ở đây) lo ảnh bìa — hai model độc lập, <b>dùng chung API key Gemini</b>. Bật thì mỗi bài AI sẽ được sinh ảnh bìa thật (lưu trên máy chủ); tắt thì dùng ảnh title-card thương hiệu. Ưu tiên: <i>ảnh gốc nguồn → ảnh AII → title-card</i>.
+            Mỗi bài AI được sinh <b>ảnh bìa thật</b>. Chọn nguồn ảnh:
+            <br/>• <b>Pollinations</b> — miễn phí, <b>không cần key/billing</b> (khuyến nghị, dùng được ngay).
+            <br/>• <b>Gemini</b> — chất lượng cao nhưng <b>cần bật billing</b> cho key (free tier bị chặn).
+            <br/>Tắt thì dùng ảnh minh hoạ vector tự động. Ưu tiên mỗi bài: <i>ảnh bạn đặt → ảnh AI → ảnh minh hoạ</i>.
           </div>
           <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <label style={label}>Model tạo ảnh (Gemini)</label>
-              <select value={aiImageModelSel} onChange={(e) => setAiImageModelSel(e.target.value)} disabled={!canEditAi} style={input}>
-                {IMAGE_MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
+            <div style={{ minWidth: 200 }}>
+              <label style={label}>Nguồn ảnh</label>
+              <select value={aiImageProviderSel} onChange={(e) => setAiImageProviderSel(e.target.value)} disabled={!canEditAi} style={input}>
+                <option value="pollinations">Pollinations (miễn phí)</option>
+                <option value="gemini">Gemini (cần billing)</option>
               </select>
             </div>
-            <button type="button" onClick={() => saveImageCfg(true, aiImageModelSel)} disabled={!canEditAi} style={{ ...btnBlue, height: 40, opacity: canEditAi ? 1 : 0.5 }}>Bật &amp; lưu</button>
-            <button type="button" onClick={() => saveImageCfg(false, aiImageModelSel)} disabled={!canEditAi} style={{ ...btnSm, height: 40 }}>Tắt tạo ảnh AI</button>
+            {aiImageProviderSel === "gemini" && (
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <label style={label}>Model Gemini</label>
+                <select value={aiImageModelSel} onChange={(e) => setAiImageModelSel(e.target.value)} disabled={!canEditAi} style={input}>
+                  {IMAGE_MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+            )}
+            <button type="button" onClick={() => saveImageCfg(true, aiImageProviderSel, aiImageModelSel)} disabled={!canEditAi} style={{ ...btnBlue, height: 40, opacity: canEditAi ? 1 : 0.5 }}>Bật &amp; lưu</button>
+            <button type="button" onClick={() => saveImageCfg(false, aiImageProviderSel, aiImageModelSel)} disabled={!canEditAi} style={{ ...btnSm, height: 40 }}>Tắt</button>
           </div>
           {aiImageMsg && <div style={{ fontSize: 12.5, color: COLORS.ink2, marginTop: 10 }}>{aiImageMsg}</div>}
-          <div style={{ fontSize: 11.5, color: COLORS.ink3, marginTop: 8 }}>Lưu ý: mỗi ảnh tốn thêm 1 lượt gọi API (chi phí) và dung lượng PVC. Ảnh sinh không kèm chữ, phong cách vector phẳng.</div>
+          <div style={{ fontSize: 11.5, color: COLORS.ink3, marginTop: 8 }}>Ảnh sinh không kèm chữ, phong cách vector phẳng; lưu trên máy chủ (PVC). Mỗi ảnh thêm ~vài giây khi tạo bài.</div>
         </section>
 
         <div style={panel}>

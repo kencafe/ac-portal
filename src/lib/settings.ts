@@ -39,11 +39,13 @@ export type Settings = {
   aiProvider: string; // provider id from lib/providers (e.g. "anthropic", "xai", "qwen")
   aiModel: string; // selected model id, e.g. "claude-sonnet-5"
   aiApiKey: string; // token for the active provider — SECRET; never returned (see publicSettings)
-  // Dedicated image model (runs alongside the text model). Currently Gemini —
-  // reuses aiApiKey when the text provider is Gemini. Opt-in; falls back to the
-  // generated title-card cover when off or on failure.
+  // Dedicated cover-image generation (runs alongside the text model).
+  //  - "pollinations": free, keyless AI image (default) — works without billing.
+  //  - "gemini": Gemini image model (reuses aiApiKey; needs billing).
+  // Falls back to the generated illustration when off or on failure.
   aiImageEnabled: boolean;
-  aiImageModel: string; // e.g. "gemini-2.5-flash-image"
+  aiImageProvider: "pollinations" | "gemini";
+  aiImageModel: string; // Gemini image model id (used when provider = "gemini")
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -71,7 +73,8 @@ export const DEFAULT_SETTINGS: Settings = {
   aiProvider: "anthropic",
   aiModel: "claude-sonnet-5",
   aiApiKey: "",
-  aiImageEnabled: false,
+  aiImageEnabled: true,
+  aiImageProvider: "pollinations",
   aiImageModel: "gemini-2.5-flash-image",
 };
 

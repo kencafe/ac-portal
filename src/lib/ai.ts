@@ -22,40 +22,78 @@ const ENV_AI_MODEL = process.env.AI_MODEL || "";
 const DEFAULT_MODEL = "claude-sonnet-5";
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
 
-// Optional AI-generated cover: a dedicated Gemini image model (runs alongside
-// the text model, reusing the Gemini key). Saves a real PNG to the PVC and
-// returns its URL; falls back to the generated title-card when off or on error.
+// English image prompt for a clean, appealing editorial cover (no text).
+function coverPrompt(title: string, cat: string): string {
+  return `Professional editorial cover illustration for a technical blog article about "${title}". Field: ${cat || "cloud technology"}. Modern flat vector style, abstract and clean, deep blue and green brand palette, subtle grid and network motif, soft depth. No text, no words, no letters, no watermark.`;
+}
+
+async function saveCover(slug: string, buf: Buffer, ext: string): Promise<string> {
+  await fsp.mkdir(path.join(DATA_DIR, "covers"), { recursive: true });
+  await fsp.writeFile(path.join(DATA_DIR, "covers", `${slug}.${ext}`), buf);
+  return `/api/cover-img/${slug}.${ext}`;
+}
+
+// Free, keyless AI image via Pollinations (Flux/SD). Works WITHOUT any billing.
+async function pollinationsImage(slug: string, title: string, cat: string): Promise<string> {
+  const seed = Math.abs(hashCode(title)) % 100000;
+  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(coverPrompt(title, cat))}?width=1200&height=630&nologo=true&seed=${seed}&model=flux`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(120000), redirect: "follow" });
+  if (!res.ok) throw new Error(`pollinations HTTP ${res.status}`);
+  const ct = res.headers.get("content-type") || "";
+  if (!ct.startsWith("image/")) throw new Error(`pollinations non-image (${ct})`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length < 1000) throw new Error("pollinations empty image");
+  const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg";
+  return saveCover(slug, buf, ext);
+}
+
+// Gemini image model (reuses aiApiKey; needs billing — 429 on free tier).
+async function geminiImage(slug: string, title: string, cat: string, apiKey: string, model: string): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ contents: [{ parts: [{ text: coverPrompt(title, cat) }] }], generationConfig: { responseModalities: ["IMAGE"] } }),
+    signal: AbortSignal.timeout(90000),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
+  const d = await res.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const parts: any[] = d?.candidates?.[0]?.content?.parts ?? [];
+  const img = parts.find((p) => p?.inlineData?.data);
+  if (!img) throw new Error("no image in response");
+  const mime: string = img.inlineData.mimeType || "image/png";
+  const ext = mime.includes("jpeg") || mime.includes("jpg") ? "jpg" : "png";
+  return saveCover(slug, Buffer.from(img.inlineData.data, "base64"), ext);
+}
+
+function hashCode(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) { h = (Math.imul(31, h) + s.charCodeAt(i)) | 0; }
+  return h;
+}
+
+// Generate a real cover image. Provider "pollinations" (free/keyless, default)
+// or "gemini" (needs billing). Saves to the PVC and returns its URL; falls back
+// to the generated illustration when disabled or on error.
 export async function makeCover(slug: string, title: string, cat = "", tone = "#0072BC", force = false): Promise<string> {
   const fallback = coverFor(title, cat, tone);
   const s = await getSettings();
   if (!s.aiImageEnabled && !force) return fallback;
-  const apiKey = s.aiApiKey || ENV_AI_API_KEY;
-  const model = s.aiImageModel || "gemini-2.5-flash-image";
-  if (!apiKey) return fallback;
+  const provider = s.aiImageProvider || "pollinations";
   try {
-    const prompt =
-      `Ảnh minh hoạ bìa cho bài blog kỹ thuật, phong cách vector phẳng hiện đại, trừu tượng, sạch sẽ; tông màu xanh dương và xanh lá thương hiệu; KHÔNG có chữ trong ảnh. Chủ đề: ${title}. Lĩnh vực: ${cat || "công nghệ"}.`;
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ["IMAGE"] } }),
-      signal: AbortSignal.timeout(90000),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
-    const d = await res.json();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const parts: any[] = d?.candidates?.[0]?.content?.parts ?? [];
-    const img = parts.find((p) => p?.inlineData?.data);
-    if (!img) throw new Error("no image in response");
-    const mime: string = img.inlineData.mimeType || "image/png";
-    const ext = mime.includes("jpeg") || mime.includes("jpg") ? "jpg" : "png";
-    await fsp.mkdir(path.join(DATA_DIR, "covers"), { recursive: true });
-    await fsp.writeFile(path.join(DATA_DIR, "covers", `${slug}.${ext}`), Buffer.from(img.inlineData.data, "base64"));
-    console.log(`[ai] cover image generated for ${slug} (${model})`);
-    return `/api/cover-img/${slug}.${ext}`;
+    if (provider === "gemini") {
+      const apiKey = s.aiApiKey || ENV_AI_API_KEY;
+      if (!apiKey) throw new Error("no api key");
+      const out = await geminiImage(slug, title, cat, apiKey, s.aiImageModel || "gemini-2.5-flash-image");
+      console.log(`[ai] cover via gemini for ${slug}`);
+      return out;
+    }
+    const out = await pollinationsImage(slug, title, cat);
+    console.log(`[ai] cover via pollinations for ${slug}`);
+    return out;
   } catch (e) {
-    console.error(`[ai] cover image failed for ${slug}:`, (e as Error).message);
+    console.error(`[ai] cover image failed for ${slug} (${provider}):`, (e as Error).message);
     return fallback;
   }
 }
