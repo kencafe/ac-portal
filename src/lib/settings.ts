@@ -73,7 +73,10 @@ export const DEFAULT_SETTINGS: Settings = {
   aiProvider: "anthropic",
   aiModel: "claude-sonnet-5",
   aiApiKey: "",
-  aiImageEnabled: true,
+  // Default OFF: AI posts use the branded content-aware SVG cover (lib/cover.ts),
+  // which is on-brand and never off-topic. Pollinations/Gemini photo generation
+  // remains available as an opt-in (set aiImageEnabled=true).
+  aiImageEnabled: false,
   aiImageProvider: "pollinations",
   aiImageModel: "gemini-2.5-flash-image",
 };

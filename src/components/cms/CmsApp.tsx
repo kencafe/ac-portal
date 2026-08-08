@@ -501,8 +501,17 @@ export default function CmsApp() {
     try {
       const res = await fetch("/api/v1/ai/reedit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, instruction: instruction.trim() || undefined }) });
       const d = await res.json();
-      if (!res.ok) alert(d.error === "Forbidden" ? "Bạn không có quyền biên tập." : `Lỗi: ${d.error || res.status}`);
-      else { setReeditFor(null); setReeditListText(""); }
+      if (!res.ok) { alert(d.error === "Forbidden" ? "Bạn không có quyền biên tập." : `Lỗi: ${d.error || res.status}`); }
+      else {
+        // Show the re-edited result so the change is visible (previously the list
+        // refreshed silently → looked like "nothing happened").
+        setReeditFor(null); setReeditListText("");
+        await refreshPosts();
+        loadHistory();
+        setReeditBusy(null);
+        await openInEditor(slug, true);
+        return;
+      }
       refreshPosts();
       loadHistory();
     } catch (e) { alert((e as Error).message); }

@@ -1,27 +1,19 @@
 import { getIdentity, hasRole, CAN_WRITE } from "@/lib/identity";
-import { makeCover, coverFor } from "@/lib/ai";
+import { coverFor } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 30;
 
-// Manual "generate cover with AI" button. Forces the Gemini image model even if
-// the global toggle is off. If AI image isn't available (e.g. billing not
-// enabled → 429), makeCover returns the generated illustration instead; we
-// detect that and tell the editor so they know AI didn't run.
+// Manual "generate cover" button (cover + in-content block images). Produces the
+// branded, content-aware dashboard SVG (lib/cover.ts) — on-brand and always
+// relevant, never an off-topic photo. A per-click seed varies the motif/layout
+// so repeated clicks give a different-but-branded image.
 export async function POST(req: Request) {
   const id = await getIdentity();
   if (!hasRole(id, CAN_WRITE)) return Response.json({ error: "Forbidden" }, { status: 403 });
-  const { slug, title, cat, tone, scene } = (await req.json().catch(() => ({}))) as { slug?: string; title?: string; cat?: string; tone?: string; scene?: string };
+  const { title, cat, tone } = (await req.json().catch(() => ({}))) as { slug?: string; title?: string; cat?: string; tone?: string; scene?: string };
   if (!title) return Response.json({ error: "Thiếu tiêu đề" }, { status: 400 });
-  const s = (slug || title).toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60) || "cover";
-  const nonce = Date.now() % 1000000; // vary the image + cache-bust on each manual generate
-  const raw = await makeCover(s, title, cat || "", tone || "#0072BC", true, (scene || "").trim(), nonce);
-  const aiUsed = raw.startsWith("/api/cover-img/");
-  const url = aiUsed ? `${raw}?v=${nonce}` : raw;
-  return Response.json({
-    url,
-    aiUsed,
-    note: aiUsed ? "Đã tạo ảnh bằng AI" : "AI ảnh chưa dùng được (thường do chưa bật billing cho key) — đã dùng ảnh minh hoạ tự động.",
-    fallback: coverFor(title, cat || "", tone || "#0072BC"),
-  });
+  const seed = Math.floor(Math.random() * 1_000_000) + 1;
+  const url = `${coverFor(title, cat || "", tone || "#0072BC")}&seed=${seed}`;
+  return Response.json({ url, aiUsed: true, note: "Đã tạo ảnh minh hoạ thương hiệu (theo nội dung)" });
 }
