@@ -21,8 +21,8 @@ spec:
       name: ac-portal:latest
   resources:
     requests:
-      memory: "1Gi"
+      memory: "2Gi"
       cpu: "500m"
     limits:
-      memory: "3Gi"
+      memory: "8Gi"
       cpu: "2"

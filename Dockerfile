@@ -19,6 +19,7 @@ RUN chown -R 1001:0 /app && chmod -R g=u /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=6144"
 RUN npm run build
 
 # ---- runner: minimal standalone image ----
