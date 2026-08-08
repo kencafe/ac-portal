@@ -1153,7 +1153,7 @@ export default function CmsApp() {
                   <span style={{ fontSize: 12.5, color: COLORS.ink3 }}>{p.date}</span>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <button type="button" onClick={() => editPost(p)} style={{ ...btnSm, height: 28, padding: "0 10px" }}>{POSTS_VIEW_UI.editButton}</button>
-                    <button type="button" onClick={() => { if (p.status === "Đã xuất bản") window.open(`/blog/${p.slug}?from=cms`, "_blank"); else openInEditor(p.slug, true); }} title={p.status === "Đã xuất bản" ? "Mở bài trên trang blog" : "Xem trước bài nháp"} style={{ ...btnSm, height: 28, padding: "0 10px" }}>👁 Xem</button>
+                    <button type="button" onClick={() => openInEditor(p.slug, true)} title="Xem trước + chỉnh sửa / biên tập lại" style={{ ...btnSm, height: 28, padding: "0 10px" }}>👁 Xem</button>
                     <button type="button" onClick={() => { setReeditFor(reeditFor === p.slug ? null : p.slug); setReeditListText(""); }} disabled={reeditBusy === p.slug} title="AI biên tập lại — nhập yêu cầu chỉnh sửa" style={{ ...btnSm, height: 28, padding: "0 10px", color: COLORS.brandBlue, borderColor: "#B3D5EA", background: reeditFor === p.slug ? "#E6F1F9" : "#fff" }}>{reeditBusy === p.slug ? "…" : "✨ Biên tập lại"}</button>
                     <button type="button" onClick={() => togglePublish(p.slug)} style={{ ...btnSm, height: 28, padding: "0 10px" }}>{p.status === "Đã xuất bản" ? POSTS_VIEW_UI.hideButton : POSTS_VIEW_UI.publishButton}</button>
                     {p.status === "Đã xuất bản" && (
@@ -1193,7 +1193,8 @@ export default function CmsApp() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button type="button" onClick={() => setShowPreview(false)} style={{ ...btnSm, height: 32, background: !showPreview ? "#E6F1F9" : "#fff", color: !showPreview ? COLORS.brandBlue : COLORS.ink2, borderColor: !showPreview ? "#B3D5EA" : COLORS.border }}>✎ Chỉnh sửa</button>
             <button type="button" onClick={() => setShowPreview(true)} style={{ ...btnSm, height: 32, background: showPreview ? "#E6F1F9" : "#fff", color: showPreview ? COLORS.brandBlue : COLORS.ink2, borderColor: showPreview ? "#B3D5EA" : COLORS.border }}>👁 Xem trước</button>
-            <span style={{ marginLeft: "auto", fontSize: 12.5, color: COLORS.ink3 }}>Xem trước rồi chỉnh nếu cần trước khi xuất bản.</span>
+            {draft.status === "Đã xuất bản" && <a href={`/blog/${draft.slug}?from=cms`} target="_blank" rel="noreferrer" style={{ ...btnSm, height: 32, marginLeft: "auto", textDecoration: "none", display: "inline-flex", alignItems: "center" }}>↗ Xem trên blog</a>}
+            <span style={{ marginLeft: draft.status === "Đã xuất bản" ? 0 : "auto", fontSize: 12.5, color: COLORS.ink3 }}>Xem trước rồi chỉnh nếu cần trước khi xuất bản.</span>
           </div>
           {showPreview ? (
             <>
