@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   },
   description:
     "Đối tác Cloud & AI end-to-end cho doanh nghiệp. Tư vấn, triển khai, vận hành và tối ưu hạ tầng Cloud, DevSecOps, SRE, AIOps và AI Infrastructure.",
-  icons: { icon: "/assets/ns-icon.png" },
+  icons: { icon: "/assets/appcarrier-icon.svg", apple: "/assets/appcarrier-icon.svg" },
   openGraph: {
     title: "FPT-IS Next Gen Service — Cloud & AI Infrastructure",
     description: "Your end-to-end Cloud & AI partner.",

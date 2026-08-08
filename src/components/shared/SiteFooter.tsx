@@ -24,7 +24,7 @@ export default function SiteFooter({ anchorBase = "" }: { anchorBase?: string })
           {/* Brand column */}
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
-              <Image src="/assets/ns-logo.png" alt="" width={28} height={28} style={{ borderRadius: 7 }} />
+              <Image src="/assets/appcarrier-icon.svg" alt="" width={28} height={28} style={{ borderRadius: 7 }} />
               <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
                 <span style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>{FOOTER.brand.line1}</span>
                 <span style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: "0.06em", color: "rgba(255,255,255,0.5)" }}>

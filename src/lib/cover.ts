@@ -1,9 +1,14 @@
 // Branded, content-aware cover generator. Renders a dark-navy "dashboard card"
-// SVG in the exact family as the hand-designed seed covers (grid backdrop +
+// SVG in the same family as the hand-designed seed covers (grid backdrop +
 // category tag + a chart motif chosen from the article's topic + brand accent
 // stripe). Deterministic (seeded from title+cat) so a post always renders the
 // same image; server-rendered, no external service, no quota — never produces
 // an off-topic photo. This is the default cover for AI posts.
+//
+// Diversity: 8 motifs. The topic picks a *set* of fitting motifs; the title
+// seed then chooses one from that set, so two posts in the same category get
+// different-looking charts instead of a repeated template. Motif internals
+// (bar heights, radar shape, %, dot pattern…) are seeded too.
 
 export const BRAND = { orange: "#F37021", blue: "#0072BC", green: "#57A336", sky: "#4AA3E0" } as const;
 
@@ -24,17 +29,19 @@ function mulberry32(a: number) {
   };
 }
 
-type Motif = "gauge" | "bars" | "area" | "radar";
+type Motif = "gauge" | "donut" | "bars" | "area" | "radar" | "sparkstat" | "dotmatrix" | "nodes";
 
-// Choose the chart motif from the article topic (category + title keywords) so
-// the graphic fits the content, falling back to a seeded pick.
-function motifFor(cat: string, title: string, rnd: () => number): Motif {
+// Candidate motifs for a topic, ordered by fit. The title seed picks one of
+// them so same-category posts vary.
+function candidatesFor(cat: string, title: string): Motif[] {
   const t = (cat + " " + title).toLowerCase();
-  if (/secur|zero.?trust|risk|shadow|threat|attack|mã hoá|bảo mật|xác thực|supply.?chain|cve|vuln/.test(t)) return "radar";
-  if (/gpu|infra|cost|chi phí|opencost|resource|util|hiệu suất|throughput|benchmark|scale/.test(t)) return "bars";
-  if (/migrat|di trú|landing|cloud|platform|network|dns|traffic|latency|observ|trace|metric|uptime|độ ổn định/.test(t)) return "area";
-  if (/sre|slo|sla|reliab|error.?budget|alert|cảnh báo|tin cậy|incident|sự cố/.test(t)) return "gauge";
-  return (["gauge", "bars", "area", "radar"] as Motif[])[Math.floor(rnd() * 4)];
+  if (/secur|zero.?trust|risk|shadow|threat|attack|mã hoá|bảo mật|xác thực|supply.?chain|cve|vuln/.test(t)) return ["radar", "dotmatrix", "nodes"];
+  if (/gpu|infra|cost|chi phí|opencost|resource|util|hiệu suất|throughput|benchmark|scale|inference/.test(t)) return ["bars", "donut", "sparkstat"];
+  if (/migrat|di trú|landing|cloud|platform|network|dns|traffic|mạng|hạ tầng/.test(t)) return ["area", "nodes", "sparkstat"];
+  if (/observ|trace|metric|monitor|latency|uptime|log|telemetry/.test(t)) return ["area", "sparkstat", "gauge"];
+  if (/sre|slo|sla|reliab|error.?budget|alert|cảnh báo|tin cậy|incident|sự cố|độ ổn định/.test(t)) return ["gauge", "donut", "bars"];
+  if (/ai|ml|agent|model|kubeflow|llm|automation|tự động/.test(t)) return ["nodes", "dotmatrix", "sparkstat"];
+  return ["gauge", "bars", "area", "radar", "donut", "sparkstat", "dotmatrix", "nodes"];
 }
 
 // --- motifs: hero graphic in the lower/right area (title occupies upper-left) ---
@@ -53,6 +60,21 @@ function gaugeMotif(rnd: () => number, accent: string): string {
   let bars = `<text x="${bx}" y="322" font-size="22" font-weight="600" fill="#ffffff" fill-opacity="0.7">chỉ số</text>`;
   for (let i = 0; i < 8; i++) { const w = (0.45 + rnd() * 0.55) * bw; const col = i >= 6 ? BRAND.orange : accent; bars += `<rect x="${bx}" y="${344 + i * 26}" width="${w.toFixed(0)}" height="12" rx="3" fill="${col}" fill-opacity="0.92"/>`; }
   return track + fill + rest + label + bars;
+}
+function donutMotif(rnd: () => number, accent: string): string {
+  const cx = 760, cy = 400, r = 150, sw = 34;
+  const segs = [0.55 + rnd() * 0.2, 0.15 + rnd() * 0.12, 0]; segs[2] = Math.max(0.08, 1 - segs[0] - segs[1]);
+  const cols = [accent, BRAND.orange, BRAND.sky];
+  let a0 = -Math.PI / 2, out = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#ffffff" stroke-opacity="0.1" stroke-width="${sw}"/>`;
+  segs.forEach((s, i) => {
+    const a1 = a0 + s * Math.PI * 2; const big = s > 0.5 ? 1 : 0;
+    const [x0, y0] = [cx + Math.cos(a0) * r, cy + Math.sin(a0) * r];
+    const [x1, y1] = [cx + Math.cos(a1) * r, cy + Math.sin(a1) * r];
+    out += `<path d="M${x0.toFixed(1)} ${y0.toFixed(1)} A${r} ${r} 0 ${big} 1 ${x1.toFixed(1)} ${y1.toFixed(1)}" fill="none" stroke="${cols[i]}" stroke-width="${sw}"/>`;
+    a0 = a1 + 0.05;
+  });
+  out += `<text x="${cx}" y="${cy + 14}" font-size="60" font-weight="800" fill="#ffffff" text-anchor="middle">${Math.round(segs[0] * 100)}%</text>`;
+  return out;
 }
 function barsMotif(rnd: () => number, accent: string): string {
   const x0 = 130, base = 500, bw = 100, gap = 30, n = 8, maxH = 280, target = base - maxH * 0.72;
@@ -75,7 +97,7 @@ function areaMotif(rnd: () => number, accent: string): string {
   return `<path d="${areaP}" fill="${accent}" fill-opacity="0.16"/><path d="${line}" fill="none" stroke="${accent}" stroke-width="4"/>${dots}`;
 }
 function radarMotif(rnd: () => number, accent: string): string {
-  const cx = 640, cy = 400, R = 190, n = 6;
+  const cx = 640, cy = 400, R = 190, n = 5 + Math.floor(rnd() * 2);
   let rings = "";
   for (const rr of [R, R * 0.66, R * 0.33]) rings += `<circle cx="${cx}" cy="${cy}" r="${rr.toFixed(0)}" fill="none" stroke="#ffffff" stroke-opacity="0.14"/>`;
   let spokes = ""; const poly: [number, number][] = [];
@@ -88,21 +110,83 @@ function radarMotif(rnd: () => number, accent: string): string {
   const dots = poly.map((p) => `<circle cx="${p[0].toFixed(0)}" cy="${p[1].toFixed(0)}" r="6" fill="${accent}"/>`).join("");
   return rings + spokes + `<path d="${pp}" fill="${accent}" fill-opacity="0.22" stroke="${accent}" stroke-width="3"/>${dots}`;
 }
+function sparkstatMotif(rnd: () => number, accent: string): string {
+  // big stat number (centred in the right half) + a sparkline underneath
+  const cxText = 800, x0 = 560, x1 = 1060, y = 470, amp = 90; const n = 12; const step = (x1 - x0) / (n - 1);
+  const pts: [number, number][] = [];
+  for (let i = 0; i < n; i++) pts.push([x0 + i * step, y - (0.2 + rnd() * 0.8) * amp]);
+  const line = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(0)} ${p[1].toFixed(0)}`).join(" ");
+  const stat = (rnd() * 40 + 60).toFixed(1).replace(".", ",");
+  return `<text x="${cxText}" y="380" font-size="92" font-weight="800" fill="#ffffff" text-anchor="middle">${stat}<tspan font-size="42" fill="${accent}">%</tspan></text>` +
+    `<path d="${line}" fill="none" stroke="${accent}" stroke-width="4"/>` +
+    pts.map((p) => `<circle cx="${p[0].toFixed(0)}" cy="${p[1].toFixed(0)}" r="4" fill="${accent}" fill-opacity="0.8"/>`).join("");
+}
+function dotmatrixMotif(rnd: () => number, accent: string): string {
+  // heatmap grid of squares (severity/coverage look). Uses fill+fill-opacity
+  // (not 8-digit hex, which many SVG renderers ignore).
+  const cols = 12, rows = 6, x0 = 470, y0 = 296, s = 40, g = 8;
+  let out = "";
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const v = rnd();
+    const cell = v > 0.85
+      ? `fill="${BRAND.orange}"`
+      : v > 0.6
+        ? `fill="${accent}"`
+        : `fill="#ffffff" fill-opacity="${v > 0.35 ? 0.16 : 0.06}"`;
+    out += `<rect x="${x0 + c * (s + g)}" y="${y0 + r * (s + g)}" width="${s}" height="${s}" rx="6" ${cell}/>`;
+  }
+  return out;
+}
+function nodesMotif(rnd: () => number, accent: string): string {
+  const cx = 700 + rnd() * 30, cy = 400;
+  const dotColors = [accent, BRAND.orange, BRAND.green, BRAND.sky, "#ffffff"];
+  const nodes: { x: number; y: number; r: number; c: string }[] = [];
+  const count = 6 + Math.floor(rnd() * 4);
+  for (let i = 0; i < count; i++) {
+    const ang = (i / count) * Math.PI * 2 + rnd() * 0.6; const rad = 110 + rnd() * 130;
+    const x = Math.min(1140, Math.max(470, cx + Math.cos(ang) * rad));
+    const y = Math.min(560, Math.max(280, cy + Math.sin(ang) * rad * 0.8));
+    nodes.push({ x, y, r: 7 + rnd() * 11, c: dotColors[Math.floor(rnd() * dotColors.length)] });
+  }
+  const edges = nodes.map((n) => `<line x1="${cx.toFixed(0)}" y1="${cy.toFixed(0)}" x2="${n.x.toFixed(0)}" y2="${n.y.toFixed(0)}" stroke="#ffffff" stroke-opacity="0.14"/>`).join("");
+  const rings = [130, 220].map((r, i) => `<circle cx="${cx.toFixed(0)}" cy="${cy.toFixed(0)}" r="${r}" fill="none" stroke="#ffffff" stroke-opacity="${0.16 - i * 0.05}" ${i === 0 ? 'stroke-dasharray="6 8"' : ""}/>`).join("");
+  const dots = nodes.map((n) => `<circle cx="${n.x.toFixed(0)}" cy="${n.y.toFixed(0)}" r="${n.r.toFixed(0)}" fill="${n.c}"/>`).join("");
+  const hub = `<circle cx="${cx.toFixed(0)}" cy="${cy.toFixed(0)}" r="42" fill="${accent}"/>`;
+  return rings + edges + dots + hub;
+}
+
+function drawMotif(kind: Motif, rnd: () => number, accent: string): string {
+  switch (kind) {
+    case "gauge": return gaugeMotif(rnd, accent);
+    case "donut": return donutMotif(rnd, accent);
+    case "bars": return barsMotif(rnd, accent);
+    case "area": return areaMotif(rnd, accent);
+    case "radar": return radarMotif(rnd, accent);
+    case "sparkstat": return sparkstatMotif(rnd, accent);
+    case "dotmatrix": return dotmatrixMotif(rnd, accent);
+    case "nodes": return nodesMotif(rnd, accent);
+  }
+}
 
 export function renderCoverSvg(opts: { title?: string; cat?: string; tone?: string; seed?: number }): string {
   const title = (opts.title || "FPT-IS Next Gen Service").slice(0, 140);
   const cat = (opts.cat || "FPT-IS NS").slice(0, 40);
   const rawTone = opts.tone || "0072BC";
   const accent = "#" + (/^#?[0-9a-fA-F]{6}$/.test(rawTone) ? rawTone.replace("#", "") : "0072BC");
-  const rnd = mulberry32(seedFrom(title + cat) ^ ((opts.seed ?? 0) >>> 0));
+  const extra = (opts.seed ?? 0) >>> 0;
+  const rnd = mulberry32((seedFrom(title + cat) ^ extra) >>> 0);
   const W = 1200, H = 630;
 
   const grid: string[] = [];
   for (let x = 0; x <= W; x += 60) grid.push(`<line x1="${x}" y1="0" x2="${x}" y2="${H}" stroke="#ffffff" stroke-opacity="0.05"/>`);
   for (let y = 0; y <= H; y += 60) grid.push(`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#ffffff" stroke-opacity="0.05"/>`);
 
-  const kind = motifFor(cat, title, rnd);
-  const motif = kind === "gauge" ? gaugeMotif(rnd, accent) : kind === "bars" ? barsMotif(rnd, accent) : kind === "area" ? areaMotif(rnd, accent) : radarMotif(rnd, accent);
+  // Topic gives a candidate set; title seed picks which one → per-article variety.
+  const cands = candidatesFor(cat, title);
+  // `>>> 0` keeps the XOR result unsigned — otherwise a high bit makes it a
+  // negative int and `% length` yields a negative index → undefined motif.
+  const kind = cands[((seedFrom(title) ^ extra) >>> 0) % cands.length];
+  const motif = drawMotif(kind, rnd, accent);
 
   const words = title.split(/\s+/);
   const l1: string[] = [], l2: string[] = [];

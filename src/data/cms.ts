@@ -682,7 +682,7 @@ export const SIDEBAR = {
     name: 'FPT-IS',
     unit: 'NEXT GEN SERVICE',
     sub: 'Content Studio',
-    logo: 'assets/ns-logo.png',
+    logo: 'assets/appcarrier-icon.svg',
   },
   groups: [
     {

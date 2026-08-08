@@ -61,8 +61,8 @@ export default function SiteHeader({
           }}
         >
           <Image
-            src="/assets/ns-logo.png"
-            alt="FPT-IS Next Gen Service"
+            src="/assets/appcarrier-icon.svg"
+            alt="AppCarrier — FPT-IS Next Gen Service"
             width={28}
             height={28}
             style={{ borderRadius: 7, display: "block", flexShrink: 0 }}
