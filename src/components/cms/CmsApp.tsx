@@ -35,7 +35,14 @@ type SiteSettings = {
   autoPublishAiPosts: boolean;
   aiScheduleEnabled: boolean;
   aiScheduleHour: number;
+  aiScheduleMode: "discover" | "feeds";
   aiFeeds: string[];
+  mailHost: string;
+  mailPort: number;
+  mailSecure: boolean;
+  mailUser: string;
+  mailFrom: string;
+  mailPasswordSet: boolean;
   aiTopics: string[];
   aiAutoPublish: boolean;
   aiDiscoverCount: number;
@@ -187,6 +194,13 @@ export default function CmsApp() {
   type HistItem = { at: string; mode: string; source: string; url: string; title: string; slug: string; status: string; aiUsed: boolean; note?: string };
   const [aiHistory, setAiHistory] = useState<HistItem[]>([]);
   const [aiTopicsInput, setAiTopicsInput] = useState("");
+  const [feedChecks, setFeedChecks] = useState<Record<string, { ok: boolean; count: number; titles?: string[]; error?: string }>>({});
+  const [feedCheckBusy, setFeedCheckBusy] = useState<string | null>(null);
+  // Mail config
+  const [mailPwInput, setMailPwInput] = useState("");
+  const [mailTestTo, setMailTestTo] = useState("");
+  const [mailMsg, setMailMsg] = useState("");
+  const [mailBusy, setMailBusy] = useState(false);
 
   function makeDraft(): SeedPost {
     return { ...NEW_DRAFT_DEFAULTS, blocks: [["p", ""]] } as SeedPost;
@@ -393,6 +407,40 @@ export default function CmsApp() {
     if (!settings) return;
     persistFeeds((settings.aiFeeds || []).filter((f) => f !== u));
   }
+  async function checkFeed(u: string) {
+    setFeedCheckBusy(u);
+    try {
+      const res = await fetch("/api/v1/ai/feed-check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: u }) });
+      const d = await res.json();
+      setFeedChecks((m) => ({ ...m, [u]: res.ok ? d : { ok: false, count: 0, error: d.error || res.status } }));
+    } catch (e) {
+      setFeedChecks((m) => ({ ...m, [u]: { ok: false, count: 0, error: (e as Error).message } }));
+    }
+    setFeedCheckBusy(null);
+  }
+  async function saveMailCfg() {
+    if (!settings) return;
+    setMailBusy(true);
+    const body: Record<string, unknown> = { mailHost: settings.mailHost, mailPort: settings.mailPort, mailSecure: settings.mailSecure, mailUser: settings.mailUser, mailFrom: settings.mailFrom };
+    if (mailPwInput.trim()) body.mailPassword = mailPwInput.trim();
+    try {
+      const res = await fetch("/api/v1/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (res.ok) { setSettings(await res.json()); setMailPwInput(""); setMailMsg("✅ Đã lưu cấu hình mail"); }
+      else { const d = await res.json().catch(() => ({})); setMailMsg(`❌ ${d.error || res.status}`); }
+    } catch (e) { setMailMsg(`❌ ${(e as Error).message}`); }
+    setMailBusy(false);
+  }
+  async function testMail() {
+    if (!mailTestTo.trim()) return;
+    setMailBusy(true);
+    setMailMsg("⏳ Đang gửi thử…");
+    try {
+      const res = await fetch("/api/v1/mail/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: mailTestTo.trim() }) });
+      const d = await res.json();
+      setMailMsg(res.ok ? `✅ Đã gửi thử tới ${mailTestTo}` : `❌ ${d.error || res.status}`);
+    } catch (e) { setMailMsg(`❌ ${(e as Error).message}`); }
+    setMailBusy(false);
+  }
 
   async function togglePublish(slug: string) {
     const cur = posts.find((p) => p.slug === slug);
@@ -572,18 +620,42 @@ export default function CmsApp() {
                 <button type="button" onClick={saveSettings} disabled={!isAdmin} style={{ ...btnBlue, height: 32, marginLeft: "auto", opacity: isAdmin ? 1 : 0.5 }}>Lưu lịch</button>
                 {settingsSaved && <span style={{ fontSize: 12.5, color: COLORS.brandGreen }}>Đã lưu</span>}
               </div>
+              <div style={{ display: "flex", gap: 18, alignItems: "center", marginBottom: 14, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 13, color: COLORS.ink2 }}>Chế độ:</span>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13.5 }}>
+                  <input type="radio" name="schedmode" checked={settings.aiScheduleMode === "discover"} disabled={!isAdmin} onChange={() => setSettings({ ...settings, aiScheduleMode: "discover" })} />
+                  AI tự kiếm bài hay (theo chủ đề)
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13.5 }}>
+                  <input type="radio" name="schedmode" checked={settings.aiScheduleMode === "feeds"} disabled={!isAdmin} onChange={() => setSettings({ ...settings, aiScheduleMode: "feeds" })} />
+                  Lấy thẳng từ nguồn đã dán
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13.5 }}>
+                  Số bài
+                  <input type="number" min={1} max={10} disabled={!isAdmin} value={settings.aiDiscoverCount} onChange={(e) => setSettings({ ...settings, aiDiscoverCount: Math.max(1, Math.min(10, Number(e.target.value) || 1)) })} style={{ ...input, width: 60, height: 32 }} />
+                </label>
+              </div>
               <label style={label}>Nguồn RSS/Atom ({feeds.length})</label>
               <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
                 <input style={{ ...input, flex: 1 }} placeholder="https://nguồn.com/rss" value={aiFeedInput} onChange={(e) => setAiFeedInput(e.target.value)} disabled={!isAdmin} />
                 <button type="button" onClick={addFeed} disabled={!isAdmin || !aiFeedInput} style={{ ...btnSm, opacity: isAdmin && aiFeedInput ? 1 : 0.5 }}>+ Thêm nguồn</button>
               </div>
               {feeds.length === 0 && <div style={{ fontSize: 12.5, color: COLORS.ink3 }}>Chưa có nguồn. Thêm URL RSS để lịch tự động chạy.</div>}
-              {feeds.map((f) => (
-                <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: `1px solid ${COLORS.split}`, fontSize: 13 }}>
-                  <span style={{ flex: 1, fontFamily: "monospace", color: COLORS.ink2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f}</span>
-                  <button type="button" onClick={() => removeFeed(f)} disabled={!isAdmin} style={{ ...btnSm, height: 26, padding: "0 8px", color: "#C0392B" }}>Xoá</button>
-                </div>
-              ))}
+              {feeds.map((f) => {
+                const chk = feedChecks[f];
+                return (
+                  <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: `1px solid ${COLORS.split}`, fontSize: 13 }}>
+                    <span style={{ flex: 1, fontFamily: "monospace", color: COLORS.ink2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f}</span>
+                    {chk && (
+                      <span style={{ fontSize: 11.5, fontWeight: 600, color: chk.ok ? COLORS.brandGreen : "#C0392B", whiteSpace: "nowrap" }} title={chk.error || (chk.titles || []).join(" · ")}>
+                        {chk.ok ? `✓ hợp lệ · ${chk.count} bài` : `✗ ${chk.error || "lỗi"}`}
+                      </span>
+                    )}
+                    <button type="button" onClick={() => checkFeed(f)} disabled={feedCheckBusy === f} style={{ ...btnSm, height: 26, padding: "0 8px" }}>{feedCheckBusy === f ? "…" : "Check"}</button>
+                    <button type="button" onClick={() => removeFeed(f)} disabled={!isAdmin} style={{ ...btnSm, height: 26, padding: "0 8px", color: "#C0392B" }}>Xoá</button>
+                  </div>
+                );
+              })}
               <div style={{ fontSize: 11.5, color: COLORS.ink3, marginTop: 10 }}>
                 CronJob OpenShift <code>ac-portal-ai-ingest</code> gọi endpoint lúc {String(settings.aiScheduleHour).padStart(2, "0")}:00. Bài mới ra {settings.autoPublishAiPosts ? "xuất bản ngay" : "dạng nháp chờ duyệt"} (đổi ở Quản trị).
               </div>
@@ -744,6 +816,49 @@ export default function CmsApp() {
             </div>
           )}
         </section>
+
+        {/* Email (SMTP) config */}
+        {settings && (
+          <section style={panelPad}>
+            <PanelHead
+              right={
+                <span style={{ fontSize: 12.5, color: settings.mailPasswordSet ? COLORS.brandGreen : COLORS.ink3 }}>
+                  {settings.mailPasswordSet ? "App password: đã lưu" : "Chưa có app password"}
+                </span>
+              }
+            >
+              Cấu hình Email gửi đi (SMTP)
+            </PanelHead>
+            <div style={{ fontSize: 12.5, color: COLORS.ink3, margin: "6px 0 14px" }}>
+              Dùng SMTP (vd Gmail + <b>App Password</b>). Với Gmail: host <code>smtp.gmail.com</code>, cổng <code>587</code>, bật xác thực 2 lớp rồi tạo App Password. Mật khẩu lưu phía server, không hiển thị lại.
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <div><label style={label}>SMTP host</label><input style={input} value={settings.mailHost} disabled={!canEdit} onChange={(e) => set("mailHost", e.target.value)} /></div>
+              <div><label style={label}>Cổng</label><input style={input} type="number" value={settings.mailPort} disabled={!canEdit} onChange={(e) => set("mailPort", Number(e.target.value) || 587)} /></div>
+              <div><label style={label}>SSL (465)</label>
+                <select style={input} value={settings.mailSecure ? "1" : "0"} disabled={!canEdit} onChange={(e) => set("mailSecure", e.target.value === "1")}>
+                  <option value="0">STARTTLS (587)</option>
+                  <option value="1">SSL (465)</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <div><label style={label}>Tài khoản (email)</label><input style={input} value={settings.mailUser} disabled={!canEdit} onChange={(e) => set("mailUser", e.target.value)} placeholder="ban@gmail.com" /></div>
+              <div><label style={label}>From (tuỳ chọn)</label><input style={input} value={settings.mailFrom} disabled={!canEdit} onChange={(e) => set("mailFrom", e.target.value)} placeholder="FPT-IS NS <ban@gmail.com>" /></div>
+            </div>
+            <label style={label}>App Password</label>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <input style={{ ...input, flex: 1, fontFamily: "monospace" }} type="password" value={mailPwInput} disabled={!canEdit} onChange={(e) => setMailPwInput(e.target.value)} placeholder={settings.mailPasswordSet ? "•••••• (đã lưu — nhập mới để thay)" : "app password 16 ký tự"} />
+              <button type="button" onClick={saveMailCfg} disabled={!canEdit || mailBusy} style={{ ...btnBlue, opacity: canEdit && !mailBusy ? 1 : 0.5 }}>Lưu cấu hình</button>
+            </div>
+            <label style={label}>Gửi thử tới</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input style={{ ...input, flex: 1 }} value={mailTestTo} disabled={!canEdit} onChange={(e) => setMailTestTo(e.target.value)} placeholder="email@fpt.com" />
+              <button type="button" onClick={testMail} disabled={!canEdit || mailBusy || !mailTestTo} style={{ ...btnSm, opacity: canEdit && mailTestTo && !mailBusy ? 1 : 0.5 }}>✉ Gửi thử</button>
+            </div>
+            {mailMsg && <div style={{ fontSize: 12.5, color: COLORS.ink2, marginTop: 10 }}>{mailMsg}</div>}
+          </section>
+        )}
 
         {/* Access / RBAC */}
         <section style={panelPad}>

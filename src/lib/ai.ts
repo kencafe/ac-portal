@@ -68,6 +68,18 @@ export function parseFeedLinks(xml: string, limit = 5): string[] {
 
 export type FeedItem = { title: string; url: string };
 
+// Validate an RSS/Atom source: reachable + parseable + item count + samples.
+export async function checkFeed(url: string): Promise<{ ok: boolean; count: number; titles: string[]; error?: string }> {
+  try {
+    const xml = await fetchText(url);
+    const items = parseFeedItems(xml, 50);
+    if (items.length === 0) return { ok: false, count: 0, titles: [], error: "Không phải RSS/Atom hoặc không có bài" };
+    return { ok: true, count: items.length, titles: items.slice(0, 3).map((i) => i.title) };
+  } catch (e) {
+    return { ok: false, count: 0, titles: [], error: (e as Error).message };
+  }
+}
+
 // Extract {title, link} pairs from an RSS/Atom feed.
 export function parseFeedItems(xml: string, limit = 20): FeedItem[] {
   const out: FeedItem[] = [];

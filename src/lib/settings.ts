@@ -17,7 +17,15 @@ export type Settings = {
   // AI auto-ingest daily schedule.
   aiScheduleEnabled: boolean;
   aiScheduleHour: number; // 0–23, cluster TZ (default 5 = 05:00)
+  aiScheduleMode: "discover" | "feeds"; // discover = AI tự kiếm bài hay; feeds = lấy thẳng từ nguồn dán
   aiFeeds: string[]; // RSS/Atom source URLs the daily job pulls from
+  // Outgoing mail (SMTP, e.g. Gmail + app password).
+  mailHost: string;
+  mailPort: number;
+  mailSecure: boolean; // true = 465/SSL, false = 587/STARTTLS
+  mailUser: string;
+  mailFrom: string; // From: header (defaults to mailUser)
+  mailPassword: string; // SMTP/app password — SECRET; never returned (see publicSettings)
   // AI auto-discovery: pick the most relevant/high-quality unseen articles and publish.
   aiTopics: string[]; // topics/keywords describing what counts as a "good" article
   aiAutoPublish: boolean; // publish discovered articles automatically (vs draft)
@@ -37,7 +45,14 @@ export const DEFAULT_SETTINGS: Settings = {
   autoPublishAiPosts: false,
   aiScheduleEnabled: false,
   aiScheduleHour: 5,
+  aiScheduleMode: "discover",
   aiFeeds: [],
+  mailHost: "smtp.gmail.com",
+  mailPort: 587,
+  mailSecure: false,
+  mailUser: "",
+  mailFrom: "",
+  mailPassword: "",
   aiTopics: ["cloud", "AI", "DevOps", "SRE", "Kubernetes", "security"],
   aiAutoPublish: false,
   aiDiscoverCount: 3,
@@ -67,9 +82,10 @@ export async function saveSettings(patch: Partial<Settings>): Promise<Settings> 
 
 // Settings safe to send to the browser: the raw token is stripped and replaced
 // with a boolean + a short masked hint.
-export type PublicSettings = Omit<Settings, "aiApiKey"> & {
+export type PublicSettings = Omit<Settings, "aiApiKey" | "mailPassword"> & {
   aiApiKeySet: boolean;
   aiApiKeyHint: string;
+  mailPasswordSet: boolean;
 };
 
 function maskKey(k: string): string {
@@ -78,6 +94,11 @@ function maskKey(k: string): string {
 }
 
 export async function getPublicSettings(): Promise<PublicSettings> {
-  const { aiApiKey, ...rest } = await getSettings();
-  return { ...rest, aiApiKeySet: !!aiApiKey, aiApiKeyHint: maskKey(aiApiKey) };
+  const { aiApiKey, mailPassword, ...rest } = await getSettings();
+  return {
+    ...rest,
+    aiApiKeySet: !!aiApiKey,
+    aiApiKeyHint: maskKey(aiApiKey),
+    mailPasswordSet: !!mailPassword,
+  };
 }

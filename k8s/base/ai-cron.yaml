@@ -7,7 +7,11 @@ metadata:
   name: ac-portal-ai-ingest
   labels: { app: ac-portal, component: ai-cron }
 spec:
-  schedule: "0 5 * * *"
+  # Fire hourly; the app self-gates on the admin's configured hour + enabled
+  # flag (settings.aiScheduleHour / aiScheduleEnabled), so the schedule is
+  # configurable from the CMS without editing this CronJob.
+  schedule: "0 * * * *"
+  timeZone: "Asia/Ho_Chi_Minh"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
@@ -28,8 +32,8 @@ spec:
                 - >
                   curl -sS -X POST
                   -H "X-Cron-Token: $AI_CRON_TOKEN"
-                  http://ac-portal.$(NAMESPACE).svc:3000/api/v1/ai/discover
-                  && echo "\nAI discover+publish triggered"
+                  http://ac-portal.$(NAMESPACE).svc:3000/api/v1/ai/auto
+                  && echo "\nAI auto run triggered"
               env:
                 - name: NAMESPACE
                   valueFrom: { fieldRef: { fieldPath: metadata.namespace } }

@@ -15,11 +15,10 @@ export async function PUT(req: Request) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }
   const patch = (await req.json()) as Partial<Settings>;
-  // Never overwrite the stored token with an empty/placeholder value — the
-  // browser only sends aiApiKey when the admin typed a fresh token.
-  if (!patch.aiApiKey || !patch.aiApiKey.trim()) {
-    delete patch.aiApiKey;
-  }
+  // Never overwrite a stored secret with an empty value — the browser only
+  // sends aiApiKey / mailPassword when the admin typed a fresh one.
+  if (!patch.aiApiKey || !patch.aiApiKey.trim()) delete patch.aiApiKey;
+  if (!patch.mailPassword || !patch.mailPassword.trim()) delete patch.mailPassword;
   await saveSettings(patch);
   console.log(`[audit] ${id.user} updated settings`);
   return Response.json(await getPublicSettings());

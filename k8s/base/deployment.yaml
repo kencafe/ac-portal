@@ -46,6 +46,9 @@ spec:
           env:
             - name: DATA_DIR
               value: /app/.data
+            # Local time for the daily-schedule hour gate (settings.aiScheduleHour).
+            - name: TZ
+              value: Asia/Ho_Chi_Minh
             # Shared token so the AI CronJob can call /api/v1/ai/run-feeds.
             - name: AI_CRON_TOKEN
               valueFrom:
