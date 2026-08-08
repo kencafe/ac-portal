@@ -1,0 +1,45 @@
+// Site/admin configuration store. Same JSON-file backend as the post store
+// (DATA_DIR/settings.json, PVC-backed in-cluster). Read by the admin panel and
+// updatable only by admins (enforced in the API route).
+
+import { promises as fs } from "fs";
+import path from "path";
+
+export type Settings = {
+  siteName: string;
+  blogHost: string;
+  postsPerPage: number;
+  defaultLanguage: "vi" | "en";
+  // 4-eyes: when true a post must be approved before it can be published.
+  requireApprovalToPublish: boolean;
+  // Auto-publish AI-translated drafts (off by default — human in the loop).
+  autoPublishTranslations: boolean;
+};
+
+export const DEFAULT_SETTINGS: Settings = {
+  siteName: "FPT-IS Next Gen Service",
+  blogHost: "blog.appcarrier.cloud",
+  postsPerPage: 9,
+  defaultLanguage: "vi",
+  requireApprovalToPublish: true,
+  autoPublishTranslations: false,
+};
+
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
+const FILE = path.join(DATA_DIR, "settings.json");
+
+export async function getSettings(): Promise<Settings> {
+  try {
+    const raw = await fs.readFile(FILE, "utf8");
+    return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+export async function saveSettings(patch: Partial<Settings>): Promise<Settings> {
+  const next = { ...(await getSettings()), ...patch };
+  await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.writeFile(FILE, JSON.stringify(next, null, 2), "utf8");
+  return next;
+}

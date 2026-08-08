@@ -8,11 +8,31 @@ import {
   INBOX, InboxItem, INBOX_UI,
   TRANSLATE_UI, TRANSLATE_CONFIG, GLOSSARY, GLOSSARY_UI, PREPUBLISH_CHECKLIST,
   API_PROVIDERS, API_DEFAULTS, API_UI, PUBLIC_API,
-  SIDEBAR, TOPBAR, POSTS_VIEW_UI,
+  SIDEBAR, TOPBAR, POSTS_VIEW_UI, ADMIN_UI,
 } from "@/data/cms";
 import { COLORS, RADIUS } from "@/lib/tokens";
 
-type View = "posts" | "editor" | "taxonomy" | "feeds" | "inbox" | "translate" | "api";
+type View = "posts" | "editor" | "taxonomy" | "feeds" | "inbox" | "translate" | "api" | "admin";
+
+type Me = {
+  authenticated: boolean;
+  user: string;
+  email: string;
+  groups: string[];
+  role: string;
+  isAdmin: boolean;
+  initials: string;
+  signOutUrl: string;
+};
+
+type SiteSettings = {
+  siteName: string;
+  blogHost: string;
+  postsPerPage: number;
+  defaultLanguage: "vi" | "en";
+  requireApprovalToPublish: boolean;
+  autoPublishTranslations: boolean;
+};
 
 const panel: CSSProperties = { background: "#fff", border: `1px solid ${COLORS.split}`, borderRadius: RADIUS.card };
 const panelPad: CSSProperties = { ...panel, padding: 20 };
@@ -137,6 +157,11 @@ export default function CmsApp() {
   const [apiSaved, setApiSaved] = useState(false);
   const [rotated, setRotated] = useState(false);
 
+  // Account (from oauth-proxy) + site settings
+  const [me, setMe] = useState<Me | null>(null);
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [settingsSaved, setSettingsSaved] = useState(false);
+
   function makeDraft(): SeedPost {
     return { ...NEW_DRAFT_DEFAULTS, blocks: [["p", ""]] } as SeedPost;
   }
@@ -163,8 +188,27 @@ export default function CmsApp() {
   }
   useEffect(() => {
     refreshPosts();
+    fetch("/api/v1/me", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then(setMe); }).catch(() => {});
+    fetch("/api/v1/settings", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then(setSettings); }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function signOut() {
+    window.location.href = me?.signOutUrl || "/oauth/sign_out?rd=%2F";
+  }
+  async function saveSettings() {
+    if (!settings) return;
+    const res = await fetch("/api/v1/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings),
+    }).catch(() => null);
+    if (res && res.ok) {
+      setSettings(await res.json());
+      setSettingsSaved(true);
+      setTimeout(() => setSettingsSaved(false), 2500);
+    }
+  }
 
   async function togglePublish(slug: string) {
     const cur = posts.find((p) => p.slug === slug);
@@ -234,11 +278,19 @@ export default function CmsApp() {
           ))}
         </nav>
         <div style={{ borderTop: `1px solid ${COLORS.split}`, padding: "12px 18px", display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ width: 30, height: 30, borderRadius: "50%", background: COLORS.brandBlue, color: "#fff", fontSize: 11, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{SIDEBAR.footer.avatar}</span>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink }}>{SIDEBAR.footer.name}</div>
-            <div style={{ fontSize: 11.5, color: COLORS.ink3 }}>{SIDEBAR.footer.role}</div>
+          <span style={{ width: 30, height: 30, borderRadius: "50%", background: COLORS.brandBlue, color: "#fff", fontSize: 11, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{me?.initials ?? SIDEBAR.footer.avatar}</span>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.user ?? SIDEBAR.footer.name}</div>
+            <div style={{ fontSize: 11.5, color: COLORS.ink3 }}>{me?.role ?? SIDEBAR.footer.role}</div>
           </div>
+          <button
+            type="button"
+            onClick={signOut}
+            title={ADMIN_UI.account.signOut}
+            style={{ ...btnSm, height: 28, padding: "0 8px", fontSize: 12 }}
+          >
+            ⏻
+          </button>
         </div>
       </aside>
 
@@ -259,12 +311,111 @@ export default function CmsApp() {
           {view === "inbox" && InboxView()}
           {view === "translate" && TranslateView()}
           {view === "api" && ApiView()}
+          {view === "admin" && AdminView()}
         </main>
       </div>
     </div>
   );
 
   // ── Views ──────────────────────────────────────────────────────────────
+  function AdminView() {
+    const canEdit = me?.isAdmin ?? true;
+    const set = <K extends keyof SiteSettings>(k: K, v: SiteSettings[K]) =>
+      setSettings((s) => (s ? { ...s, [k]: v } : s));
+    const row: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${COLORS.split}`, fontSize: 13.5 };
+    const toggle = (on: boolean, onClick: () => void) => (
+      <button type="button" onClick={onClick} disabled={!canEdit} style={{ width: 42, height: 24, borderRadius: 12, border: "none", cursor: canEdit ? "pointer" : "not-allowed", background: on ? COLORS.brandGreen : "#CBD3DA", position: "relative", transition: "background .15s" }}>
+        <span style={{ position: "absolute", top: 2, left: on ? 20 : 2, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
+      </button>
+    );
+
+    return (
+      <div style={{ display: "grid", gap: 16, maxWidth: 860 }}>
+        {/* Account */}
+        <section style={panelPad}>
+          <PanelHead right={<button type="button" onClick={signOut} style={{ ...btnSm, height: 30 }}>⏻ {ADMIN_UI.account.signOut}</button>}>
+            {ADMIN_UI.account.title}
+          </PanelHead>
+          {me && !me.authenticated && (
+            <div style={{ margin: "10px 0", fontSize: 12.5, color: "#C25A17", background: "#FEF1E9", borderRadius: 6, padding: "8px 10px" }}>{ADMIN_UI.account.localBadge}</div>
+          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
+            <span style={{ width: 44, height: 44, borderRadius: "50%", background: COLORS.brandBlue, color: "#fff", fontSize: 14, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{me?.initials ?? "…"}</span>
+            <div style={{ fontSize: 13.5 }}>
+              <div style={{ fontWeight: 600, color: COLORS.ink }}>{me?.user ?? "…"}</div>
+              <div style={{ color: COLORS.ink3 }}>{me?.email || "—"}</div>
+            </div>
+            <div style={{ marginLeft: "auto", textAlign: "right", fontSize: 12.5, color: COLORS.ink2 }}>
+              <div>{ADMIN_UI.account.fields.role}: <b style={{ color: COLORS.brandBlue }}>{me?.role ?? "…"}</b></div>
+              <div>{ADMIN_UI.account.fields.groups}: {me?.groups?.length ? me.groups.join(", ") : "—"}</div>
+            </div>
+          </div>
+        </section>
+
+        {/* Site settings */}
+        <section style={panelPad}>
+          <PanelHead right={<><button type="button" onClick={saveSettings} disabled={!canEdit || !settings} style={{ ...btnBlue, height: 30, opacity: canEdit && settings ? 1 : 0.5 }}>{ADMIN_UI.site.save}</button>{settingsSaved && <span style={{ fontSize: 12.5, color: COLORS.brandGreen, marginLeft: 8 }}>{ADMIN_UI.site.saved}</span>}</>}>
+            {ADMIN_UI.site.title}
+          </PanelHead>
+          {!canEdit && <div style={{ margin: "8px 0", fontSize: 12.5, color: COLORS.ink3 }}>{ADMIN_UI.site.adminOnly}</div>}
+          {settings && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                <div>
+                  <label style={label}>{ADMIN_UI.site.fields.siteName}</label>
+                  <input style={input} value={settings.siteName} disabled={!canEdit} onChange={(e) => set("siteName", e.target.value)} />
+                </div>
+                <div>
+                  <label style={label}>{ADMIN_UI.site.fields.blogHost}</label>
+                  <input style={input} value={settings.blogHost} disabled={!canEdit} onChange={(e) => set("blogHost", e.target.value)} />
+                </div>
+                <div>
+                  <label style={label}>{ADMIN_UI.site.fields.postsPerPage}</label>
+                  <input style={input} type="number" min={1} max={48} value={settings.postsPerPage} disabled={!canEdit} onChange={(e) => set("postsPerPage", Number(e.target.value) || 1)} />
+                </div>
+                <div>
+                  <label style={label}>{ADMIN_UI.site.fields.defaultLanguage}</label>
+                  <select style={input} value={settings.defaultLanguage} disabled={!canEdit} onChange={(e) => set("defaultLanguage", e.target.value as "vi" | "en")}>
+                    <option value="vi">Tiếng Việt</option>
+                    <option value="en">English</option>
+                  </select>
+                </div>
+              </div>
+              <div style={row}>
+                <span>{ADMIN_UI.site.fields.requireApprovalToPublish}</span>
+                {toggle(settings.requireApprovalToPublish, () => set("requireApprovalToPublish", !settings.requireApprovalToPublish))}
+              </div>
+              <div style={{ ...row, borderBottom: "none" }}>
+                <span>{ADMIN_UI.site.fields.autoPublishTranslations}</span>
+                {toggle(settings.autoPublishTranslations, () => set("autoPublishTranslations", !settings.autoPublishTranslations))}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Access / RBAC */}
+        <section style={panelPad}>
+          <PanelHead>{ADMIN_UI.access.title}</PanelHead>
+          <div style={{ fontSize: 12.5, color: COLORS.ink3, margin: "6px 0 12px" }}>{ADMIN_UI.access.hint}</div>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr>{ADMIN_UI.access.cols.map((c) => <th key={c} style={{ textAlign: "left", padding: "8px 10px", color: COLORS.ink3, fontWeight: 600, borderBottom: `1px solid ${COLORS.split}` }}>{c}</th>)}</tr>
+            </thead>
+            <tbody>
+              {ADMIN_UI.access.rows.map(([r, g, p]) => (
+                <tr key={g} style={{ background: me?.groups?.includes(g) ? "#E6F1F9" : "transparent" }}>
+                  <td style={{ padding: "8px 10px", fontWeight: 600, color: COLORS.ink }}>{r}</td>
+                  <td style={{ padding: "8px 10px", fontFamily: "monospace", color: COLORS.brandBlue }}>{g}</td>
+                  <td style={{ padding: "8px 10px", color: COLORS.ink2 }}>{p}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      </div>
+    );
+  }
+
   function PostsView() {
     const liveStats = [
       { label: "Tổng bài viết", value: posts.length },

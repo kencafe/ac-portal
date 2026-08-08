@@ -698,7 +698,10 @@ export const SIDEBAR = {
     },
     {
       group: 'Hệ thống',
-      items: [{ key: 'api', label: 'Cấu hình API', icon: '⚿' }],
+      items: [
+        { key: 'api', label: 'Cấu hình API', icon: '⚿' },
+        { key: 'admin', label: 'Quản trị', icon: '⚙' },
+      ],
     },
     {
       group: 'Kênh',
@@ -727,9 +730,47 @@ export const TOPBAR = {
     inbox: 'Hàng chờ dịch',
     translate: 'Bản dịch AI',
     api: 'Cấu hình API',
+    admin: 'Quản trị hệ thống',
   },
   saveHint: 'Đã lưu bản mới nhất', // shown when state.saved
   newPostButton: '+ Bài viết mới',
+};
+
+// Admin / system-configuration panel.
+export const ADMIN_UI = {
+  account: {
+    title: 'Tài khoản',
+    hint: 'Đăng nhập bằng tài khoản OpenShift qua oauth-proxy.',
+    signOut: 'Đăng xuất',
+    localBadge: 'Chế độ cục bộ (chưa qua OpenShift)',
+    fields: { user: 'Người dùng', email: 'Email', role: 'Vai trò', groups: 'Nhóm OpenShift' },
+  },
+  site: {
+    title: 'Cấu hình site',
+    save: 'Lưu cấu hình',
+    saved: 'Đã lưu cấu hình',
+    adminOnly: 'Chỉ Quản trị mới sửa được cấu hình.',
+    fields: {
+      siteName: 'Tên site',
+      blogHost: 'Tên miền blog',
+      postsPerPage: 'Số bài mỗi trang',
+      defaultLanguage: 'Ngôn ngữ mặc định',
+      requireApprovalToPublish: 'Bắt buộc duyệt trước khi xuất bản (4 mắt)',
+      autoPublishTranslations: 'Tự động xuất bản bản dịch AI',
+    },
+  },
+  access: {
+    title: 'Phân quyền (RBAC)',
+    hint: 'Vai trò ánh xạ từ nhóm OpenShift; quản lý bằng: oc adm groups add-users <group> <user>.',
+    cols: ['Vai trò', 'Nhóm OpenShift', 'Quyền chính'],
+    rows: [
+      ['Tác giả', 'blog-authors', 'Tạo/sửa nháp của mình, gửi duyệt'],
+      ['Biên dịch', 'blog-translators', 'Sửa trường bản dịch (vi↔en)'],
+      ['Biên tập', 'blog-editors', 'Sửa mọi nháp, duyệt/trả lại'],
+      ['Kiểm duyệt', 'blog-publishers', 'Xuất bản / gỡ xuất bản'],
+      ['Quản trị', 'blog-admins', 'Toàn quyền + xoá + cấu hình'],
+    ] as [string, string, string][],
+  },
 };
 
 // ===========================================================================
