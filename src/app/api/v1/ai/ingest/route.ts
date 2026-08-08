@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   const mayIngest = ["Quản trị", "Kiểm duyệt", "Biên tập"].includes(id.role);
   if (!mayIngest) return Response.json({ error: "Forbidden" }, { status: 403 });
 
-  const { url, publish } = (await req.json()) as { url?: string; publish?: boolean };
+  const { url, publish, summarize } = (await req.json()) as { url?: string; publish?: boolean; summarize?: boolean };
   if (!url || !/^https?:\/\//.test(url)) {
     return Response.json({ error: "url không hợp lệ" }, { status: 400 });
   }
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await ingestUrl(url, { forcePublish: wantPublish });
+    const result = await ingestUrl(url, { forcePublish: wantPublish, summarize: !!summarize });
     console.log(`[audit] ${id.user} AI-ingest ${url} → ${result.slug} (${result.status})`);
     return Response.json(result);
   } catch (e) {

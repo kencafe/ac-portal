@@ -166,11 +166,19 @@ export function parseFeedItems(xml: string, limit = 20): FeedItem[] {
 // AI biên tập: rewrite/clean up the raw content into a publish-ready Vietnamese
 // article (the AI plays the editor's role instead of a person). Returns a title
 // + content blocks.
+type AiEditOpts = {
+  instruction?: string; // extra guidance from the editor (preview → chỉnh theo ý)
+  summarize?: boolean;  // copyright-safe mode: summary + commentary + attribution
+  sourceName?: string;
+  sourceUrl?: string;
+};
+
 async function aiEdit(
   title: string,
   text: string,
-  instruction?: string, // optional extra guidance from the editor (preview → chỉnh theo ý)
+  opts: AiEditOpts = {},
 ): Promise<{ title: string; blocks: Block[]; aiUsed: boolean }> {
+  const { instruction, summarize, sourceName, sourceUrl } = opts;
   const clipped = text.slice(0, 12000);
 
   // Provider + token + model come from the CMS "Cấu hình API" (settings) first,
@@ -189,14 +197,23 @@ async function aiEdit(
     return { title: title || "Bài nhập tự động", blocks, aiUsed: false };
   }
 
-  const prompt =
-    `Bạn là biên tập viên kỹ thuật của blog FPT-IS Next Gen Service. Hãy BIÊN TẬP LẠI nội dung sau thành một bài viết hoàn chỉnh, CÓ CẤU TRÚC, chuẩn để xuất bản, bằng tiếng Việt.\n` +
+  const styleRules =
     `PHONG CÁCH NHÀ (bắt buộc bám theo):\n` +
     `- Tiếng Việt kỹ thuật, chuyên nghiệp, súc tích; câu ngắn gọn, đi thẳng vấn đề, không sáo rỗng, không câu view.\n` +
     `- Tiêu đề rõ nghĩa, đúng trọng tâm. Mở bài nêu ngay bối cảnh/insight thực dụng (kiểu SRE/DevOps).\n` +
     `- Giữ nguyên thuật ngữ tiếng Anh phổ biến (Kubernetes, SRE, latency, error budget…) khi tự nhiên hơn là dịch cứng.\n` +
-    `- BỐ CỤC: chia bài thành nhiều phần, mỗi phần có TIÊU ĐỀ PHỤ (heading) ngắn gọn; dưới mỗi heading là 1–3 đoạn văn. Dùng danh sách bullet khi liệt kê. Có thể dùng 1 trích dẫn nếu phù hợp.\n` +
-    `- Nếu nội dung gốc là tiếng nước ngoài thì viết lại bằng tiếng Việt theo phong cách trên (không dịch word-by-word).\n` +
+    `- BỐ CỤC: chia bài thành nhiều phần, mỗi phần có TIÊU ĐỀ PHỤ (heading) ngắn gọn; dưới mỗi heading là 1–3 đoạn văn. Dùng danh sách bullet khi liệt kê. Có thể dùng 1 trích dẫn nếu phù hợp.\n`;
+
+  const head = summarize
+    ? `Bạn là biên tập viên kỹ thuật của blog FPT-IS Next Gen Service. Hãy viết một bài TÓM TẮT & BÌNH LUẬN bằng tiếng Việt từ nội dung nguồn dưới đây — TUYỆT ĐỐI KHÔNG chép nguyên văn, KHÔNG dịch nguyên câu. An toàn bản quyền là bắt buộc.\n` +
+      `YÊU CẦU CHẾ ĐỘ TÓM TẮT:\n` +
+      `- Diễn đạt lại bằng lời của bạn, độ dài chỉ ~40–50% bản gốc.\n` +
+      `- Nêu các ý chính, sau đó thêm một mục "Góc nhìn NS" (nhận định/khuyến nghị ngắn của đội ngũ).\n` +
+      `- Không trích quá 1 câu ngắn từ bản gốc; nếu trích phải để trong "quote".\n` + styleRules
+    : `Bạn là biên tập viên kỹ thuật của blog FPT-IS Next Gen Service. Hãy BIÊN TẬP LẠI nội dung sau thành một bài viết hoàn chỉnh, CÓ CẤU TRÚC, chuẩn để xuất bản, bằng tiếng Việt.\n` + styleRules;
+
+  const prompt =
+    head +
     `Trả về JSON THUẦN theo đúng schema (không thêm chữ ngoài JSON):\n` +
     `{"title":"...","blocks":[{"type":"h","text":"Tiêu đề phụ"},{"type":"p","text":"đoạn văn"},{"type":"list","items":["ý 1","ý 2"]},{"type":"quote","text":"trích dẫn"}]}\n` +
     `type chỉ nhận: "h" (tiêu đề phụ), "p" (đoạn văn), "list" (danh sách), "quote" (trích dẫn). Bài nên có 2–5 heading.\n` +
@@ -236,6 +253,14 @@ async function aiEdit(
   }
   if (blocks.length === 0) blocks = [{ kind: "p", text: raw.slice(0, 1500) }];
 
+  // Attribution — always cite the source (required for the copyright-safe path,
+  // added whenever a source is provided). Avoid duplicating if the model wrote one.
+  if (sourceName || sourceUrl) {
+    const cite = `Nguồn: ${[sourceName, sourceUrl].filter(Boolean).join(" — ")}`;
+    const already = blocks.some((b) => (b.text ?? "").toLowerCase().startsWith("nguồn:"));
+    if (!already) blocks.push({ kind: "quote", text: cite });
+  }
+
   return { title: parsed?.title || title || "Bài nhập tự động", blocks, aiUsed: true };
 }
 
@@ -244,10 +269,14 @@ async function aiEdit(
 export async function ingestText(
   rawTitle: string,
   text: string,
-  opts?: { forcePublish?: boolean; cat?: string; mode?: IngestMode; source?: string; note?: string; url?: string; cover?: string },
+  opts?: { forcePublish?: boolean; cat?: string; mode?: IngestMode; source?: string; note?: string; url?: string; cover?: string; summarize?: boolean; sourceName?: string; sourceUrl?: string },
 ): Promise<IngestResult> {
   const settings = await getSettings();
-  const { title, blocks, aiUsed } = await aiEdit(rawTitle, text);
+  const { title, blocks, aiUsed } = await aiEdit(rawTitle, text, {
+    summarize: opts?.summarize,
+    sourceName: opts?.sourceName,
+    sourceUrl: opts?.sourceUrl ?? opts?.url,
+  });
 
   const publish = opts?.forcePublish ?? settings.autoPublishAiPosts;
   const status: "draft" | "published" = publish ? "published" : "draft";
@@ -265,8 +294,8 @@ export async function ingestText(
     initials: "AI",
     date: todayVN(),
     read: readingTime(blocks),
-    tags: ["ai-ingest"],
-    coverUrl: opts?.cover || "", // source og:image if any, else branded gradient (coverBackground)
+    tags: opts?.summarize ? ["ai-ingest", "tom-tat"] : ["ai-ingest"],
+    coverUrl: opts?.cover || "", // source og:image if any, else branded title-card (CoverArt)
     blocks,
     status,
   });
@@ -303,7 +332,7 @@ export async function reeditPost(slug: string, instruction?: string): Promise<In
     .filter(Boolean)
     .join("\n\n");
 
-  const { title, blocks, aiUsed } = await aiEdit(post.title, text || post.excerpt || post.title, instruction);
+  const { title, blocks, aiUsed } = await aiEdit(post.title, text || post.excerpt || post.title, { instruction });
 
   await upsertPost({
     slug,
@@ -331,11 +360,20 @@ export async function reeditPost(slug: string, instruction?: string): Promise<In
 // Ingest a single URL → a post (fetch + strip HTML, then AI edit).
 export async function ingestUrl(
   url: string,
-  opts?: { forcePublish?: boolean; cat?: string; mode?: IngestMode; source?: string; note?: string },
+  opts?: { forcePublish?: boolean; cat?: string; mode?: IngestMode; source?: string; note?: string; summarize?: boolean },
 ): Promise<IngestResult> {
   const html = await fetchText(url);
   const { title: rawTitle, text, cover } = stripHtml(html);
-  return ingestText(rawTitle, text, { ...opts, url, source: opts?.source ?? url, cover: absolutize(cover, url) });
+  let host = "";
+  try { host = new URL(url).hostname.replace(/^www\./, ""); } catch { /* ignore */ }
+  return ingestText(rawTitle, text, {
+    ...opts,
+    url,
+    source: opts?.source ?? url,
+    cover: absolutize(cover, url),
+    sourceName: opts?.summarize ? host : undefined,
+    sourceUrl: opts?.summarize ? url : undefined,
+  });
 }
 
 // Run over a list of feed URLs (manual "Chạy nguồn ngay"). Returns per-item results.

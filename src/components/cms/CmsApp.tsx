@@ -187,6 +187,13 @@ export default function CmsApp() {
   const [aiFile, setAiFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [reeditBusy, setReeditBusy] = useState<string | null>(null);
+  // Paste raw text (login-walled sources) + copyright-safe summarize mode
+  const [pasteTitle, setPasteTitle] = useState("");
+  const [pasteText, setPasteText] = useState("");
+  const [pasteSrcName, setPasteSrcName] = useState("");
+  const [pasteSrcUrl, setPasteSrcUrl] = useState("");
+  const [pasteSummarize, setPasteSummarize] = useState(true);
+  const [urlSummarize, setUrlSummarize] = useState(false);
   // Editor preview toggle (manual review before publishing)
   const [showPreview, setShowPreview] = useState(false);
   const [reeditInstruction, setReeditInstruction] = useState("");
@@ -370,7 +377,7 @@ export default function CmsApp() {
       const res = await fetch("/api/v1/ai/ingest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: aiUrl.trim(), publish }),
+        body: JSON.stringify({ url: aiUrl.trim(), publish, summarize: urlSummarize }),
       });
       const d = await res.json();
       if (res.ok) {
@@ -428,6 +435,27 @@ export default function CmsApp() {
       loadHistory();
     } catch (e) { alert((e as Error).message); }
     setPreviewBusy(false);
+  }
+  async function aiIngestPaste(publish: boolean) {
+    if (pasteText.trim().length < 40) { aiLogLine("❌ Nội dung quá ngắn"); return; }
+    setAiBusy(true);
+    aiLogLine(`⏳ ${pasteSummarize ? "Tóm tắt & dẫn nguồn" : "Biên tập"}: nội dung dán`);
+    try {
+      const res = await fetch("/api/v1/ai/ingest-text", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: pasteTitle.trim(), text: pasteText, sourceName: pasteSrcName.trim(), sourceUrl: pasteSrcUrl.trim(), summarize: pasteSummarize, publish }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        aiLogLine(`✅ ${d.title} → ${d.status}${d.aiUsed ? "" : " (AI chưa cấu hình khóa)"}`);
+        setPasteTitle(""); setPasteText(""); setPasteSrcName(""); setPasteSrcUrl("");
+        refreshPosts(); loadHistory();
+        if (!publish && d.slug) { setAiBusy(false); openInEditor(d.slug, true); return; }
+      } else {
+        aiLogLine(`❌ ${d.error || res.status}`);
+      }
+    } catch (e) { aiLogLine(`❌ ${(e as Error).message}`); }
+    setAiBusy(false);
   }
   async function reeditPost(slug: string, title: string) {
     if (!window.confirm(`AI biên tập lại bài "${title}" theo phong cách blog? Nội dung hiện tại sẽ được viết lại.`)) return;
@@ -699,6 +727,10 @@ export default function CmsApp() {
               ✨ Biên tập & Xuất bản ngay
             </button>
           </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 12.5, color: COLORS.ink2, cursor: "pointer" }}>
+            <input type="checkbox" checked={urlSummarize} onChange={(e) => setUrlSummarize(e.target.checked)} disabled={aiBusy} />
+            Chế độ <b>tóm tắt &amp; dẫn nguồn</b> (an toàn bản quyền — không chép nguyên văn, tự thêm link nguồn)
+          </label>
         </section>
 
         {/* File ingest — Word / PDF */}
@@ -711,6 +743,28 @@ export default function CmsApp() {
             <input ref={fileRef} type="file" accept=".docx,.pdf,.txt,.md,.markdown" disabled={aiBusy} onChange={(e) => setAiFile(e.target.files?.[0] ?? null)} style={{ fontSize: 13, flex: 1, minWidth: 220 }} />
             <button type="button" onClick={() => aiIngestFile(false)} disabled={aiBusy || !aiFile} style={{ ...btnSm, opacity: aiBusy || !aiFile ? 0.5 : 1 }}>Biên tập → Nháp</button>
             <button type="button" onClick={() => aiIngestFile(true)} disabled={aiBusy || !aiFile} style={{ ...btnBlue, opacity: aiBusy || !aiFile ? 0.5 : 1 }}>✨ Biên tập & Xuất bản</button>
+          </div>
+        </section>
+
+        {/* Paste raw text — login-walled sources (LinkedIn, Medium…) */}
+        <section style={panelPad}>
+          <PanelHead>Dán nội dung thô → AI biên tập</PanelHead>
+          <div style={{ fontSize: 12.5, color: COLORS.ink3, margin: "6px 0 12px" }}>
+            Dùng cho nguồn cần đăng nhập / chặn crawler (LinkedIn, Medium…): bạn tự copy nội dung bạn có quyền đọc, dán vào đây. Nên bật <b>tóm tắt &amp; dẫn nguồn</b> để an toàn bản quyền.
+          </div>
+          <input style={{ ...input, marginBottom: 8 }} placeholder="Tiêu đề (tuỳ chọn — để trống AI tự đặt)" value={pasteTitle} onChange={(e) => setPasteTitle(e.target.value)} disabled={aiBusy} />
+          <textarea style={{ ...input, height: "auto", minHeight: 140, padding: "10px 12px", lineHeight: 1.6, marginBottom: 8 }} placeholder="Dán nội dung bài viết vào đây…" value={pasteText} onChange={(e) => setPasteText(e.target.value)} disabled={aiBusy} />
+          <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+            <input style={{ ...input, flex: 1, minWidth: 180 }} placeholder="Tên nguồn (vd: LinkedIn — Tác giả)" value={pasteSrcName} onChange={(e) => setPasteSrcName(e.target.value)} disabled={aiBusy} />
+            <input style={{ ...input, flex: 1, minWidth: 180 }} placeholder="Link nguồn (https://…)" value={pasteSrcUrl} onChange={(e) => setPasteSrcUrl(e.target.value)} disabled={aiBusy} />
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, fontSize: 12.5, color: COLORS.ink2, cursor: "pointer" }}>
+            <input type="checkbox" checked={pasteSummarize} onChange={(e) => setPasteSummarize(e.target.checked)} disabled={aiBusy} />
+            Chế độ <b>tóm tắt &amp; dẫn nguồn</b> (khuyến nghị — không chép nguyên văn)
+          </label>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button type="button" onClick={() => aiIngestPaste(false)} disabled={aiBusy || pasteText.trim().length < 40} style={{ ...btnSm, opacity: aiBusy || pasteText.trim().length < 40 ? 0.5 : 1 }}>Biên tập → Nháp</button>
+            <button type="button" onClick={() => aiIngestPaste(true)} disabled={aiBusy || pasteText.trim().length < 40} style={{ ...btnBlue, opacity: aiBusy || pasteText.trim().length < 40 ? 0.5 : 1 }}>✨ Biên tập &amp; Xuất bản</button>
           </div>
         </section>
 
