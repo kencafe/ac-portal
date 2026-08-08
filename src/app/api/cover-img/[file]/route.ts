@@ -10,13 +10,13 @@ const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
 export async function GET(_req: Request, { params }: { params: Promise<{ file: string }> }) {
   const { file } = await params;
   // No path traversal — filename only.
-  if (!/^[a-z0-9._-]+\.(png|jpg|jpeg|webp)$/i.test(file)) {
+  if (!/^[a-z0-9._-]+\.(png|jpg|jpeg|webp|gif|svg)$/i.test(file)) {
     return new Response("bad request", { status: 400 });
   }
   try {
     const buf = await fsp.readFile(path.join(DATA_DIR, "covers", file));
     const ext = file.split(".").pop()!.toLowerCase();
-    const type = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "webp" ? "image/webp" : "image/png";
+    const type = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "webp" ? "image/webp" : ext === "gif" ? "image/gif" : ext === "svg" ? "image/svg+xml" : "image/png";
     return new Response(new Uint8Array(buf), {
       headers: { "content-type": type, "cache-control": "public, max-age=31536000, immutable" },
     });

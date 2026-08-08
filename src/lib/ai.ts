@@ -25,10 +25,10 @@ const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
 // Optional AI-generated cover: a dedicated Gemini image model (runs alongside
 // the text model, reusing the Gemini key). Saves a real PNG to the PVC and
 // returns its URL; falls back to the generated title-card when off or on error.
-export async function makeCover(slug: string, title: string, cat = "", tone = "#0072BC"): Promise<string> {
+export async function makeCover(slug: string, title: string, cat = "", tone = "#0072BC", force = false): Promise<string> {
   const fallback = coverFor(title, cat, tone);
   const s = await getSettings();
-  if (!s.aiImageEnabled) return fallback;
+  if (!s.aiImageEnabled && !force) return fallback;
   const apiKey = s.aiApiKey || ENV_AI_API_KEY;
   const model = s.aiImageModel || "gemini-2.5-flash-image";
   if (!apiKey) return fallback;

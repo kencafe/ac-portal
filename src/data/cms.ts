@@ -27,6 +27,7 @@ export interface SeedPost {
   excerpt: string;
   tags: string[];
   featured?: boolean;      // pinned to the portal homepage
+  coverUrl?: string;       // cover image URL (paste/upload/AI/auto)
   blocks: [BlockKind, string][];
 }
 
@@ -283,6 +284,7 @@ export const NEW_DRAFT_DEFAULTS = {
   author: '',
   excerpt: '',
   tags: [] as string[],
+  coverUrl: '',
   blocks: [['p', '']] as [BlockKind, string][],
 };
 

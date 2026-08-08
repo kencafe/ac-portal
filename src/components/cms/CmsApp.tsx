@@ -9,6 +9,7 @@ import {
 } from "@/data/cms";
 import { COLORS, RADIUS } from "@/lib/tokens";
 import { PROVIDERS_PUBLIC } from "@/lib/providers";
+import CoverArt from "@/components/shared/CoverArt";
 
 type View = "posts" | "editor" | "taxonomy" | "feeds" | "inbox" | "translate" | "api" | "admin" | "aistudio";
 
@@ -111,6 +112,7 @@ function storeToCms(p: any): SeedPost {
     excerpt: p.excerpt ?? "",
     tags: p.tags ?? [],
     featured: !!p.featured,
+    coverUrl: p.coverUrl ?? "",
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     blocks: (p.blocks ?? []).map((bl: any) =>
       bl.kind === "list" ? (["list", (bl.items ?? []).join("\n")] as [BlockKind, string]) : ([bl.kind, bl.text ?? ""] as [BlockKind, string]),
@@ -132,7 +134,9 @@ async function apiSave(draft: SeedPost) {
     read: `${Math.max(1, Math.round((draft.blocks.reduce((n, b) => n + (b[1]?.length ?? 0), 0)) / 900))} phút đọc`,
     excerpt: draft.excerpt,
     tags: draft.tags,
-    coverUrl: `assets/cover-${draft.slug || "post"}.png`,
+    // Preserve the chosen cover (paste/upload/AI); empty → server renders the
+    // generated illustration via /api/cover.
+    coverUrl: draft.coverUrl || `/api/cover?title=${encodeURIComponent(draft.title || "")}&cat=${encodeURIComponent(draft.cat || "")}&tone=${encodeURIComponent((TONE[draft.cat] ?? "#0072BC").replace("#", ""))}`,
     blocks: cmsBlocksToStore(draft.blocks),
   };
   const res = await fetch("/api/v1/posts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -188,6 +192,10 @@ export default function CmsApp() {
   const [showPreview, setShowPreview] = useState(false);
   const [reeditInstruction, setReeditInstruction] = useState("");
   const [previewBusy, setPreviewBusy] = useState(false);
+  // Editor cover controls (paste URL / upload / AI generate)
+  const [coverBusy, setCoverBusy] = useState(false);
+  const [coverMsg, setCoverMsg] = useState("");
+  const coverFileRef = useRef<HTMLInputElement | null>(null);
 
   // AI provider config (Cấu hình API): pick provider → paste token → get models → choose → save
   const [aiProviderSel, setAiProviderSel] = useState("anthropic");
@@ -607,7 +615,30 @@ export default function CmsApp() {
     setDraft({ ...p });
     setSaved(false);
     setShowPreview(false);
+    setCoverMsg("");
     setView("editor");
+  }
+  async function uploadCover(file: File) {
+    setCoverBusy(true); setCoverMsg("⏳ Đang tải ảnh…");
+    try {
+      const fd = new FormData(); fd.append("file", file); fd.append("slug", draft.slug || "cover");
+      const res = await fetch("/api/v1/cover/upload", { method: "POST", body: fd });
+      const d = await res.json();
+      if (res.ok) { setDraft((dr) => ({ ...dr, coverUrl: d.url })); setCoverMsg("✅ Đã tải ảnh bìa"); }
+      else setCoverMsg(`❌ ${d.error || res.status}`);
+    } catch (e) { setCoverMsg(`❌ ${(e as Error).message}`); }
+    if (coverFileRef.current) coverFileRef.current.value = "";
+    setCoverBusy(false);
+  }
+  async function genCoverAI() {
+    setCoverBusy(true); setCoverMsg("⏳ AI đang tạo ảnh bìa…");
+    try {
+      const res = await fetch("/api/v1/cover/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: draft.slug, title: draft.title, cat: draft.cat, tone: TONE[draft.cat] ?? "#0072BC" }) });
+      const d = await res.json();
+      if (res.ok) { setDraft((dr) => ({ ...dr, coverUrl: d.url })); setCoverMsg((d.aiUsed ? "✅ " : "⚠️ ") + (d.note || "")); }
+      else setCoverMsg(`❌ ${d.error || res.status}`);
+    } catch (e) { setCoverMsg(`❌ ${(e as Error).message}`); }
+    setCoverBusy(false);
   }
   // Load a post from the store into the editor (used after manual AI ingest so
   // the admin can preview + edit before publishing). preview=true opens the
@@ -1296,6 +1327,26 @@ export default function CmsApp() {
                 <button type="button" onClick={saveDraft} style={{ ...btnBlue, flex: 1 }}>{saved ? EDITOR_UI.saveButtonDone : EDITOR_UI.saveButton}</button>
                 <button type="button" onClick={() => setView("posts")} style={btnSm}>{EDITOR_UI.cancelButton}</button>
               </div>
+            </div>
+          </div>
+
+          <div style={panel}>
+            <PanelHead>Ảnh bìa</PanelHead>
+            <div style={{ padding: 16 }}>
+              <div style={{ borderRadius: RADIUS.card, overflow: "hidden", marginBottom: 12 }}>
+                <CoverArt coverUrl={draft.coverUrl} title={draft.title || "(chưa có tiêu đề)"} cat={draft.cat} tone={TONE[draft.cat] ?? "#0072BC"} height={150} />
+              </div>
+              <label style={label}>Dán link ảnh</label>
+              <input style={{ ...input, marginBottom: 10 }} placeholder="https://…/anh.jpg" value={draft.coverUrl?.startsWith("http") ? draft.coverUrl : ""} onChange={(e) => setDraft({ ...draft, coverUrl: e.target.value })} disabled={coverBusy} />
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                <input ref={coverFileRef} type="file" accept="image/*" disabled={coverBusy} onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadCover(f); }} style={{ fontSize: 12.5, flex: 1, minWidth: 140 }} />
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button type="button" onClick={genCoverAI} disabled={coverBusy || !draft.title} style={{ ...btnSm, opacity: coverBusy || !draft.title ? 0.5 : 1 }}>✨ Tạo ảnh bằng AI</button>
+                <button type="button" onClick={() => { setDraft({ ...draft, coverUrl: "" }); setCoverMsg("Dùng ảnh minh hoạ tự động."); }} disabled={coverBusy} style={btnSm}>Ảnh tự động</button>
+              </div>
+              {coverMsg && <div style={{ fontSize: 12, color: COLORS.ink2, marginTop: 10 }}>{coverMsg}</div>}
+              <div style={{ fontSize: 11.5, color: COLORS.ink3, marginTop: 8 }}>Ưu tiên: link/upload của bạn → ảnh AI (cần billing) → ảnh minh hoạ tự động.</div>
             </div>
           </div>
 
