@@ -29,16 +29,25 @@ npm run build    # bản standalone cho container
 | `staging` | `ac-portal-staging` | https://staging.appcarrier.cloud |
 | `main` | `ac-portal-prod` | https://appcarrier.cloud |
 
-## CI/CD (OpenShift Pipelines)
+## CI/CD (OpenShift Pipelines · DevSecOps OWASP)
 
 Push → EventListener (webhook GitHub) → PipelineRun `ns-web-cicd`:
 
-`git-clone → gitleaks (secret) → Trivy fs (SCA) + Semgrep (SAST) + kube-linter
-(compliance) → buildah (build+push) → Trivy image → deploy (kustomize) →
-OWASP ZAP DAST (chỉ staging)`
+`git-clone → gitleaks (secret) → OWASP Dependency-Check (SCA) + Semgrep (SAST) +
+kube-linter (compliance) → build (BuildConfig) → Trivy (image scan) →
+DefectDojo import → deploy → OWASP ZAP DAST (chỉ staging) → DefectDojo`
+
+Kết quả quét đẩy về **DefectDojo** (sản phẩm `AC-Portal`). Chi tiết:
+[docs/DEVSECOPS.md](docs/DEVSECOPS.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md),
+bootstrap `k8s/tekton/BOOTSTRAP.md`.
 
 Manifests: `k8s/` (base + overlays dev/staging/prod), pipeline `k8s/tekton/`,
-DB `k8s/postgres/`. Kiến trúc: `docs/architecture.html`.
+DB `k8s/postgres/` (CloudNativePG).
+
+## Kiến trúc
+
+- Hạ tầng & pipeline: `docs/architecture.html`
+- Microservices + mô hình C4 (C1–C4): `docs/c4-architecture.html`
 
 ## Backend (chưa triển khai — theo README thiết kế)
 

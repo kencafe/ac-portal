@@ -1,0 +1,173 @@
+<title>AC-Portal — C4 & Microservices</title>
+<style>
+  :root {
+    --bg:#f5f6f8; --surface:#fff; --ink:#12203a; --ink-2:#4d5c76; --ink-3:#7c89a1;
+    --hair:rgba(9,20,40,.12); --blue:#0072bc; --orange:#f37021; --green:#57a336;
+    --maxw:1040px; --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root{--bg:#0a121e;--surface:#111d2e;--ink:#e7edf6;--ink-2:#a6b5cd;--ink-3:#74849e;--hair:rgba(255,255,255,.13);--blue:#4aa3d8;--orange:#f78a4a;--green:#7cc65a;}}
+  :root[data-theme="light"]{--bg:#f5f6f8;--surface:#fff;--ink:#12203a;--ink-2:#4d5c76;--ink-3:#7c89a1;--hair:rgba(9,20,40,.12);--blue:#0072bc;--orange:#f37021;--green:#57a336;}
+  :root[data-theme="dark"]{--bg:#0a121e;--surface:#111d2e;--ink:#e7edf6;--ink-2:#a6b5cd;--ink-3:#74849e;--hair:rgba(255,255,255,.13);--blue:#4aa3d8;--orange:#f78a4a;--green:#7cc65a;}
+  *{box-sizing:border-box;} body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased;}
+  .stripe{height:4px;background:linear-gradient(90deg,#f37021 0 33.34%,#0072bc 33.34% 66.67%,#57a336 66.67% 100%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:44px 24px 72px;}
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin:0 0 10px;}
+  h1{font-size:clamp(26px,4vw,38px);font-weight:700;letter-spacing:-.02em;line-height:1.15;margin:0 0 12px;text-wrap:balance;}
+  .sub{font-size:17px;color:var(--ink-2);max-width:64ch;margin:0;}
+  h2{font-size:clamp(19px,2.4vw,25px);font-weight:700;letter-spacing:-.015em;margin:52px 0 4px;display:flex;align-items:center;gap:12px;}
+  h2 .tag{font-size:12px;font-weight:700;color:#fff;background:var(--blue);border-radius:5px;padding:2px 8px;letter-spacing:.04em;}
+  h2 .en{font-size:14px;font-weight:500;color:var(--ink-3);letter-spacing:0;}
+  h3{font-size:16px;margin:28px 0 6px;}
+  p.lead{color:var(--ink-2);max-width:70ch;margin:8px 0 18px;}
+  figure{margin:18px 0 8px;background:var(--surface);border:1px solid var(--hair);border-radius:10px;padding:16px;overflow-x:auto;}
+  figcaption{color:var(--ink-3);font-size:13px;margin-top:12px;padding-top:10px;border-top:1px solid var(--hair);}
+  pre.mermaid{background:transparent;margin:0;min-width:640px;text-align:center;}
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:14px;}
+  th,td{text-align:left;padding:10px 13px;border-bottom:1px solid var(--hair);vertical-align:top;}
+  th{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);}
+  td code,code.inline{font-family:var(--mono);font-size:12.5px;background:color-mix(in srgb,var(--blue) 10%,transparent);border-radius:4px;padding:1px 5px;}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:middle;}
+</style>
+
+<div class="stripe"></div>
+<div class="wrap">
+  <p class="eyebrow">FPT-IS Next Gen Service · AC-Portal</p>
+  <h1>Thiết kế microservices &amp; mô hình C4</h1>
+  <p class="sub">Phân rã AC-Portal thành các dịch vụ nhỏ, có ranh giới rõ ràng, và bốn tầng mô hình C4 (Context → Container → Component → Code) cho luồng cốt lõi: nhập bài, dịch bằng AI và phục vụ blog.</p>
+
+  <h2>Các microservice <span class="en">Service decomposition</span></h2>
+  <table>
+    <thead><tr><th>Service</th><th>Trách nhiệm</th><th>Kho dữ liệu / phụ thuộc</th></tr></thead>
+    <tbody>
+      <tr><td><span class="dot" style="background:var(--blue)"></span><code>web</code></td><td>Next.js SSR: landing, chi tiết dịch vụ, blog, giao diện CMS</td><td>gọi public-api / cms-api</td></tr>
+      <tr><td><span class="dot" style="background:var(--blue)"></span><code>public-api</code></td><td>API đọc công khai: <code>/posts</code>, <code>/posts/{slug}</code>, <code>/categories</code>, <code>/feed.xml</code></td><td>PostgreSQL (read)</td></tr>
+      <tr><td><span class="dot" style="background:var(--orange)"></span><code>cms-api</code></td><td>Soạn/duyệt/xuất bản, xác thực Editor/Admin, quản lý chuyên mục &amp; tag</td><td>PostgreSQL, Vault</td></tr>
+      <tr><td><span class="dot" style="background:var(--green)"></span><code>ingest-service</code></td><td>Cron lấy RSS/Atom, chống trùng GUID, đưa vào hàng chờ</td><td>PostgreSQL, RSS nguồn</td></tr>
+      <tr><td><span class="dot" style="background:var(--orange)"></span><code>translation-service</code></td><td>Dịch bài bằng AI, từ điển thuật ngữ, cổng bản quyền, hạn mức/chi phí</td><td>PostgreSQL, Vault, AI provider</td></tr>
+      <tr><td><span class="dot" style="background:var(--green)"></span><code>media-service</code></td><td>Lưu &amp; phục vụ ảnh bìa (thay <code>image-slot</code>)</td><td>Object storage (S3/Ceph)</td></tr>
+    </tbody>
+  </table>
+  <p class="lead" style="margin-top:14px">Nguyên tắc: mỗi service một schema riêng trong PostgreSQL (bounded context), giao tiếp đồng bộ qua HTTP nội bộ và bất đồng bộ qua hàng chờ (inbox). Secret luôn lấy từ Vault; không service nào giữ khoá tĩnh.</p>
+
+  <h2><span class="tag">C1</span> System Context <span class="en">ai dùng hệ thống, nối với gì</span></h2>
+  <figure>
+    <pre class="mermaid">
+C4Context
+  title C1 — System Context: AC-Portal
+  Person(visitor, "Khách truy cập", "Đọc website & blog")
+  Person(editor, "Biên tập viên / Admin", "Soạn, duyệt, dịch, cấu hình")
+  System(acportal, "AC-Portal", "Website dịch vụ Cloud/AI + blog dịch tự động")
+  System_Ext(ai, "AI Provider (Claude)", "Dịch bài kỹ thuật")
+  System_Ext(rss, "Nguồn RSS/Atom", "CNCF, Kubernetes, Red Hat…")
+  System_Ext(vault, "HashiCorp Vault", "Token & secret")
+  System_Ext(dd, "DefectDojo", "Quản lý lỗ hổng bảo mật")
+  System_Ext(gh, "GitHub", "Mã nguồn & webhook CI/CD")
+  Rel(visitor, acportal, "Xem web/blog", "HTTPS")
+  Rel(editor, acportal, "Quản trị nội dung", "HTTPS")
+  Rel(acportal, ai, "Gọi dịch (server-side)", "HTTPS")
+  Rel(acportal, rss, "Lấy bài định kỳ", "HTTPS")
+  Rel(acportal, vault, "Đọc secret", "HTTPS")
+  Rel(gh, acportal, "Webhook → pipeline", "HTTPS")
+  Rel(acportal, dd, "Đẩy kết quả scan", "HTTPS")
+    </pre>
+    <figcaption>AC-Portal đứng giữa người dùng và các hệ thống ngoài; mọi lệnh gọi AI đi từ phía server, secret lấy từ Vault, kết quả bảo mật đẩy về DefectDojo.</figcaption>
+  </figure>
+
+  <h2><span class="tag">C2</span> Container <span class="en">các microservice & kho dữ liệu</span></h2>
+  <figure>
+    <pre class="mermaid">
+C4Container
+  title C2 — Container: bên trong AC-Portal
+  Person(visitor, "Khách truy cập")
+  Person(editor, "Biên tập viên / Admin")
+  System_Ext(ai, "AI Provider (Claude)")
+  System_Ext(rss, "Nguồn RSS/Atom")
+  System_Ext(vault, "HashiCorp Vault")
+  Container_Boundary(c, "AC-Portal") {
+    Container(web, "web", "Next.js / Node", "SSR landing, dịch vụ, blog, CMS UI")
+    Container(papi, "public-api", "Node", "API đọc blog (read-only)")
+    Container(cms, "cms-api", "Node", "Soạn/duyệt/xuất bản + auth")
+    Container(ingest, "ingest-service", "Node CronJob", "Lấy RSS, chống trùng")
+    Container(trans, "translation-service", "Node worker", "Dịch AI, glossary, cổng bản quyền")
+    Container(media, "media-service", "Node", "Ảnh bìa")
+    ContainerDb(db, "PostgreSQL", "CloudNativePG", "posts (gốc+dịch), feeds, inbox")
+    ContainerDb(obj, "Object storage", "S3/Ceph", "ảnh")
+  }
+  Rel(visitor, web, "HTTPS")
+  Rel(editor, web, "HTTPS")
+  Rel(web, papi, "đọc bài", "HTTP")
+  Rel(web, cms, "quản trị", "HTTP")
+  Rel(papi, db, "SELECT published", "SQL")
+  Rel(cms, db, "CRUD", "SQL")
+  Rel(ingest, rss, "poll", "HTTPS")
+  Rel(ingest, db, "ghi bản gốc", "SQL")
+  Rel(trans, db, "đọc gốc / ghi bản dịch", "SQL")
+  Rel(trans, ai, "translate (token ← Vault)", "HTTPS")
+  Rel(cms, vault, "secret", "HTTPS")
+  Rel(trans, vault, "AI token", "HTTPS")
+  Rel(media, obj, "put/get", "S3")
+  Rel(web, media, "ảnh", "HTTP")
+    </pre>
+    <figcaption>Bản ghi <code class="inline">posts</code> giữ cả bản gốc và bản dịch; <code class="inline">translation-service</code> là worker bất đồng bộ tiêu thụ <code class="inline">inbox</code>.</figcaption>
+  </figure>
+
+  <h2><span class="tag">C3</span> Component <span class="en">bên trong translation-service</span></h2>
+  <figure>
+    <pre class="mermaid">
+C4Component
+  title C3 — Component: translation-service
+  ContainerDb(db, "PostgreSQL", "CNPG", "inbox, posts")
+  System_Ext(ai, "AI Provider (Claude)")
+  System_Ext(vault, "HashiCorp Vault")
+  Container_Boundary(t, "translation-service") {
+    Component(consumer, "Queue Consumer", "worker loop", "Lấy item 'Mới lấy về' từ inbox")
+    Component(policy, "Copyright Gate", "module", "CC → toàn văn; giữ quyền → chỉ tóm tắt + canonical")
+    Component(glossary, "Glossary", "module", "Ánh xạ thuật ngữ, giữ từ tiếng Anh")
+    Component(aiclient, "AI Client", "module", "Prompt hệ thống + tone/depth, gọi model")
+    Component(budget, "Budget Guard", "module", "Hạn mức/ngày, ngân sách/tháng, tự dừng")
+    Component(repo, "Content Repository", "module", "Đọc gốc / ghi bản dịch + trạng thái")
+  }
+  Rel(consumer, repo, "đọc item")
+  Rel(consumer, policy, "kiểm tra giấy phép")
+  Rel(policy, aiclient, "cho phép dịch")
+  Rel(aiclient, glossary, "áp thuật ngữ")
+  Rel(aiclient, budget, "xin hạn mức")
+  Rel(budget, vault, "AI token", "HTTPS")
+  Rel(aiclient, ai, "translate", "HTTPS")
+  Rel(aiclient, repo, "ghi bản dịch")
+  Rel(repo, db, "SQL")
+    </pre>
+    <figcaption>Cổng bản quyền chặn dịch toàn văn với nguồn "cần xin phép"; Budget Guard tôn trọng hạn mức trước khi tiêu token.</figcaption>
+  </figure>
+
+  <h2><span class="tag">C4</span> Code / Dynamic <span class="en">luồng dịch một bài</span></h2>
+  <figure>
+    <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Cron as ingest-service
+  participant DB as PostgreSQL
+  participant W as translation-service
+  participant V as Vault
+  participant AI as Claude
+  participant E as Editor (CMS)
+  Cron->>DB: INSERT post(original[], status='new')
+  W->>DB: SELECT next 'new' (FOR UPDATE SKIP LOCKED)
+  W->>W: Copyright gate (license?)
+  alt CC / được phép
+    W->>V: đọc AI token
+    V-->>W: token (ngắn hạn)
+    W->>AI: translate(original, glossary, tone)
+    AI-->>W: translated[]
+    W->>DB: UPDATE translated[], status='review'
+  else Cần xin phép
+    W->>DB: UPDATE summary + canonicalUrl, status='summary-only'
+  end
+  E->>DB: duyệt → status='published'
+    </pre>
+    <figcaption>Khoá dòng bằng <code class="inline">SKIP LOCKED</code> cho nhiều worker chạy song song; token AI lấy tức thời từ Vault, không lưu tĩnh.</figcaption>
+  </figure>
+
+  <p class="lead" style="margin-top:36px">Xem thêm: <a href="https://claude.ai/code/artifact/a8553553-5ee5-42e4-8b5d-c460f1f6520b">sơ đồ hạ tầng &amp; pipeline DevSecOps</a>. Mã nguồn: <a href="https://github.com/kencafe/ac-portal">github.com/kencafe/ac-portal</a>.</p>
+</div>

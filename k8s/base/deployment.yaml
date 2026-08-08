@@ -16,6 +16,10 @@ spec:
       labels:
         app: ac-portal
         component: frontend
+      annotations:
+        # Resolve the `ac-portal:latest` ImageStream tag to the internal
+        # registry digest (lookupPolicy.local) for Deployment pods.
+        alpha.image.policy.openshift.io/resolve-names: "*"
     spec:
       containers:
         - name: ac-portal

@@ -5,25 +5,16 @@ metadata:
   namespace: ac-portal-dev
 spec:
   description: >
-    DevSecOps CI/CD for the FPT-IS Next Gen Service site. OWASP-aligned:
-    pre-commit (gitleaks) → vulnerability scanning (SCA/SAST/image) → build →
-    deploy → DAST (staging) → compliance audit.
+    DevSecOps CI/CD for AC-Portal (OWASP-aligned): pre-commit (gitleaks) →
+    vulnerability scanning (Dependency-Check SCA, Semgrep SAST, Trivy image) →
+    build → DefectDojo import → deploy → DAST (staging) → compliance audit.
   params:
-    - name: git-url
-      type: string
-    - name: git-revision
-      type: string
-      default: dev
-    - name: env
-      type: string
-      description: dev | staging | prod
-    - name: target-namespace
-      type: string
-    - name: deploy-host
-      type: string
-    - name: run-dast
-      type: string
-      default: "false"
+    - { name: git-url, type: string }
+    - { name: git-revision, type: string, default: dev }
+    - { name: env, type: string }
+    - { name: target-namespace, type: string }
+    - { name: deploy-host, type: string }
+    - { name: run-dast, type: string, default: "false" }
   workspaces:
     - name: shared
   tasks:
@@ -42,25 +33,28 @@ spec:
       taskRef: { kind: Task, name: gitleaks-scan }
       workspaces: [{ name: source, workspace: shared }]
 
-    # ---- vulnerability scanning: SCA + SAST ----
+    # ---- vulnerability scanning: SCA (Dependency-Check) + SAST (Semgrep) ----
+    # SCA (Dependency-Check) runs in parallel and is advisory — it does not gate
+    # build/deploy (NVD update can be slow), but its report still feeds DefectDojo.
     - name: sca
       runAfter: [fetch]
-      taskRef: { kind: Task, name: trivy-fs-scan }
+      timeout: "20m"
+      taskRef: { kind: Task, name: dependency-check-scan }
       workspaces: [{ name: source, workspace: shared }]
     - name: sast
       runAfter: [fetch]
       taskRef: { kind: Task, name: semgrep-sast }
       workspaces: [{ name: source, workspace: shared }]
 
-    # ---- compliance audit of manifests (parallel) ----
+    # ---- compliance audit (parallel) ----
     - name: compliance
       runAfter: [fetch]
       taskRef: { kind: Task, name: kube-linter-scan }
       workspaces: [{ name: source, workspace: shared }]
 
-    # ---- build image via OpenShift BuildConfig (gated on code scans) ----
+    # ---- build image (gated on the code scans) ----
     - name: build
-      runAfter: [secret-scan, sca, sast]
+      runAfter: [secret-scan, sast]
       taskRef: { kind: Task, name: oc-run }
       params:
         - name: SCRIPT
@@ -71,12 +65,21 @@ spec:
             oc -n $(params.target-namespace) start-build ac-portal --from-dir=. --follow --wait
       workspaces: [{ name: manifest-dir, workspace: shared }]
 
-    # ---- container image scan ----
+    # ---- container image scan (Trivy — image only) ----
     - name: image-scan
       runAfter: [build]
       taskRef: { kind: Task, name: trivy-image-scan }
       params:
         - { name: IMAGE, value: "image-registry.openshift-image-registry.svc:5000/$(params.target-namespace)/ac-portal:latest" }
+      workspaces: [{ name: source, workspace: shared }]
+
+    # ---- aggregate findings into DefectDojo ----
+    - name: defectdojo
+      runAfter: [image-scan, sca, sast, secret-scan]
+      taskRef: { kind: Task, name: defectdojo-upload }
+      params:
+        - { name: ENGAGEMENT, value: "ci-$(params.env)" }
+      workspaces: [{ name: source, workspace: shared }]
 
     # ---- deploy / roll out the freshly built image ----
     - name: deploy
@@ -90,7 +93,7 @@ spec:
             oc -n $(params.target-namespace) rollout status deploy/ac-portal --timeout=240s
       workspaces: [{ name: manifest-dir, workspace: shared }]
 
-    # ---- DAST against the running staging site ----
+    # ---- DAST against the running staging site → DefectDojo ----
     - name: dast
       runAfter: [deploy]
       when:
@@ -98,4 +101,7 @@ spec:
           operator: in
           values: ["true"]
       taskRef: { kind: Task, name: zap-dast }
-      params: [{ name: TARGET_URL, value: "https://$(params.deploy-host)" }]
+      params:
+        - { name: TARGET_URL, value: "https://$(params.deploy-host)" }
+        - { name: ENGAGEMENT, value: "dast-$(params.env)" }
+      workspaces: [{ name: source, workspace: shared }]
