@@ -1,10 +1,11 @@
 import { getIdentity } from "@/lib/identity";
-import { getSettings, saveSettings, type Settings } from "@/lib/settings";
+import { getPublicSettings, saveSettings, type Settings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
+// Redacted — the Anthropic token is never sent to the browser.
 export async function GET() {
-  return Response.json(await getSettings());
+  return Response.json(await getPublicSettings());
 }
 
 // Only admins may change site configuration.
@@ -14,7 +15,12 @@ export async function PUT(req: Request) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }
   const patch = (await req.json()) as Partial<Settings>;
-  const saved = await saveSettings(patch);
+  // Never overwrite the stored token with an empty/placeholder value — the
+  // browser only sends aiApiKey when the admin typed a fresh token.
+  if (!patch.aiApiKey || !patch.aiApiKey.trim()) {
+    delete patch.aiApiKey;
+  }
+  await saveSettings(patch);
   console.log(`[audit] ${id.user} updated settings`);
-  return Response.json(saved);
+  return Response.json(await getPublicSettings());
 }

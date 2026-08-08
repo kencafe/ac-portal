@@ -18,6 +18,9 @@ export type Settings = {
   aiScheduleEnabled: boolean;
   aiScheduleHour: number; // 0–23, cluster TZ (default 5 = 05:00)
   aiFeeds: string[]; // RSS/Atom source URLs the daily job pulls from
+  // AI provider config (Anthropic Messages API).
+  aiModel: string; // selected model id, e.g. "claude-sonnet-5"
+  aiApiKey: string; // Anthropic token — SECRET; never returned by the API (see publicSettings)
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -30,6 +33,8 @@ export const DEFAULT_SETTINGS: Settings = {
   aiScheduleEnabled: false,
   aiScheduleHour: 5,
   aiFeeds: [],
+  aiModel: "claude-sonnet-5",
+  aiApiKey: "",
 };
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
@@ -49,4 +54,21 @@ export async function saveSettings(patch: Partial<Settings>): Promise<Settings> 
   await fs.mkdir(DATA_DIR, { recursive: true });
   await fs.writeFile(FILE, JSON.stringify(next, null, 2), "utf8");
   return next;
+}
+
+// Settings safe to send to the browser: the raw token is stripped and replaced
+// with a boolean + a short masked hint.
+export type PublicSettings = Omit<Settings, "aiApiKey"> & {
+  aiApiKeySet: boolean;
+  aiApiKeyHint: string;
+};
+
+function maskKey(k: string): string {
+  if (!k) return "";
+  return k.length <= 12 ? "••••" : `${k.slice(0, 7)}…${k.slice(-4)}`;
+}
+
+export async function getPublicSettings(): Promise<PublicSettings> {
+  const { aiApiKey, ...rest } = await getSettings();
+  return { ...rest, aiApiKeySet: !!aiApiKey, aiApiKeyHint: maskKey(aiApiKey) };
 }

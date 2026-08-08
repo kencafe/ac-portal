@@ -35,6 +35,9 @@ type SiteSettings = {
   aiScheduleEnabled: boolean;
   aiScheduleHour: number;
   aiFeeds: string[];
+  aiModel: string;
+  aiApiKeySet: boolean;
+  aiApiKeyHint: string;
 };
 
 const panel: CSSProperties = { background: "#fff", border: `1px solid ${COLORS.split}`, borderRadius: RADIUS.card };
@@ -171,6 +174,14 @@ export default function CmsApp() {
   const [aiLog, setAiLog] = useState<string[]>([]);
   const [aiFeedInput, setAiFeedInput] = useState("");
 
+  // AI provider config (Cấu hình API): paste token → get models → choose → save
+  const [aiKeyInput, setAiKeyInput] = useState("");
+  const [aiKeyShow, setAiKeyShow] = useState(false);
+  const [aiModelList, setAiModelList] = useState<{ id: string; name: string }[]>([]);
+  const [aiModelSel, setAiModelSel] = useState("");
+  const [aiCfgBusy, setAiCfgBusy] = useState(false);
+  const [aiCfgMsg, setAiCfgMsg] = useState("");
+
   function makeDraft(): SeedPost {
     return { ...NEW_DRAFT_DEFAULTS, blocks: [["p", ""]] } as SeedPost;
   }
@@ -198,7 +209,7 @@ export default function CmsApp() {
   useEffect(() => {
     refreshPosts();
     fetch("/api/v1/me", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then(setMe); }).catch(() => {});
-    fetch("/api/v1/settings", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then(setSettings); }).catch(() => {});
+    fetch("/api/v1/settings", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then((s: SiteSettings) => { setSettings(s); setAiModelSel(s.aiModel || ""); }); }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -217,6 +228,55 @@ export default function CmsApp() {
       setSettingsSaved(true);
       setTimeout(() => setSettingsSaved(false), 2500);
     }
+  }
+
+  async function aiGetModels() {
+    setAiCfgBusy(true);
+    setAiCfgMsg("Đang lấy danh sách model…");
+    try {
+      const res = await fetch("/api/v1/ai/models", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(aiKeyInput.trim() ? { token: aiKeyInput.trim() } : {}),
+      });
+      const d = await res.json();
+      if (res.ok && Array.isArray(d.models)) {
+        setAiModelList(d.models);
+        if (!aiModelSel && d.models[0]) setAiModelSel(d.models[0].id);
+        setAiCfgMsg(`Đã lấy ${d.models.length} model.`);
+      } else {
+        setAiCfgMsg(`❌ ${d.error || res.status}`);
+      }
+    } catch (e) {
+      setAiCfgMsg(`❌ ${(e as Error).message}`);
+    }
+    setAiCfgBusy(false);
+  }
+  async function aiSaveConfig() {
+    if (!settings) return;
+    setAiCfgBusy(true);
+    const body: Record<string, unknown> = { aiModel: aiModelSel };
+    if (aiKeyInput.trim()) body.aiApiKey = aiKeyInput.trim();
+    try {
+      const res = await fetch("/api/v1/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        const s: SiteSettings = await res.json();
+        setSettings(s);
+        setAiModelSel(s.aiModel || "");
+        setAiKeyInput("");
+        setAiCfgMsg(`✅ Đã lưu · model: ${s.aiModel}${s.aiApiKeySet ? ` · token: ${s.aiApiKeyHint}` : ""}`);
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setAiCfgMsg(`❌ ${d.error || res.status}`);
+      }
+    } catch (e) {
+      setAiCfgMsg(`❌ ${(e as Error).message}`);
+    }
+    setAiCfgBusy(false);
   }
 
   function aiLogLine(s: string) {
@@ -931,8 +991,62 @@ export default function CmsApp() {
 
   function ApiView() {
     const activeModels = API_PROVIDERS.find((p) => p.name === provider)?.models ?? [];
+    const canEditAi = me?.isAdmin ?? true;
+    const dropdownModels =
+      aiModelList.length > 0
+        ? aiModelList
+        : aiModelSel
+          ? [{ id: aiModelSel, name: aiModelSel }]
+          : [];
     return (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 16, alignItems: "start" }}>
+        {/* Real Anthropic connection — paste token → get models → choose → save */}
+        <section style={{ ...panelPad, gridColumn: "1 / -1" }}>
+          <PanelHead
+            right={
+              <span style={{ fontSize: 12.5, color: settings?.aiApiKeySet ? COLORS.brandGreen : COLORS.ink3 }}>
+                {settings?.aiApiKeySet ? `Token: ${settings.aiApiKeyHint}` : "Chưa có token"}
+                {settings?.aiModel ? ` · Model: ${settings.aiModel}` : ""}
+              </span>
+            }
+          >
+            Kết nối Anthropic (đang dùng)
+          </PanelHead>
+          <div style={{ fontSize: 12.5, color: COLORS.ink3, margin: "6px 0 14px" }}>
+            Dán API token → <b>Lấy model</b> để tải danh sách từ Anthropic → chọn model → <b>Lưu</b>. Token được lưu phía server và không hiển thị lại.
+          </div>
+          <label style={label}>API token</label>
+          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+            <input
+              type={aiKeyShow ? "text" : "password"}
+              value={aiKeyInput}
+              onChange={(e) => setAiKeyInput(e.target.value)}
+              placeholder={settings?.aiApiKeySet ? "•••••• (đã lưu — dán mới để thay)" : "sk-ant-…"}
+              disabled={!canEditAi || aiCfgBusy}
+              style={{ ...input, flex: 1, fontFamily: "monospace" }}
+            />
+            <button type="button" onClick={() => setAiKeyShow(!aiKeyShow)} style={btnSm}>{aiKeyShow ? "Ẩn" : "Hiện"}</button>
+            <button type="button" onClick={aiGetModels} disabled={!canEditAi || aiCfgBusy} style={{ ...btnSm, opacity: canEditAi && !aiCfgBusy ? 1 : 0.5 }}>↻ Lấy model</button>
+          </div>
+          <label style={label}>Model</label>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <select
+              value={aiModelSel}
+              onChange={(e) => setAiModelSel(e.target.value)}
+              disabled={!canEditAi || dropdownModels.length === 0}
+              style={{ ...input, flex: 1 }}
+            >
+              {dropdownModels.length === 0 && <option value="">— Bấm "Lấy model" để tải danh sách —</option>}
+              {dropdownModels.map((m) => (
+                <option key={m.id} value={m.id}>{m.name} ({m.id})</option>
+              ))}
+            </select>
+            <button type="button" onClick={aiSaveConfig} disabled={!canEditAi || aiCfgBusy || !aiModelSel} style={{ ...btnBlue, opacity: canEditAi && aiModelSel && !aiCfgBusy ? 1 : 0.5 }}>Lưu</button>
+          </div>
+          {aiCfgMsg && <div style={{ fontSize: 12.5, color: COLORS.ink2, marginTop: 10 }}>{aiCfgMsg}</div>}
+          {!canEditAi && <div style={{ fontSize: 12.5, color: COLORS.ink3, marginTop: 8 }}>Chỉ Quản trị mới sửa được cấu hình AI.</div>}
+        </section>
+
         <div style={panel}>
           <PanelHead>{API_UI.providersPanelHead}</PanelHead>
           <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>

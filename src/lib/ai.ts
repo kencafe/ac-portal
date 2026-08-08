@@ -12,9 +12,10 @@ import { upsertPost } from "@/lib/store";
 import { getSettings } from "@/lib/settings";
 import type { Block } from "@/data/posts";
 
-const AI_API_KEY = process.env.AI_API_KEY || process.env.ANTHROPIC_API_KEY || "";
-const AI_MODEL = process.env.AI_MODEL || "claude-sonnet-4-5";
+const ENV_AI_API_KEY = process.env.AI_API_KEY || process.env.ANTHROPIC_API_KEY || "";
+const ENV_AI_MODEL = process.env.AI_MODEL || "";
 const AI_BASE = process.env.AI_BASE_URL || "https://api.anthropic.com";
+const DEFAULT_MODEL = "claude-sonnet-5";
 
 export type IngestResult = {
   slug: string;
@@ -81,7 +82,12 @@ async function aiEditTranslate(
 ): Promise<{ title: string; blocks: Block[]; aiUsed: boolean }> {
   const clipped = text.slice(0, 12000);
 
-  if (!AI_API_KEY) {
+  // Token + model come from the CMS "Cấu hình API" (settings) first, then env.
+  const settings = await getSettings();
+  const apiKey = settings.aiApiKey || ENV_AI_API_KEY;
+  const model = settings.aiModel || ENV_AI_MODEL || DEFAULT_MODEL;
+
+  if (!apiKey) {
     // Honest offline fallback — NOT a real translation.
     const blocks: Block[] = [
       { kind: "p", text: "[AI chưa cấu hình khóa — đây là nội dung gốc chưa dịch]" },
@@ -99,17 +105,17 @@ async function aiEditTranslate(
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-api-key": AI_API_KEY,
+      "x-api-key": apiKey,
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: AI_MODEL,
+      model,
       max_tokens: 2000,
       messages: [{ role: "user", content: prompt }],
     }),
     signal: AbortSignal.timeout(60000),
   });
-  if (!res.ok) throw new Error(`AI ${AI_MODEL} → HTTP ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`AI ${model} → HTTP ${res.status}: ${await res.text()}`);
   const data = await res.json();
   const raw = data?.content?.[0]?.text ?? "";
   let parsed: { title?: string; paragraphs?: string[] };
