@@ -49,6 +49,8 @@ type SiteSettings = {
   aiModel: string;
   aiApiKeySet: boolean;
   aiApiKeyHint: string;
+  aiImageEnabled: boolean;
+  aiImageModel: string;
 };
 
 const panel: CSSProperties = { background: "#fff", border: `1px solid ${COLORS.split}`, borderRadius: RADIUS.card };
@@ -195,6 +197,9 @@ export default function CmsApp() {
   const [aiModelSel, setAiModelSel] = useState("");
   const [aiCfgBusy, setAiCfgBusy] = useState(false);
   const [aiCfgMsg, setAiCfgMsg] = useState("");
+  // Dedicated image model (runs alongside the text model; reuses the Gemini key)
+  const [aiImageModelSel, setAiImageModelSel] = useState("gemini-2.5-flash-image");
+  const [aiImageMsg, setAiImageMsg] = useState("");
 
   // AI auto-discovery + ingest history
   type HistItem = { at: string; mode: string; source: string; url: string; title: string; slug: string; status: string; aiUsed: boolean; note?: string };
@@ -239,7 +244,7 @@ export default function CmsApp() {
   useEffect(() => {
     refreshPosts();
     fetch("/api/v1/me", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then(setMe); }).catch(() => {});
-    fetch("/api/v1/settings", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then((s: SiteSettings) => { setSettings(s); setAiModelSel(s.aiModel || ""); setAiProviderSel(s.aiProvider || "anthropic"); setAiTopicsInput((s.aiTopics || []).join(", ")); setRecipientsInput((s.mailExtraRecipients || []).join("\n")); }); }).catch(() => {});
+    fetch("/api/v1/settings", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then((s: SiteSettings) => { setSettings(s); setAiModelSel(s.aiModel || ""); setAiProviderSel(s.aiProvider || "anthropic"); setAiTopicsInput((s.aiTopics || []).join(", ")); setRecipientsInput((s.mailExtraRecipients || []).join("\n")); setAiImageModelSel(s.aiImageModel || "gemini-2.5-flash-image"); }); }).catch(() => {});
     loadSubscribers();
     fetch("/api/v1/ai/history", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then((d) => setAiHistory(d.results || [])); }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -661,7 +666,7 @@ export default function CmsApp() {
                   color: active ? COLORS.brandBlue : COLORS.ink2, background: active ? "#E6F1F9" : "transparent",
                   borderRight: active ? `2px solid ${COLORS.brandBlue}` : "2px solid transparent", border: "none", width: "100%", textAlign: "left",
                 };
-                if (isLink) return <a key={it.label} href="#" style={style}>{content}</a>;
+                if (isLink) return <a key={it.label} href={String(("href" in it && it.href) || "/")} target="_blank" rel="noreferrer" style={style}>{content}</a>;
                 return <button key={it.label} type="button" onClick={() => setView(("key" in it ? it.key : "posts") as View)} style={style}>{content}</button>;
               })}
             </div>
@@ -690,7 +695,8 @@ export default function CmsApp() {
           <span style={{ fontSize: 13, color: COLORS.ink3 }}>{TOPBAR.crumbPrefix}</span>
           <span style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink }}>{TOPBAR.viewLabels[view]}</span>
           {saved && <span style={{ fontSize: 12.5, color: COLORS.brandGreen, marginLeft: 8 }}>{TOPBAR.saveHint}</span>}
-          <button type="button" onClick={newPost} style={{ ...btnBlue, marginLeft: "auto" }}>{TOPBAR.newPostButton}</button>
+          <a href="/blog" target="_blank" rel="noreferrer" style={{ ...btnSm, marginLeft: "auto", textDecoration: "none", display: "inline-flex", alignItems: "center" }}>↗ Xem blog</a>
+          <button type="button" onClick={newPost} style={{ ...btnBlue }}>{TOPBAR.newPostButton}</button>
         </header>
 
         <main style={{ padding: 24, minWidth: 0 }}>
@@ -1487,8 +1493,17 @@ export default function CmsApp() {
   }
 
 
+  async function saveImageCfg(enabled: boolean, model: string) {
+    setAiImageMsg("⏳ Đang lưu…");
+    try {
+      const res = await fetch("/api/v1/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aiImageEnabled: enabled, aiImageModel: model }) });
+      if (res.ok) { setSettings(await res.json()); setAiImageMsg(enabled ? `✅ Đã bật — dùng model ảnh: ${model}` : "✅ Đã tắt tạo ảnh AI (dùng ảnh bìa title-card)"); }
+      else { const d = await res.json().catch(() => ({})); setAiImageMsg(`❌ ${d.error || res.status}`); }
+    } catch (e) { setAiImageMsg(`❌ ${(e as Error).message}`); }
+  }
   function ApiView() {
     const canEditAi = me?.isAdmin ?? true;
+    const IMAGE_MODELS = ["gemini-2.5-flash-image", "gemini-3-pro-image", "gemini-3.1-flash-image", "gemini-3.1-flash-lite-image"];
     const curProvider = PROVIDERS_PUBLIC.find((p) => p.id === aiProviderSel) ?? PROVIDERS_PUBLIC[0];
     const dropdownModels =
       aiModelList.length > 0
@@ -1566,22 +1581,35 @@ export default function CmsApp() {
           {!canEditAi && <div style={{ fontSize: 12.5, color: COLORS.ink3, marginTop: 8 }}>Chỉ Quản trị mới sửa được cấu hình AI.</div>}
         </section>
 
+        {/* Image model — runs alongside the text model */}
+        <section style={{ ...panelPad, gridColumn: "1 / -1" }}>
+          <PanelHead right={<span style={{ fontSize: 12.5, color: settings?.aiImageEnabled ? COLORS.brandGreen : COLORS.ink3 }}>{settings?.aiImageEnabled ? `Đang bật · ${settings?.aiImageModel}` : "Đang tắt (dùng ảnh title-card)"}</span>}>
+            Model tạo ảnh bìa (chạy song song với model bài viết)
+          </PanelHead>
+          <div style={{ fontSize: 12.5, color: COLORS.ink3, margin: "6px 0 14px" }}>
+            <b>Model bài viết</b> (ở trên) lo phần chữ; <b>model ảnh</b> (ở đây) lo ảnh bìa — hai model độc lập, <b>dùng chung API key Gemini</b>. Bật thì mỗi bài AI sẽ được sinh ảnh bìa thật (lưu trên máy chủ); tắt thì dùng ảnh title-card thương hiệu. Ưu tiên: <i>ảnh gốc nguồn → ảnh AII → title-card</i>.
+          </div>
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <label style={label}>Model tạo ảnh (Gemini)</label>
+              <select value={aiImageModelSel} onChange={(e) => setAiImageModelSel(e.target.value)} disabled={!canEditAi} style={input}>
+                {IMAGE_MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <button type="button" onClick={() => saveImageCfg(true, aiImageModelSel)} disabled={!canEditAi} style={{ ...btnBlue, height: 40, opacity: canEditAi ? 1 : 0.5 }}>Bật &amp; lưu</button>
+            <button type="button" onClick={() => saveImageCfg(false, aiImageModelSel)} disabled={!canEditAi} style={{ ...btnSm, height: 40 }}>Tắt tạo ảnh AI</button>
+          </div>
+          {aiImageMsg && <div style={{ fontSize: 12.5, color: COLORS.ink2, marginTop: 10 }}>{aiImageMsg}</div>}
+          <div style={{ fontSize: 11.5, color: COLORS.ink3, marginTop: 8 }}>Lưu ý: mỗi ảnh tốn thêm 1 lượt gọi API (chi phí) và dung lượng PVC. Ảnh sinh không kèm chữ, phong cách vector phẳng.</div>
+        </section>
 
         <div style={panel}>
-          <PanelHead>{API_UI.limitsPanelHead}</PanelHead>
-          <div style={{ padding: 16 }}>
-            <label style={label}>{API_UI.quotaDayLabel}</label>
-            <input defaultValue={API_UI.quotaDayDefault} style={{ ...input, marginBottom: 14 }} />
-            <label style={label}>{API_UI.quotaBudgetLabel}</label>
-            <input defaultValue={API_UI.quotaBudgetDefault} style={{ ...input, marginBottom: 16 }} />
-            <div style={{ background: COLORS.surfaceAlt, border: `1px solid ${COLORS.split}`, borderRadius: 8, padding: 14, marginBottom: 16 }}>
-              <div style={{ fontSize: 12.5, color: COLORS.ink3, display: "flex", justifyContent: "space-between" }}><span>{API_UI.usage.usedThisMonth}</span><span>{API_UI.usage.usedThisMonthValue.replace("{quotaBudget}", API_UI.quotaBudgetDefault)}</span></div>
-              <div style={{ height: 6, borderRadius: 3, background: "#E6EAF0", marginTop: 8, overflow: "hidden" }}><div style={{ width: "38%", height: "100%", background: "linear-gradient(90deg, #0072BC, #57A336)" }} /></div>
-              <div style={{ fontSize: 12, color: COLORS.ink3, marginTop: 8 }}>{API_UI.usage.articlesTranslated}: {API_UI.usage.articlesTranslatedValue} · {API_UI.usage.avgTokens}: {API_UI.usage.avgTokensValue}</div>
+          <PanelHead>Giới hạn &amp; chi phí</PanelHead>
+          <div style={{ padding: 16, fontSize: 13, color: COLORS.ink2, lineHeight: 1.7 }}>
+            <div style={{ background: "#FEF7F0", border: "1px solid #F8CBA9", borderRadius: 8, padding: 12, marginBottom: 12 }}>
+              <b style={{ color: "#C25A17" }}>Chưa có hạn mức thực thi.</b> Phần này trước là mẫu giao diện (không lưu, không chặn thật). Đã gỡ để tránh hiểu nhầm.
             </div>
-            {Object.values(API_UI.limitCheckboxes).map((c, i) => (
-              <label key={c} style={{ display: "flex", gap: 8, fontSize: 13, color: COLORS.ink2, marginBottom: 8 }}><input type="checkbox" defaultChecked={i !== 1} /> {c}</label>
-            ))}
+            Giới hạn <b>thực sự chặn được</b> hiện có: <b>số bài mỗi lần chạy</b> (Số bài tự động, ở AI tự động) và <b>lịch bật/tắt</b>. Để có hạn mức token/chi phí theo ngày-tháng cần thêm <b>đo lường token mỗi lượt gọi</b> rồi khoá khi vượt — mình có thể làm nếu bạn cần.
           </div>
         </div>
 

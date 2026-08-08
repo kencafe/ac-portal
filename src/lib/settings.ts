@@ -39,6 +39,11 @@ export type Settings = {
   aiProvider: string; // provider id from lib/providers (e.g. "anthropic", "xai", "qwen")
   aiModel: string; // selected model id, e.g. "claude-sonnet-5"
   aiApiKey: string; // token for the active provider — SECRET; never returned (see publicSettings)
+  // Dedicated image model (runs alongside the text model). Currently Gemini —
+  // reuses aiApiKey when the text provider is Gemini. Opt-in; falls back to the
+  // generated title-card cover when off or on failure.
+  aiImageEnabled: boolean;
+  aiImageModel: string; // e.g. "gemini-2.5-flash-image"
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -66,6 +71,8 @@ export const DEFAULT_SETTINGS: Settings = {
   aiProvider: "anthropic",
   aiModel: "claude-sonnet-5",
   aiApiKey: "",
+  aiImageEnabled: false,
+  aiImageModel: "gemini-2.5-flash-image",
 };
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");

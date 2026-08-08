@@ -32,7 +32,9 @@ export default function CoverArt({
   const [failed, setFailed] = useState(false);
   const t = tone || COLORS.brandBlue;
   const hasImg = !!coverUrl && !failed;
-  const src = /^https?:\/\//.test(coverUrl || "") ? (coverUrl as string) : `/${coverUrl}`;
+  // Absolute URLs and root-relative paths (/api/cover, /assets/…) are used as-is;
+  // only bare asset paths (assets/…) get a leading slash — avoids `//api/cover`.
+  const src = !coverUrl ? "" : /^(https?:)?\/\//.test(coverUrl) || coverUrl.startsWith("/") ? coverUrl : `/${coverUrl}`;
 
   return (
     <div

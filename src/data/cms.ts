@@ -708,8 +708,8 @@ export const SIDEBAR = {
     {
       group: 'Kênh',
       items: [
-        { label: 'Xem blog', icon: '↗', href: 'FPTIS NS Blog.dc.html' },
-        { label: 'Trang chính', icon: '↗', href: 'FPTIS NS Landing v3 Ant.dc.html' },
+        { label: 'Xem blog', icon: '↗', href: '/blog' },
+        { label: 'Trang chính', icon: '↗', href: '/' },
       ],
     },
   ],

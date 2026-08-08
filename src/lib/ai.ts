@@ -8,6 +8,8 @@
 // passthrough so the flow is testable offline — it never fabricates a
 // human-quality translation silently.
 
+import { promises as fsp } from "fs";
+import path from "path";
 import { upsertPost, getPost, availableSlug } from "@/lib/store";
 import { getSettings } from "@/lib/settings";
 import { notifyPublished } from "@/lib/notify";
@@ -18,6 +20,45 @@ import type { Block } from "@/data/posts";
 const ENV_AI_API_KEY = process.env.AI_API_KEY || process.env.ANTHROPIC_API_KEY || "";
 const ENV_AI_MODEL = process.env.AI_MODEL || "";
 const DEFAULT_MODEL = "claude-sonnet-5";
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
+
+// Optional AI-generated cover: a dedicated Gemini image model (runs alongside
+// the text model, reusing the Gemini key). Saves a real PNG to the PVC and
+// returns its URL; falls back to the generated title-card when off or on error.
+export async function makeCover(slug: string, title: string, cat = "", tone = "#0072BC"): Promise<string> {
+  const fallback = coverFor(title, cat, tone);
+  const s = await getSettings();
+  if (!s.aiImageEnabled) return fallback;
+  const apiKey = s.aiApiKey || ENV_AI_API_KEY;
+  const model = s.aiImageModel || "gemini-2.5-flash-image";
+  if (!apiKey) return fallback;
+  try {
+    const prompt =
+      `Ảnh minh hoạ bìa cho bài blog kỹ thuật, phong cách vector phẳng hiện đại, trừu tượng, sạch sẽ; tông màu xanh dương và xanh lá thương hiệu; KHÔNG có chữ trong ảnh. Chủ đề: ${title}. Lĩnh vực: ${cat || "công nghệ"}.`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ["IMAGE"] } }),
+      signal: AbortSignal.timeout(90000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
+    const d = await res.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parts: any[] = d?.candidates?.[0]?.content?.parts ?? [];
+    const img = parts.find((p) => p?.inlineData?.data);
+    if (!img) throw new Error("no image in response");
+    const mime: string = img.inlineData.mimeType || "image/png";
+    const ext = mime.includes("jpeg") || mime.includes("jpg") ? "jpg" : "png";
+    await fsp.mkdir(path.join(DATA_DIR, "covers"), { recursive: true });
+    await fsp.writeFile(path.join(DATA_DIR, "covers", `${slug}.${ext}`), Buffer.from(img.inlineData.data, "base64"));
+    console.log(`[ai] cover image generated for ${slug} (${model})`);
+    return `/api/cover-img/${slug}.${ext}`;
+  } catch (e) {
+    console.error(`[ai] cover image failed for ${slug}:`, (e as Error).message);
+    return fallback;
+  }
+}
 
 // Curated, reputable tech sources so "AI tự tìm bài" works out-of-the-box even
 // when the admin hasn't added any RSS feed yet. Used only as a fallback for
@@ -293,6 +334,7 @@ export async function ingestText(
   const status: "draft" | "published" = publish ? "published" : "draft";
   const slug = await availableSlug(slugify(title));
   const url = opts?.url ?? opts?.source ?? "";
+  const cover = opts?.cover || (await makeCover(slug, title, opts?.cat || "AIOps"));
 
   const saved = await upsertPost({
     slug,
@@ -306,7 +348,7 @@ export async function ingestText(
     date: todayVN(),
     read: readingTime(blocks),
     tags: opts?.summarize ? ["ai-ingest", "tom-tat"] : ["ai-ingest"],
-    coverUrl: opts?.cover || coverFor(title, opts?.cat || "AIOps", "#0072BC"), // source og:image, else generated cover
+    coverUrl: cover, // source og:image → AI image (if enabled) → generated title-card
     blocks,
     status,
   });
@@ -412,6 +454,7 @@ export async function generateArticle(
   const publish = opts?.forcePublish ?? false;
   const status: "draft" | "published" = publish ? "published" : "draft";
   const slug = await availableSlug(slugify(title));
+  const cover = await makeCover(slug, title, opts?.cat || "SRE");
 
   const saved = await upsertPost({
     slug,
@@ -425,7 +468,7 @@ export async function generateArticle(
     date: todayVN(),
     read: readingTime(blocks),
     tags: ["ai-generate"],
-    coverUrl: coverFor(title, opts?.cat || "SRE", "#0072BC"),
+    coverUrl: cover,
     blocks,
     status,
   });
