@@ -69,6 +69,13 @@ function absolutize(src: string, base: string): string {
   }
 }
 
+// Generated-cover URL for a post with no real photo — a branded title-card
+// image served by /api/cover (server-rendered, so no blank/flash).
+export function coverFor(title: string, cat = "", tone = "#0072BC"): string {
+  const q = new URLSearchParams({ title: title.slice(0, 140), cat, tone: tone.replace("#", "") });
+  return `/api/cover?${q.toString()}`;
+}
+
 function slugify(s: string): string {
   return s
     .normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -299,7 +306,7 @@ export async function ingestText(
     date: todayVN(),
     read: readingTime(blocks),
     tags: opts?.summarize ? ["ai-ingest", "tom-tat"] : ["ai-ingest"],
-    coverUrl: opts?.cover || "", // source og:image if any, else branded title-card (CoverArt)
+    coverUrl: opts?.cover || coverFor(title, opts?.cat || "AIOps", "#0072BC"), // source og:image, else generated cover
     blocks,
     status,
   });
@@ -418,7 +425,7 @@ export async function generateArticle(
     date: todayVN(),
     read: readingTime(blocks),
     tags: ["ai-generate"],
-    coverUrl: "",
+    coverUrl: coverFor(title, opts?.cat || "SRE", "#0072BC"),
     blocks,
     status,
   });

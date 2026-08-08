@@ -72,8 +72,9 @@ function RelatedCard({ post }: { post: Post }) {
   );
 }
 
-export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ArticlePage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ from?: string }> }) {
   const { slug } = await params;
+  const { from } = await searchParams;
   const post = await getPost(slug);
   if (!post || post.status !== "published") notFound();
   const related = (await listPublished()).filter((p) => p.slug !== post.slug).slice(0, 3);
@@ -82,6 +83,13 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     <LangProvider>
       <BrandStripe />
       <SiteHeader nav={nav} cta={cta} anchorBase="/" />
+      {from === "cms" && (
+        <div style={{ background: "#E6F1F9", borderBottom: "1px solid #B3D5EA" }}>
+          <div style={{ maxWidth: 860, margin: "0 auto", padding: "8px 24px" }}>
+            <a href="/cms" style={{ fontSize: 13.5, fontWeight: 600, color: COLORS.brandBlue, textDecoration: "none" }}>← Quay lại CMS</a>
+          </div>
+        </div>
+      )}
 
       <article style={{ maxWidth: 860, margin: "0 auto", padding: "40px 24px 56px" }}>
         {/* Breadcrumb */}

@@ -4,9 +4,6 @@ import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import {
   SEED, SeedPost, PostStatus, CATS, TONE, CATEGORIES, TAGS, TAXONOMY_UI,
   KINDS, EDITOR_UI, NEW_DRAFT_DEFAULTS, BlockKind,
-  FEEDS, Feed, FEEDS_UI, FEEDS_STATS,
-  INBOX, InboxItem, INBOX_UI,
-  TRANSLATE_UI, TRANSLATE_CONFIG, GLOSSARY, GLOSSARY_UI, PREPUBLISH_CHECKLIST,
   API_UI, PUBLIC_API,
   SIDEBAR, TOPBAR, POSTS_VIEW_UI, ADMIN_UI,
 } from "@/data/cms";
@@ -69,12 +66,6 @@ function statusPill(s: string): CSSProperties {
   };
   const [fg, bg, bd] = map[s] ?? ["#C25A17", "#FEF1E9", "#F8CBA9"];
   return { display: "inline-flex", alignItems: "center", padding: "2px 10px", borderRadius: 4, fontSize: 12, fontWeight: 600, color: fg, background: bg, border: `1px solid ${bd}` };
-}
-
-function licensePill(l: string): CSSProperties {
-  const cc = l.toUpperCase().startsWith("CC");
-  return { display: "inline-flex", padding: "2px 10px", borderRadius: 4, fontSize: 12, fontWeight: 600,
-    color: cc ? "#3F7A26" : "#C25A17", background: cc ? "#F0F8EB" : "#FEF1E9", border: `1px solid ${cc ? "#C6E4B4" : "#F8CBA9"}` };
 }
 
 function StatTiles({ tiles }: { tiles: { label: string; value: number; color?: string }[] }) {
@@ -156,19 +147,8 @@ export default function CmsApp() {
   const [tagInput, setTagInput] = useState("");
   const [saved, setSaved] = useState(false);
 
-  const [feeds, setFeeds] = useState<Feed[]>(FEEDS);
-  const [newFeedUrl, setNewFeedUrl] = useState("");
-  const [newFeedCat, setNewFeedCat] = useState(CATS[0]);
-
-  const [inbox, setInbox] = useState<InboxItem[]>(INBOX);
   const [inboxQuery, setInboxQuery] = useState("");
   const [inboxTab, setInboxTab] = useState("Tất cả");
-  const [checked, setChecked] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(INBOX.filter((i) => i.status === "Mới lấy về").map((i) => [i.id, true])),
-  );
-  const [openItem, setOpenItem] = useState<InboxItem | null>(null);
-  const [tone, setTone] = useState(TRANSLATE_CONFIG.toneDefault);
-  const [depth, setDepth] = useState(TRANSLATE_CONFIG.depthDefault);
 
   // API config
   const [rotated, setRotated] = useState(false);
@@ -187,6 +167,9 @@ export default function CmsApp() {
   const [aiFile, setAiFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [reeditBusy, setReeditBusy] = useState<string | null>(null);
+  // Inline "biên tập lại" instruction box in the posts list
+  const [reeditFor, setReeditFor] = useState<string | null>(null);
+  const [reeditListText, setReeditListText] = useState("");
   // Paste raw text (login-walled sources) + copyright-safe summarize mode
   const [pasteTitle, setPasteTitle] = useState("");
   const [pasteText, setPasteText] = useState("");
@@ -240,8 +223,8 @@ export default function CmsApp() {
       .filter((p) => !q || (p.title + " " + p.tags.join(" ")).toLowerCase().includes(q));
   }, [posts, query, statusTab]);
 
-  const feedCount = feeds.filter((f) => f.active).length;
-  const pendingCount = inbox.filter((i) => i.status !== "Đã đăng").length;
+  const feedCount = settings?.aiFeeds?.length ?? 0;
+  const pendingCount = posts.filter((p) => p.status !== "Đã xuất bản").length;
 
   async function refreshPosts() {
     try {
@@ -483,13 +466,15 @@ export default function CmsApp() {
     } catch (e) { aiLogLine(`❌ ${(e as Error).message}`); }
     setAiBusy(false);
   }
-  async function reeditPost(slug: string, title: string) {
-    if (!window.confirm(`AI biên tập lại bài "${title}" theo phong cách blog? Nội dung hiện tại sẽ được viết lại.`)) return;
+  // Re-edit a post from the list, with an optional instruction typed inline
+  // ("ngắn gọn hơn", "thêm ví dụ"…). Empty instruction = re-edit to house style.
+  async function doReedit(slug: string, instruction: string) {
     setReeditBusy(slug);
     try {
-      const res = await fetch("/api/v1/ai/reedit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) });
+      const res = await fetch("/api/v1/ai/reedit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, instruction: instruction.trim() || undefined }) });
       const d = await res.json();
       if (!res.ok) alert(d.error === "Forbidden" ? "Bạn không có quyền biên tập." : `Lỗi: ${d.error || res.status}`);
+      else { setReeditFor(null); setReeditListText(""); }
       refreshPosts();
       loadHistory();
     } catch (e) { alert((e as Error).message); }
@@ -643,12 +628,7 @@ export default function CmsApp() {
     await refreshPosts();
   }
 
-  function openTranslate(item: InboxItem) {
-    setOpenItem(item);
-    setView("translate");
-  }
-
-  const navActive = (key: string) => key === view || (key === "inbox" && view === "translate");
+  const navActive = (key: string) => key === view;
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "232px minmax(0, 1fr)", minHeight: "100vh", background: COLORS.pageBg }}>
@@ -719,7 +699,6 @@ export default function CmsApp() {
           {view === "taxonomy" && TaxonomyView()}
           {view === "feeds" && FeedsView()}
           {view === "inbox" && InboxView()}
-          {view === "translate" && TranslateView()}
           {view === "api" && ApiView()}
           {view === "admin" && AdminView()}
           {view === "aistudio" && AiStudioView()}
@@ -1180,7 +1159,8 @@ export default function CmsApp() {
                 {POSTS_VIEW_UI.tableHead.map((h) => <span key={h}>{h}</span>)}
               </div>
               {filteredPosts.map((p) => (
-                <div key={p.slug} style={{ display: "grid", gridTemplateColumns: "minmax(200px,2.4fr) minmax(104px,150px) minmax(96px,130px) minmax(84px,110px) minmax(200px,240px)", gap: 10, padding: "12px 16px", alignItems: "center", borderBottom: `1px solid ${COLORS.split}` }}>
+                <div key={p.slug} style={{ borderBottom: `1px solid ${COLORS.split}` }}>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(200px,2.4fr) minmax(104px,150px) minmax(96px,130px) minmax(84px,110px) minmax(200px,240px)", gap: 10, padding: "12px 16px", alignItems: "center" }}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: 6 }}>
                       {p.featured && <span title="Đang hiển thị trên trang chủ" style={{ fontSize: 11, fontWeight: 700, color: "#B7791F", background: "#FEF3C7", padding: "1px 7px", borderRadius: 4, whiteSpace: "nowrap" }}>★ Trang chủ</span>}
@@ -1193,14 +1173,30 @@ export default function CmsApp() {
                   <span style={{ fontSize: 12.5, color: COLORS.ink3 }}>{p.date}</span>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <button type="button" onClick={() => editPost(p)} style={{ ...btnSm, height: 28, padding: "0 10px" }}>{POSTS_VIEW_UI.editButton}</button>
-                    <button type="button" onClick={() => { if (p.status === "Đã xuất bản") window.open(`/blog/${p.slug}`, "_blank"); else openInEditor(p.slug, true); }} title={p.status === "Đã xuất bản" ? "Mở bài trên trang blog" : "Xem trước bài nháp"} style={{ ...btnSm, height: 28, padding: "0 10px" }}>👁 Xem</button>
-                    <button type="button" onClick={() => reeditPost(p.slug, p.title)} disabled={reeditBusy === p.slug} title="AI biên tập lại theo phong cách blog" style={{ ...btnSm, height: 28, padding: "0 10px", color: COLORS.brandBlue, borderColor: "#B3D5EA" }}>{reeditBusy === p.slug ? "…" : "✨ Biên tập lại"}</button>
+                    <button type="button" onClick={() => { if (p.status === "Đã xuất bản") window.open(`/blog/${p.slug}?from=cms`, "_blank"); else openInEditor(p.slug, true); }} title={p.status === "Đã xuất bản" ? "Mở bài trên trang blog" : "Xem trước bài nháp"} style={{ ...btnSm, height: 28, padding: "0 10px" }}>👁 Xem</button>
+                    <button type="button" onClick={() => { setReeditFor(reeditFor === p.slug ? null : p.slug); setReeditListText(""); }} disabled={reeditBusy === p.slug} title="AI biên tập lại — nhập yêu cầu chỉnh sửa" style={{ ...btnSm, height: 28, padding: "0 10px", color: COLORS.brandBlue, borderColor: "#B3D5EA", background: reeditFor === p.slug ? "#E6F1F9" : "#fff" }}>{reeditBusy === p.slug ? "…" : "✨ Biên tập lại"}</button>
                     <button type="button" onClick={() => togglePublish(p.slug)} style={{ ...btnSm, height: 28, padding: "0 10px" }}>{p.status === "Đã xuất bản" ? POSTS_VIEW_UI.hideButton : POSTS_VIEW_UI.publishButton}</button>
                     {p.status === "Đã xuất bản" && (
                       <button type="button" onClick={() => toggleFeatured(p.slug)} title={p.featured ? "Bỏ ghim khỏi trang chủ" : "Ghim lên trang chủ portal"} style={{ ...btnSm, height: 28, padding: "0 10px", color: p.featured ? "#B7791F" : COLORS.ink2, borderColor: p.featured ? "#F0C674" : COLORS.border, background: p.featured ? "#FEF3C7" : "#fff" }}>{p.featured ? "★ Bỏ ghim" : "☆ Trang chủ"}</button>
                     )}
                     {(me?.isAdmin ?? true) && <button type="button" onClick={() => deletePost(p.slug, p.title)} title="Xoá vĩnh viễn" style={{ ...btnSm, height: 28, padding: "0 10px", color: "#C0392B", borderColor: "#E7B4AC" }}>Xoá</button>}
                   </div>
+                </div>
+                {reeditFor === p.slug && (
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", padding: "0 16px 14px 16px", background: "#F4F8FB" }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: COLORS.brandBlue }}>✨ Yêu cầu chỉnh sửa:</span>
+                    <input
+                      autoFocus
+                      value={reeditListText}
+                      onChange={(e) => setReeditListText(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && reeditBusy !== p.slug) doReedit(p.slug, reeditListText); }}
+                      placeholder="VD: ngắn gọn hơn · thêm ví dụ thực tế · giọng trang trọng · bổ sung kết luận… (để trống = biên tập lại theo style)"
+                      style={{ ...input, flex: 1, minWidth: 260, height: 34 }}
+                    />
+                    <button type="button" onClick={() => doReedit(p.slug, reeditListText)} disabled={reeditBusy === p.slug} style={{ ...btnBlue, height: 34, opacity: reeditBusy === p.slug ? 0.5 : 1 }}>{reeditBusy === p.slug ? "⏳ Đang chỉnh…" : "AI chỉnh sửa"}</button>
+                    <button type="button" onClick={() => { setReeditFor(null); setReeditListText(""); }} style={{ ...btnSm, height: 34 }}>Huỷ</button>
+                  </div>
+                )}
                 </div>
               ))}
             </div>
@@ -1394,171 +1390,102 @@ export default function CmsApp() {
     );
   }
 
+  // Real RSS source management (wired to settings.aiFeeds + the live pipeline).
   function FeedsView() {
+    const isAdmin = me?.isAdmin ?? true;
+    const realFeeds = settings?.aiFeeds ?? [];
     return (
-      <>
-        <StatTiles tiles={FEEDS_STATS} />
-        <div style={panel}>
-          <PanelHead>{FEEDS_UI.panelHead}</PanelHead>
-          <div style={{ overflowX: "auto" }}>
-            <div style={{ minWidth: 820 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "minmax(200px,2fr) minmax(120px,1fr) 110px 130px 120px 150px", gap: 10, padding: "10px 16px", fontSize: 12, fontWeight: 600, color: COLORS.ink3, borderBottom: `1px solid ${COLORS.split}` }}>
-                {FEEDS_UI.tableHead.map((h) => <span key={h}>{h}</span>)}
-              </div>
-              {feeds.map((f) => (
-                <div key={f.id} style={{ display: "grid", gridTemplateColumns: "minmax(200px,2fr) minmax(120px,1fr) 110px 130px 120px 150px", gap: 10, padding: "12px 16px", alignItems: "center", borderBottom: `1px solid ${COLORS.split}` }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink }}>{f.name}</div>
-                    <div style={{ fontSize: 12, color: COLORS.ink3, overflow: "hidden", textOverflow: "ellipsis" }}>{f.url}</div>
-                  </div>
-                  <span style={{ fontSize: 13, color: COLORS.ink2 }}>{f.cat}</span>
-                  <span style={{ fontSize: 13, color: COLORS.ink2 }}>{f.schedule}</span>
-                  <span style={{ fontSize: 12.5, color: COLORS.ink3 }}>{f.active ? f.last : FEEDS_UI.pausedLastLabel}</span>
-                  <span><span style={licensePill(f.license)}>{f.license}</span></span>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button type="button" style={{ ...btnSm, height: 28, padding: "0 8px" }}>{FEEDS_UI.fetchButton}</button>
-                    <button type="button" onClick={() => setFeeds((fs) => fs.map((x) => (x.id === f.id ? { ...x, active: !x.active } : x)))} style={{ ...btnSm, height: 28, padding: "0 8px" }}>{f.active ? FEEDS_UI.pauseButton : FEEDS_UI.resumeButton}</button>
-                  </div>
-                </div>
-              ))}
+      <div style={{ display: "grid", gap: 16, maxWidth: 900 }}>
+        <section style={panelPad}>
+          <PanelHead right={<button type="button" onClick={aiRunFeeds} disabled={aiBusy || realFeeds.length === 0} style={{ ...btnSm, height: 30, opacity: aiBusy || !realFeeds.length ? 0.5 : 1 }}>▶ Chạy nguồn ngay</button>}>
+            Nguồn RSS / Atom ({realFeeds.length})
+          </PanelHead>
+          <div style={{ fontSize: 12.5, color: COLORS.ink3, margin: "6px 0 12px" }}>
+            Nguồn để AI tự lấy & biên tập bài (theo lịch hoặc chạy tay). Chưa thêm nguồn nào thì AI dùng <b>bộ nguồn kỹ thuật uy tín mặc định</b>. Nên bấm <b>Kiểm tra</b> trước khi thêm.
+          </div>
+          <div style={{ display: "flex", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+            <input style={{ ...input, flex: 1, minWidth: 240 }} placeholder="https://nguồn.com/rss" value={aiFeedInput} onChange={(e) => setAiFeedInput(e.target.value)} disabled={!isAdmin} />
+            <button type="button" onClick={() => checkFeed(aiFeedInput.trim())} disabled={!aiFeedInput.trim() || feedCheckBusy === aiFeedInput.trim()} style={{ ...btnSm, opacity: aiFeedInput.trim() ? 1 : 0.5 }}>{feedCheckBusy === aiFeedInput.trim() ? "…" : "Kiểm tra"}</button>
+            <button type="button" onClick={addFeed} disabled={!isAdmin || !aiFeedInput} style={{ ...btnBlue, opacity: isAdmin && aiFeedInput ? 1 : 0.5 }}>+ Thêm nguồn</button>
+          </div>
+          {aiFeedInput.trim() && feedChecks[aiFeedInput.trim()] && (
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: feedChecks[aiFeedInput.trim()].ok ? COLORS.brandGreen : "#C0392B" }}>
+              {feedChecks[aiFeedInput.trim()].ok ? `✓ Hợp lệ · ${feedChecks[aiFeedInput.trim()].count} bài · ${(feedChecks[aiFeedInput.trim()].titles || []).slice(0, 1).join("")}` : `✗ ${feedChecks[aiFeedInput.trim()].error || "Không hợp lệ"}`}
             </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, padding: 16, flexWrap: "wrap", borderTop: `1px solid ${COLORS.split}` }}>
-            <input value={newFeedUrl} onChange={(e) => setNewFeedUrl(e.target.value)} placeholder={FEEDS_UI.addFeed.urlPlaceholder} style={{ ...input, flex: "1 1 240px" }} />
-            <select value={newFeedCat} onChange={(e) => setNewFeedCat(e.target.value)} style={{ ...input, width: 180 }}>{CATS.map((c) => <option key={c}>{c}</option>)}</select>
-            <button type="button" onClick={() => { if (!newFeedUrl.trim()) return; setFeeds((fs) => [...fs, { id: `f${fs.length + 1}`, name: newFeedUrl.replace(/^https?:\/\//, "").split("/")[0], url: newFeedUrl, cat: newFeedCat, ...FEEDS_UI.addFeed.newFeedDefaults } as Feed]); setNewFeedUrl(""); }} style={btnBlue}>{FEEDS_UI.addFeed.addButton}</button>
-          </div>
+          )}
+          {realFeeds.length === 0 ? (
+            <div style={{ fontSize: 12.5, color: COLORS.ink3, padding: "8px 0" }}>Chưa có nguồn riêng — AI đang dùng bộ nguồn mặc định.</div>
+          ) : realFeeds.map((f) => {
+            const chk = feedChecks[f];
+            return (
+              <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: `1px solid ${COLORS.split}`, fontSize: 13 }}>
+                <span style={{ flex: 1, fontFamily: "monospace", color: COLORS.ink2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f}</span>
+                {chk && <span style={{ fontSize: 11.5, fontWeight: 600, color: chk.ok ? COLORS.brandGreen : "#C0392B", whiteSpace: "nowrap" }} title={chk.error || (chk.titles || []).join(" · ")}>{chk.ok ? `✓ ${chk.count} bài` : `✗ ${chk.error || "lỗi"}`}</span>}
+                <button type="button" onClick={() => checkFeed(f)} disabled={feedCheckBusy === f} style={{ ...btnSm, height: 26, padding: "0 8px" }}>{feedCheckBusy === f ? "…" : "Kiểm tra"}</button>
+                <button type="button" onClick={() => removeFeed(f)} disabled={!isAdmin} style={{ ...btnSm, height: 26, padding: "0 8px", color: "#C0392B" }}>Xoá</button>
+              </div>
+            );
+          })}
+        </section>
+        <div style={{ ...panelPad, background: "#FEF7F0", borderColor: "#F8CBA9" }}>
+          <div style={{ fontWeight: 600, color: "#C25A17", marginBottom: 6 }}>Lưu ý bản quyền</div>
+          <p style={{ fontSize: 13.5, lineHeight: 1.6, color: COLORS.ink2, margin: 0 }}>Chỉ lấy tin từ nguồn cho phép. Với nội dung bên thứ ba, ưu tiên chế độ <b>tóm tắt &amp; dẫn nguồn</b> (trong AI tự động) để an toàn bản quyền.</p>
         </div>
-        <div style={{ ...panelPad, marginTop: 16, background: "#FEF7F0", borderColor: "#F8CBA9" }}>
-          <div style={{ fontWeight: 600, color: "#C25A17", marginBottom: 6 }}>{FEEDS_UI.copyrightNotice.title}</div>
-          <p style={{ fontSize: 13.5, lineHeight: 1.6, color: COLORS.ink2, margin: 0 }}>{FEEDS_UI.copyrightNotice.text}</p>
-        </div>
-      </>
+      </div>
     );
   }
 
+  // Real editing queue: posts awaiting review/publish (draft or chờ duyệt).
   function InboxView() {
     const q = inboxQuery.trim().toLowerCase();
-    const items = inbox
-      .filter((i) => inboxTab === "Tất cả" || i.status === inboxTab)
-      .filter((i) => !q || (i.titleEn + " " + i.titleVi).toLowerCase().includes(q));
-    function translateSelected() {
-      setInbox((xs) => xs.map((i) => (checked[i.id] && i.status === "Mới lấy về"
-        ? { ...i, status: "Đã dịch", titleVi: i.titleVi || INBOX_UI.aiDraftPlaceholder, translated: i.translated.length ? i.translated : [INBOX_UI.aiDraftPlaceholder] } : i)));
-    }
+    const tabs = ["Tất cả", "Bản nháp", "Chờ duyệt"];
+    const pending = posts.filter((p) => p.status !== "Đã xuất bản");
+    const items = pending
+      .filter((p) => inboxTab === "Tất cả" || p.status === inboxTab)
+      .filter((p) => !q || p.title.toLowerCase().includes(q));
     return (
       <div style={panel}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 14, borderBottom: `1px solid ${COLORS.split}`, flexWrap: "wrap" }}>
-          <input value={inboxQuery} onChange={(e) => setInboxQuery(e.target.value)} placeholder={INBOX_UI.searchPlaceholder} style={{ ...input, width: 240, height: 34 }} />
+          <input value={inboxQuery} onChange={(e) => setInboxQuery(e.target.value)} placeholder="Tìm theo tiêu đề…" style={{ ...input, width: 240, height: 34 }} />
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {INBOX_UI.tabs.map((t) => (
+            {tabs.map((t) => (
               <button key={t} type="button" onClick={() => setInboxTab(t)} style={{ ...btnSm, height: 30, background: inboxTab === t ? "#E6F1F9" : "#fff", color: inboxTab === t ? COLORS.brandBlue : COLORS.ink2 }}>{t}</button>
             ))}
           </div>
-          <button type="button" onClick={translateSelected} style={{ ...btnBlue, marginLeft: "auto" }}>{INBOX_UI.translateSelectedButton}</button>
+          <span style={{ marginLeft: "auto", fontSize: 12.5, color: COLORS.ink3 }}>{items.length} bài chờ</span>
         </div>
-        <div style={{ overflowX: "auto" }}>
-          <div style={{ minWidth: 760 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "36px minmax(220px,2.6fr) minmax(120px,170px) minmax(120px,170px) 150px", gap: 10, padding: "10px 16px", fontSize: 12, fontWeight: 600, color: COLORS.ink3, borderBottom: `1px solid ${COLORS.split}` }}>
-              {INBOX_UI.tableHead.map((h, i) => <span key={i}>{h}</span>)}
-            </div>
-            {items.map((i) => (
-              <div key={i.id} style={{ display: "grid", gridTemplateColumns: "36px minmax(220px,2.6fr) minmax(120px,170px) minmax(120px,170px) 150px", gap: 10, padding: "12px 16px", alignItems: "center", borderBottom: `1px solid ${COLORS.split}` }}>
-                <input type="checkbox" checked={!!checked[i.id]} onChange={(e) => setChecked({ ...checked, [i.id]: e.target.checked })} />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 14, color: COLORS.ink, fontWeight: 500 }}>{i.titleVi || INBOX_UI.untranslatedTitlePlaceholder}</div>
-                  <div style={{ fontSize: 12.5, fontStyle: "italic", color: COLORS.ink3 }}>{i.titleEn}</div>
-                </div>
-                <span style={{ fontSize: 13, color: COLORS.ink2 }}>{i.source}</span>
-                <span style={{ fontSize: 12.5, color: COLORS.ink2 }}>{i.status}</span>
-                <button type="button" onClick={() => openTranslate(i)} style={{ ...btnSm, height: 28 }}>{INBOX_UI.openTranslationButton}</button>
+        {items.length === 0 ? (
+          <div style={{ padding: 24, fontSize: 13.5, color: COLORS.ink3 }}>Không có bài nào đang chờ biên tập. Bài AI tạo dạng nháp sẽ hiện ở đây để bạn xem trước, chỉnh và xuất bản.</div>
+        ) : items.map((p) => (
+          <div key={p.slug} style={{ borderBottom: `1px solid ${COLORS.split}` }}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(220px,2.6fr) minmax(96px,130px) minmax(96px,120px) minmax(210px,260px)", gap: 10, padding: "12px 16px", alignItems: "center" }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, overflow: "hidden", textOverflow: "ellipsis" }}>{p.title}</div>
+                <div style={{ fontSize: 12, color: COLORS.ink3 }}>/blog/{p.slug}</div>
               </div>
-            ))}
+              <span style={{ fontSize: 12.5, color: TONE[p.cat] ?? COLORS.ink2, fontWeight: 600 }}>{p.cat}</span>
+              <span><span style={statusPill(p.status)}>{p.status}</span></span>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <button type="button" onClick={() => openInEditor(p.slug, true)} style={{ ...btnSm, height: 28, padding: "0 10px" }}>👁 Xem trước</button>
+                <button type="button" onClick={() => editPost(p)} style={{ ...btnSm, height: 28, padding: "0 10px" }}>Sửa</button>
+                <button type="button" onClick={() => { setReeditFor(reeditFor === p.slug ? null : p.slug); setReeditListText(""); }} disabled={reeditBusy === p.slug} style={{ ...btnSm, height: 28, padding: "0 10px", color: COLORS.brandBlue, borderColor: "#B3D5EA", background: reeditFor === p.slug ? "#E6F1F9" : "#fff" }}>{reeditBusy === p.slug ? "…" : "✨ Biên tập lại"}</button>
+                <button type="button" onClick={() => togglePublish(p.slug)} style={{ ...btnBlue, height: 28, padding: "0 10px" }}>Xuất bản</button>
+              </div>
+            </div>
+            {reeditFor === p.slug && (
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", padding: "0 16px 14px 16px", background: "#F4F8FB" }}>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: COLORS.brandBlue }}>✨ Yêu cầu chỉnh sửa:</span>
+                <input autoFocus value={reeditListText} onChange={(e) => setReeditListText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && reeditBusy !== p.slug) doReedit(p.slug, reeditListText); }} placeholder="VD: ngắn gọn hơn · thêm ví dụ · giọng trang trọng… (trống = biên tập lại theo style)" style={{ ...input, flex: 1, minWidth: 260, height: 34 }} />
+                <button type="button" onClick={() => doReedit(p.slug, reeditListText)} disabled={reeditBusy === p.slug} style={{ ...btnBlue, height: 34, opacity: reeditBusy === p.slug ? 0.5 : 1 }}>{reeditBusy === p.slug ? "⏳…" : "AI chỉnh sửa"}</button>
+                <button type="button" onClick={() => { setReeditFor(null); setReeditListText(""); }} style={{ ...btnSm, height: 34 }}>Huỷ</button>
+              </div>
+            )}
           </div>
-        </div>
+        ))}
       </div>
     );
   }
 
-  function TranslateView() {
-    const item = openItem ?? inbox[0];
-    if (!item) return <div>Không có bài để dịch.</div>;
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div style={{ ...panelPad, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.ink }}>{item.titleVi || item.titleEn}</div>
-            <div style={{ fontSize: 12.5, color: COLORS.ink3 }}>{TRANSLATE_UI.sourceLabel} <a href={item.link}>{item.source}</a> · {item.license}</div>
-          </div>
-          <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-            <button type="button" style={btnSm}>{TRANSLATE_UI.retranslateButton}</button>
-            <button type="button" style={btnBlue}>{TRANSLATE_UI.toDraftButton}</button>
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
-          <div style={panel}>
-            <div style={{ padding: "12px 16px", background: COLORS.surfaceAlt, borderBottom: `1px solid ${COLORS.split}`, fontSize: 13, color: COLORS.ink3, fontWeight: 600 }}>{TRANSLATE_UI.panelHeadEn}</div>
-            <div style={{ padding: 16 }}>
-              {item.original.map((p, i) => <p key={i} style={{ fontSize: 14.5, lineHeight: 1.75, color: COLORS.ink3, margin: "0 0 14px" }}>{p}</p>)}
-            </div>
-          </div>
-          <div style={{ ...panel, border: `1px solid ${COLORS.brandBlue}`, boxShadow: "0 4px 18px -10px rgba(0,114,188,0.4)" }}>
-            <div style={{ padding: "12px 16px", background: "#E6F1F9", borderBottom: "1px solid #B3D5EA", display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 13, color: COLORS.brandBlue, fontWeight: 600 }}>{TRANSLATE_UI.panelHeadVi}</span>
-              <span style={{ fontSize: 10.5, fontWeight: 700, background: COLORS.brandBlue, color: "#fff", borderRadius: 4, padding: "1px 6px" }}>{TRANSLATE_UI.aiBadge}</span>
-            </div>
-            <div style={{ padding: 16 }}>
-              <input defaultValue={item.titleVi} placeholder="Tiêu đề bản dịch" style={{ ...input, fontWeight: 600, marginBottom: 12 }} />
-              {(item.translated.length ? item.translated : item.original).map((p, i) => (
-                <textarea key={i} defaultValue={p} rows={3} style={{ ...input, height: "auto", padding: "8px 10px", lineHeight: 1.7, marginBottom: 10 }} />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
-          <div style={panel}>
-            <PanelHead>{TRANSLATE_UI.configPanelHead}</PanelHead>
-            <div style={{ padding: 16 }}>
-              <label style={label}>{TRANSLATE_CONFIG.toneLabel}</label>
-              <select value={tone} onChange={(e) => setTone(e.target.value)} style={{ ...input, marginBottom: 14 }}>{TRANSLATE_CONFIG.toneOptions.map((o) => <option key={o}>{o}</option>)}</select>
-              <label style={label}>{TRANSLATE_CONFIG.depthLabel}</label>
-              <select value={depth} onChange={(e) => setDepth(e.target.value)} style={{ ...input, marginBottom: 14 }}>{TRANSLATE_CONFIG.depthOptions.map((o) => <option key={o}>{o}</option>)}</select>
-              <label style={{ display: "flex", gap: 8, fontSize: 13, color: COLORS.ink2, marginBottom: 8 }}><input type="checkbox" defaultChecked /> {TRANSLATE_CONFIG.checkboxes.keepTerms}</label>
-              <label style={{ display: "flex", gap: 8, fontSize: 13, color: COLORS.ink2 }}><input type="checkbox" defaultChecked /> {TRANSLATE_CONFIG.checkboxes.addCanonical}</label>
-            </div>
-          </div>
-          <div style={panel}>
-            <PanelHead>{TRANSLATE_UI.glossaryPanelHead}</PanelHead>
-            <div style={{ padding: 16 }}>
-              {GLOSSARY.map((g) => (
-                <div key={g.en} style={{ display: "grid", gridTemplateColumns: "1fr 18px 1fr", gap: 8, alignItems: "center", padding: "6px 0", fontSize: 13, borderBottom: `1px solid ${COLORS.split}` }}>
-                  <span style={{ color: COLORS.ink }}>{g.en}</span><span style={{ color: COLORS.ink3, textAlign: "center" }}>→</span><span style={{ color: COLORS.ink2 }}>{g.vi}</span>
-                </div>
-              ))}
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                <input placeholder={GLOSSARY_UI.enPlaceholder} style={{ ...input, height: 34 }} />
-                <input placeholder={GLOSSARY_UI.viPlaceholder} style={{ ...input, height: 34 }} />
-                <button type="button" style={btnSm}>{GLOSSARY_UI.addButton}</button>
-              </div>
-            </div>
-          </div>
-          <div style={panel}>
-            <PanelHead>{TRANSLATE_UI.checklistPanelHead}</PanelHead>
-            <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-              {PREPUBLISH_CHECKLIST.map((c) => (
-                <div key={c.label} style={{ display: "flex", gap: 10, fontSize: 13.5, color: COLORS.ink2 }}>
-                  <span style={{ color: c.ok ? COLORS.brandGreen : COLORS.brandOrange, fontWeight: 700 }}>{c.ok ? "✓" : "!"}</span>
-                  <span>{c.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   function ApiView() {
     const canEditAi = me?.isAdmin ?? true;
