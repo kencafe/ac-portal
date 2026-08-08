@@ -52,7 +52,7 @@ spec:
         requests: { memory: 1Gi, cpu: 500m }
         limits: { memory: 4Gi, cpu: "2" }
       script: |
-        #!/bin/bash
+        #!/bin/sh
         mkdir -p reports .dc-data
         echo "== OWASP Dependency-Check (SCA) =="
         # NVD update needs egress; if unavailable the scan still runs (advisory).
@@ -66,6 +66,7 @@ spec:
           --disableAssembly \
           --nvdApiDelay 6000 || echo "dependency-check finished with warnings (offline NVD?)"
         ls -la reports || true
+        exit 0
 ---
 apiVersion: tekton.dev/v1
 kind: Task
