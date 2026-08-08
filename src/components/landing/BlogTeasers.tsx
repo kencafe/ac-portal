@@ -1,4 +1,4 @@
-import { listPublished } from "@/lib/store";
+import { listFeatured } from "@/lib/store";
 import { SECTION_TITLES, UI_STRINGS } from "@/data/landing";
 import { accentAt, ACCENTS, COLORS, RADIUS } from "@/lib/tokens";
 import { routes } from "@/lib/routes";
@@ -8,7 +8,7 @@ import HoverCard from "@/components/shared/HoverCard";
 
 // Auto-reflects posts published in the CMS.
 export default async function BlogTeasers() {
-  const posts = (await listPublished(3)).slice(0, 3);
+  const posts = await listFeatured(3);
 
   return (
     <Section id="blog">

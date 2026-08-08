@@ -115,6 +115,7 @@ function storeToCms(p: any): SeedPost {
     author: p.author ?? "",
     excerpt: p.excerpt ?? "",
     tags: p.tags ?? [],
+    featured: !!p.featured,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     blocks: (p.blocks ?? []).map((bl: any) =>
       bl.kind === "list" ? (["list", (bl.items ?? []).join("\n")] as [BlockKind, string]) : ([bl.kind, bl.text ?? ""] as [BlockKind, string]),
@@ -447,6 +448,15 @@ export default function CmsApp() {
     const next: PostStatus = cur?.status === "Đã xuất bản" ? "Bản nháp" : "Đã xuất bản";
     setPosts((ps) => ps.map((p) => (p.slug === slug ? { ...p, status: next } : p))); // optimistic
     await fetch(`/api/v1/posts/${slug}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: CMS2ST[next] }) }).catch(() => {});
+    refreshPosts();
+  }
+  async function toggleFeatured(slug: string) {
+    const cur = posts.find((p) => p.slug === slug);
+    if (cur?.status !== "Đã xuất bản") { alert("Chỉ ghim được bài đã xuất bản lên trang chủ."); return; }
+    const next = !cur?.featured;
+    setPosts((ps) => ps.map((p) => (p.slug === slug ? { ...p, featured: next } : p))); // optimistic
+    const res = await fetch(`/api/v1/posts/${slug}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ featured: next }) }).catch(() => null);
+    if (!res || !res.ok) alert(res?.status === 403 ? "Chỉ Publisher/Quản trị mới ghim được lên trang chủ." : "Cập nhật thất bại.");
     refreshPosts();
   }
   async function deletePost(slug: string, title: string) {
@@ -906,21 +916,27 @@ export default function CmsApp() {
 
           <div style={{ overflowX: "auto" }}>
             <div style={{ minWidth: 720 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "minmax(200px,2.4fr) minmax(104px,150px) minmax(96px,130px) minmax(84px,110px) 128px", gap: 10, padding: "10px 16px", fontSize: 12, fontWeight: 600, color: COLORS.ink3, borderBottom: `1px solid ${COLORS.split}` }}>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(200px,2.4fr) minmax(104px,150px) minmax(96px,130px) minmax(84px,110px) minmax(200px,240px)", gap: 10, padding: "10px 16px", fontSize: 12, fontWeight: 600, color: COLORS.ink3, borderBottom: `1px solid ${COLORS.split}` }}>
                 {POSTS_VIEW_UI.tableHead.map((h) => <span key={h}>{h}</span>)}
               </div>
               {filteredPosts.map((p) => (
-                <div key={p.slug} style={{ display: "grid", gridTemplateColumns: "minmax(200px,2.4fr) minmax(104px,150px) minmax(96px,130px) minmax(84px,110px) 128px", gap: 10, padding: "12px 16px", alignItems: "center", borderBottom: `1px solid ${COLORS.split}` }}>
+                <div key={p.slug} style={{ display: "grid", gridTemplateColumns: "minmax(200px,2.4fr) minmax(104px,150px) minmax(96px,130px) minmax(84px,110px) minmax(200px,240px)", gap: 10, padding: "12px 16px", alignItems: "center", borderBottom: `1px solid ${COLORS.split}` }}>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, overflow: "hidden", textOverflow: "ellipsis" }}>{p.title}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: 6 }}>
+                      {p.featured && <span title="Đang hiển thị trên trang chủ" style={{ fontSize: 11, fontWeight: 700, color: "#B7791F", background: "#FEF3C7", padding: "1px 7px", borderRadius: 4, whiteSpace: "nowrap" }}>★ Trang chủ</span>}
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{p.title}</span>
+                    </div>
                     <div style={{ fontSize: 12, color: COLORS.ink3 }}>/blog/{p.slug}</div>
                   </div>
                   <span style={{ fontSize: 12.5, color: TONE[p.cat] ?? COLORS.ink2, fontWeight: 600 }}>{p.cat}</span>
                   <span><span style={statusPill(p.status)}>{p.status}</span></span>
                   <span style={{ fontSize: 12.5, color: COLORS.ink3 }}>{p.date}</span>
-                  <div style={{ display: "flex", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <button type="button" onClick={() => editPost(p)} style={{ ...btnSm, height: 28, padding: "0 10px" }}>{POSTS_VIEW_UI.editButton}</button>
                     <button type="button" onClick={() => togglePublish(p.slug)} style={{ ...btnSm, height: 28, padding: "0 10px" }}>{p.status === "Đã xuất bản" ? POSTS_VIEW_UI.hideButton : POSTS_VIEW_UI.publishButton}</button>
+                    {p.status === "Đã xuất bản" && (
+                      <button type="button" onClick={() => toggleFeatured(p.slug)} title={p.featured ? "Bỏ ghim khỏi trang chủ" : "Ghim lên trang chủ portal"} style={{ ...btnSm, height: 28, padding: "0 10px", color: p.featured ? "#B7791F" : COLORS.ink2, borderColor: p.featured ? "#F0C674" : COLORS.border, background: p.featured ? "#FEF3C7" : "#fff" }}>{p.featured ? "★ Bỏ ghim" : "☆ Trang chủ"}</button>
+                    )}
                     {(me?.isAdmin ?? true) && <button type="button" onClick={() => deletePost(p.slug, p.title)} title="Xoá vĩnh viễn" style={{ ...btnSm, height: 28, padding: "0 10px", color: "#C0392B", borderColor: "#E7B4AC" }}>Xoá</button>}
                   </div>
                 </div>

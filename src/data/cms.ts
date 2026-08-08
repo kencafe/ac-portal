@@ -26,6 +26,7 @@ export interface SeedPost {
   author: string;
   excerpt: string;
   tags: string[];
+  featured?: boolean;      // pinned to the portal homepage
   blocks: [BlockKind, string][];
 }
 

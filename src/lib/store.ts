@@ -48,6 +48,25 @@ export async function listPublished(limit?: number): Promise<StoredPost[]> {
   return typeof limit === "number" ? pub.slice(0, limit) : pub;
 }
 
+// Posts chosen by an editor to appear on the portal homepage. If the admin has
+// flagged any post as featured, the homepage shows only those (newest first,
+// capped at `limit`); otherwise it falls back to the latest published posts so
+// the homepage is never empty.
+export async function listFeatured(limit = 3): Promise<StoredPost[]> {
+  const pub = (await readAll()).filter((p) => p.status === "published");
+  const featured = pub.filter((p) => p.featured);
+  return (featured.length ? featured : pub).slice(0, limit);
+}
+
+export async function setFeatured(slug: string, featured: boolean): Promise<StoredPost | undefined> {
+  const all = await readAll();
+  const idx = all.findIndex((p) => p.slug === slug);
+  if (idx < 0) return undefined;
+  all[idx] = { ...all[idx], featured };
+  await writeAll(all);
+  return all[idx];
+}
+
 export async function getPost(slug: string): Promise<StoredPost | undefined> {
   return (await readAll()).find((p) => p.slug === slug);
 }
