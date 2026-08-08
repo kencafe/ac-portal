@@ -4,7 +4,8 @@ import { CSSProperties, useMemo, useState } from "react";
 import Link from "next/link";
 import { CATS, LIST_HERO, SECTION_HEADERS, EMPTY_STATE, SUBSCRIBE_PANEL, READ_MORE_LABEL, Post } from "@/data/posts";
 import { COLORS, CONTENT_MAX, GRAD, RADIUS } from "@/lib/tokens";
-import { card, coverBackground } from "@/lib/ui";
+import { card } from "@/lib/ui";
+import CoverArt from "@/components/shared/CoverArt";
 import { routes } from "@/lib/routes";
 import Icon from "@/components/shared/Icon";
 
@@ -46,7 +47,7 @@ function catTag(tone: string): CSSProperties {
 function PostCard({ post }: { post: Post }) {
   return (
     <Link href={routes.blogPost(post.slug)} style={{ ...card, display: "flex", flexDirection: "column", overflow: "hidden", color: COLORS.ink }}>
-      <div style={{ height: 168, background: coverBackground(post.coverUrl, post.tone) }} />
+      <CoverArt coverUrl={post.coverUrl} title={post.title} cat={post.cat} tone={post.tone} height={168} />
       <div style={{ padding: 20, display: "flex", flexDirection: "column", flex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
           <span style={catTag(post.tone)}>{post.cat}</span>
@@ -151,7 +152,7 @@ export default function BlogList({ posts }: { posts: Post[] }) {
           <div style={{ marginBottom: 40 }}>
             <SecHead h2={SECTION_HEADERS.featured.h2} sub={SECTION_HEADERS.featured.sub} />
             <Link href={routes.blogPost(featured.slug)} style={{ ...card, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", overflow: "hidden", color: COLORS.ink }}>
-              <div style={{ minHeight: 260, background: coverBackground(featured.coverUrl, featured.tone) }} />
+              <CoverArt coverUrl={featured.coverUrl} title={featured.title} cat={featured.cat} tone={featured.tone} height="100%" minHeight={260} />
               <div style={{ padding: 28, display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                   <span style={catTag(featured.tone)}>{featured.cat}</span>

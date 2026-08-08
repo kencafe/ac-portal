@@ -4,7 +4,8 @@ import Link from "next/link";
 import { HEADER, ARTICLE_PAGE, SECTION_HEADERS, Post, Block } from "@/data/posts";
 import { getPost, listPublished } from "@/lib/store";
 import { COLORS, CONTENT_MAX, RADIUS } from "@/lib/tokens";
-import { card, btnPrimary, btnDefault, coverBackground } from "@/lib/ui";
+import { card, btnPrimary, btnDefault } from "@/lib/ui";
+import CoverArt from "@/components/shared/CoverArt";
 import { rewriteHref, routes } from "@/lib/routes";
 import { LangProvider } from "@/components/shared/LangContext";
 import BrandStripe from "@/components/shared/BrandStripe";
@@ -62,7 +63,7 @@ function Avatar({ initials, tone, size }: { initials: string; tone: string; size
 function RelatedCard({ post }: { post: Post }) {
   return (
     <Link href={routes.blogPost(post.slug)} style={{ ...card, display: "flex", flexDirection: "column", overflow: "hidden", color: COLORS.ink }}>
-      <div style={{ height: 140, background: coverBackground(post.coverUrl, post.tone) }} />
+      <CoverArt coverUrl={post.coverUrl} title={post.title} cat={post.cat} tone={post.tone} height={140} />
       <div style={{ padding: 16 }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: post.tone }}>{post.cat}</span>
         <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.35, color: COLORS.ink, marginTop: 6 }}>{post.title}</div>
@@ -111,7 +112,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           </div>
         </div>
 
-        <div style={{ height: 320, borderRadius: RADIUS.card, background: coverBackground(post.coverUrl, post.tone), marginBottom: 32 }} />
+        <div style={{ marginBottom: 32 }}>
+          <CoverArt coverUrl={post.coverUrl} title={post.title} cat={post.cat} tone={post.tone} height={320} rounded showTitle={false} />
+        </div>
 
         <div>
           {post.blocks.map((b, i) => (
