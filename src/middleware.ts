@@ -22,6 +22,15 @@ export function middleware(req: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
+  // CMS host root → the admin app. oauth2-proxy lands the user on "/" after a
+  // successful login, and the bare CMS host should show the CMS, not the
+  // public homepage.
+  if (isCmsHost && path === "/") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/cms";
+    return NextResponse.rewrite(url);
+  }
+
   // Admin gate: /cms must be reached via the CMS host (behind oauth-proxy).
   if (path.startsWith("/cms") && !isCmsHost && !isLocal) {
     const cmsHost =
