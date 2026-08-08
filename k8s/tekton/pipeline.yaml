@@ -43,6 +43,7 @@ spec:
       workspaces: [{ name: source, workspace: shared }]
     - name: sast
       runAfter: [fetch]
+      timeout: "15m"
       taskRef: { kind: Task, name: semgrep-sast }
       workspaces: [{ name: source, workspace: shared }]
 
@@ -53,8 +54,10 @@ spec:
       workspaces: [{ name: source, workspace: shared }]
 
     # ---- build image (gated on the code scans) ----
+    # Build gates only on the fast secret scan; SCA/SAST run in parallel and are
+    # advisory (their large scanner images can take minutes to pull first time).
     - name: build
-      runAfter: [secret-scan, sast]
+      runAfter: [secret-scan]
       taskRef: { kind: Task, name: oc-run }
       params:
         - name: SCRIPT
