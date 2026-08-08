@@ -1,0 +1,6 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: ac-portal-blog
+spec:
+  host: blog-staging.appcarrier.cloud

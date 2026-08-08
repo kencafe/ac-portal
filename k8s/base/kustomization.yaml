@@ -13,6 +13,7 @@ resources:
   - service.yaml
   - route.yaml
   - cms-auth.yaml
+  - blog-route.yaml
 
 commonLabels:
   app: ac-portal
