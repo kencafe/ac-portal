@@ -58,8 +58,15 @@ export const CAN_DELETE: Role[] = ["Quản trị"];
 
 export async function getIdentity(): Promise<Identity> {
   const h = await headers();
+  // oauth2-proxy sets X-Forwarded-User to the OIDC `sub` (an opaque UUID for
+  // Keycloak), while the human-readable login name arrives in
+  // X-Forwarded-Preferred-Username (from the token's `preferred_username`
+  // claim). Prefer the username for display; fall back to the sub, then email.
   const user =
-    h.get("x-forwarded-user") || h.get("x-forwarded-preferred-username") || "";
+    h.get("x-forwarded-preferred-username") ||
+    h.get("x-forwarded-user") ||
+    h.get("x-forwarded-email") ||
+    "";
   const email = h.get("x-forwarded-email") || "";
   const groups = (h.get("x-forwarded-groups") || "")
     .split(/[,\s]+/)
