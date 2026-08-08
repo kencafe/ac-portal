@@ -50,6 +50,21 @@ spec:
 EOF
 ```
 
+## CI trigger & DNS
+
+- Public DNS exists only for `appcarrier.cloud` and `ns.appcarrier.cloud`
+  (→ router `103.9.0.232`). `dev`/`staging` subdomains and the `apps.prod01…`
+  router hostname are **not internet-resolvable**, so:
+  - **Prod is publicly reachable** at `https://appcarrier.cloud` immediately.
+  - For dev/staging, add a hosts entry locally, or create DNS records:
+    ```
+    103.9.0.232  dev.appcarrier.cloud  staging.appcarrier.cloud
+    ```
+  - The **GitHub push webhook** (EventListener route on `apps.prod01…`) can't be
+    reached from GitHub until the EL is exposed on a publicly-resolvable host
+    (add e.g. `ci.appcarrier.cloud → 103.9.0.232` and point the route/webhook there).
+    Until then, trigger runs manually (below) — the pipeline itself is unchanged.
+
 ## Rollback
 
 ```bash
