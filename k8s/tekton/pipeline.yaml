@@ -99,6 +99,17 @@ spec:
             echo "Rolling out $REF"
             oc -n "$NS" set image deploy/ac-portal ac-portal="$REF"
             oc -n "$NS" rollout status deploy/ac-portal --timeout=240s
+            # Re-apply the appcarrier.cloud TLS cert (Secret ns-web-tls) since
+            # `oc apply -k` resets inline route certs. Key is never in git.
+            if oc -n "$NS" get secret ns-web-tls >/dev/null 2>&1; then
+              P=/tmp/tls-patch.yaml
+              { echo "spec:"; echo "  tls:"; echo "    termination: edge"; echo "    insecureEdgeTerminationPolicy: Redirect";
+                echo "    key: |"; oc -n "$NS" get secret ns-web-tls -o go-template='{{index .data "tls.key"}}' | base64 -d | sed 's/^/      /';
+                echo "    certificate: |"; oc -n "$NS" get secret ns-web-tls -o go-template='{{index .data "tls.crt"}}' | base64 -d | sed 's/^/      /'; } > "$P"
+              for r in ac-portal ac-portal-cms ac-portal-blog; do
+                oc -n "$NS" get route "$r" >/dev/null 2>&1 && oc -n "$NS" patch route "$r" --type=merge --patch-file="$P" || true
+              done
+            fi
       workspaces: [{ name: manifest-dir, workspace: shared }]
 
     # ---- DAST against the running staging site → DefectDojo ----
