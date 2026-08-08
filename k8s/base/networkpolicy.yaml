@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ac-portal-network-policy
+spec:
+  # Applies to the frontend pods (app container + oauth-proxy sidecar).
+  podSelector:
+    matchLabels:
+      app: ac-portal
+  policyTypes: [Ingress]
+  ingress:
+    # Allow the OpenShift router to reach BOTH backends:
+    #  - 3000 → Next.js app (public site + blog routes)
+    #  - 8080 → oauth-proxy sidecar (auth-protected CMS route)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              network.openshift.io/policy-group: ingress
+      ports:
+        - { port: 3000, protocol: TCP }
+        - { port: 8080, protocol: TCP }
