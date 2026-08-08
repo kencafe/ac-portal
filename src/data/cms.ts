@@ -7,7 +7,7 @@
 // Types
 // ===========================================================================
 
-export type BlockKind = 'h' | 'p' | 'quote' | 'list';
+export type BlockKind = 'h' | 'p' | 'quote' | 'list' | 'img';
 export type PostStatus = 'Bản nháp' | 'Chờ duyệt' | 'Đã xuất bản';
 export type FeedLicense = 'CC BY' | 'CC BY-SA' | 'Cần xin phép' | string;
 export type InboxStatus =
@@ -240,6 +240,7 @@ export const KINDS: { k: BlockKind; label: string; hint: string; rows: number }[
     { k: 'p', label: 'Đoạn văn', hint: 'Nội dung đoạn…', rows: 3 },
     { k: 'quote', label: 'Trích dẫn', hint: 'Câu trích dẫn nổi bật', rows: 2 },
     { k: 'list', label: 'Danh sách', hint: 'Mỗi dòng một gạch đầu dòng', rows: 3 },
+    { k: 'img', label: 'Ảnh', hint: 'Link ảnh (hoặc upload / tạo bằng AI)', rows: 1 },
   ];
 
 export const EDITOR_UI = {

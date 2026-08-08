@@ -11,10 +11,10 @@ export const maxDuration = 120;
 export async function POST(req: Request) {
   const id = await getIdentity();
   if (!hasRole(id, CAN_WRITE)) return Response.json({ error: "Forbidden" }, { status: 403 });
-  const { slug, title, cat, tone } = (await req.json().catch(() => ({}))) as { slug?: string; title?: string; cat?: string; tone?: string };
+  const { slug, title, cat, tone, scene } = (await req.json().catch(() => ({}))) as { slug?: string; title?: string; cat?: string; tone?: string; scene?: string };
   if (!title) return Response.json({ error: "Thiếu tiêu đề" }, { status: 400 });
   const s = (slug || title).toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60) || "cover";
-  const url = await makeCover(s, title, cat || "", tone || "#0072BC", true);
+  const url = await makeCover(s, title, cat || "", tone || "#0072BC", true, (scene || "").trim());
   const aiUsed = url.startsWith("/api/cover-img/");
   return Response.json({
     url,

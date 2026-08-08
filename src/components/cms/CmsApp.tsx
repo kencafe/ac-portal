@@ -197,6 +197,10 @@ export default function CmsApp() {
   const [coverBusy, setCoverBusy] = useState(false);
   const [coverMsg, setCoverMsg] = useState("");
   const coverFileRef = useRef<HTMLInputElement | null>(null);
+  // In-content image blocks
+  const [blockImgBusy, setBlockImgBusy] = useState<number | null>(null);
+  const blockImgFileRef = useRef<HTMLInputElement | null>(null);
+  const blockImgIdxRef = useRef<number>(-1);
 
   // AI provider config (Cấu hình API): pick provider → paste token → get models → choose → save
   const [aiProviderSel, setAiProviderSel] = useState("anthropic");
@@ -330,6 +334,15 @@ export default function CmsApp() {
   function aiLogLine(s: string) {
     setAiLog((l) => [s, ...l].slice(0, 30));
   }
+  // Prominent, friendly error for manual AI actions (detects rate limits).
+  function aiAlert(msg: unknown) {
+    const m = String(msg ?? "");
+    if (/\b429\b|quota|rate.?limit/i.test(m)) {
+      alert("AI đang bị giới hạn lượt gọi (429/quota).\nKey đang ở gói miễn phí — đã hết lượt hôm nay. Thử lại sau, hoặc bật billing cho key để bỏ giới hạn.\n\nChi tiết: " + m.slice(0, 200));
+    } else {
+      alert("Lỗi khi gọi AI: " + m.slice(0, 300));
+    }
+  }
   async function loadHistory() {
     try {
       const r = await fetch("/api/v1/ai/history", { cache: "no-store" });
@@ -386,14 +399,14 @@ export default function CmsApp() {
       if (res.ok) {
         aiLogLine(`✅ ${d.title} → ${d.status}${d.aiUsed ? "" : " (AI chưa cấu hình khóa)"}`);
         setAiUrl("");
-        refreshPosts();
-        // Manual draft → open for preview + edit before publishing.
-        if (!publish && d.slug) { setAiBusy(false); openInEditor(d.slug, true); return; }
+        refreshPosts(); loadHistory();
+        // Open the created post so the result is visible (preview + edit/publish).
+        if (d.slug) { setAiBusy(false); openInEditor(d.slug, true); return; }
       } else {
-        aiLogLine(`❌ ${d.error || res.status}`);
+        aiLogLine(`❌ ${d.error || res.status}`); aiAlert(d.error || res.status);
       }
     } catch (e) {
-      aiLogLine(`❌ ${(e as Error).message}`);
+      aiLogLine(`❌ ${(e as Error).message}`); aiAlert((e as Error).message);
     }
     setAiBusy(false);
   }
@@ -619,6 +632,35 @@ export default function CmsApp() {
     setShowPreview(false);
     setCoverMsg("");
     setView("editor");
+  }
+  function setBlockVal(i: number, val: string) {
+    const nb = [...draft.blocks]; nb[i] = [nb[i][0], val]; setDraft({ ...draft, blocks: nb as [BlockKind, string][] });
+  }
+  function blockImgFile(i: number) {
+    blockImgIdxRef.current = i;
+    blockImgFileRef.current?.click();
+  }
+  async function onBlockImgFile(file: File) {
+    const i = blockImgIdxRef.current; if (i < 0) return;
+    setBlockImgBusy(i);
+    try {
+      const fd = new FormData(); fd.append("file", file); fd.append("slug", `${draft.slug || "post"}-b${i}`);
+      const res = await fetch("/api/v1/cover/upload", { method: "POST", body: fd });
+      const d = await res.json();
+      if (res.ok) setBlockVal(i, d.url); else alert(d.error || "Upload lỗi");
+    } catch (e) { alert((e as Error).message); }
+    if (blockImgFileRef.current) blockImgFileRef.current.value = "";
+    setBlockImgBusy(null);
+  }
+  async function genBlockImg(i: number) {
+    setBlockImgBusy(i);
+    try {
+      const caption = (draft.blocks[i]?.[1] || "").trim();
+      const res = await fetch("/api/v1/cover/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: `${draft.slug || "post"}-b${i}`, title: caption || draft.title, cat: draft.cat, tone: TONE[draft.cat] ?? "#0072BC" }) });
+      const d = await res.json();
+      if (res.ok) setBlockVal(i, d.url); else alert(d.error || "Tạo ảnh lỗi");
+    } catch (e) { alert((e as Error).message); }
+    setBlockImgBusy(null);
   }
   async function uploadCover(file: File) {
     setCoverBusy(true); setCoverMsg("⏳ Đang tải ảnh…");
@@ -1187,12 +1229,17 @@ export default function CmsApp() {
               {filteredPosts.map((p) => (
                 <div key={p.slug} style={{ borderBottom: `1px solid ${COLORS.split}` }}>
                 <div style={{ display: "grid", gridTemplateColumns: "minmax(200px,2.4fr) minmax(104px,150px) minmax(96px,130px) minmax(84px,110px) minmax(200px,240px)", gap: 10, padding: "12px 16px", alignItems: "center" }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: 6 }}>
-                      {p.featured && <span title="Đang hiển thị trên trang chủ" style={{ fontSize: 11, fontWeight: 700, color: "#B7791F", background: "#FEF3C7", padding: "1px 7px", borderRadius: 4, whiteSpace: "nowrap" }}>★ Trang chủ</span>}
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{p.title}</span>
+                  <div style={{ minWidth: 0, display: "flex", gap: 10, alignItems: "center" }}>
+                    <div style={{ width: 64, height: 40, flexShrink: 0, borderRadius: 6, overflow: "hidden" }}>
+                      <CoverArt coverUrl={p.coverUrl} title={p.title} cat={p.cat} tone={TONE[p.cat] ?? "#0072BC"} height={40} compact />
                     </div>
-                    <div style={{ fontSize: 12, color: COLORS.ink3 }}>/blog/{p.slug}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: 6 }}>
+                        {p.featured && <span title="Đang hiển thị trên trang chủ" style={{ fontSize: 11, fontWeight: 700, color: "#B7791F", background: "#FEF3C7", padding: "1px 7px", borderRadius: 4, whiteSpace: "nowrap" }}>★ Trang chủ</span>}
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{p.title}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: COLORS.ink3 }}>/blog/{p.slug}</div>
+                    </div>
                   </div>
                   <span style={{ fontSize: 12.5, color: TONE[p.cat] ?? COLORS.ink2, fontWeight: 600 }}>{p.cat}</span>
                   <span><span style={statusPill(p.status)}>{p.status}</span></span>
@@ -1267,6 +1314,7 @@ export default function CmsApp() {
               <div style={{ marginBottom: 24 }}><CoverArt coverUrl={draft.coverUrl} title={draft.title} cat={draft.cat} tone={TONE[draft.cat] ?? "#0072BC"} height={280} rounded showTitle={false} /></div>
               {draft.blocks.map((b, i) => {
                 const text = b[1] || "";
+                if (b[0] === "img") return text ? <img key={i} src={text.startsWith("http") || text.startsWith("/") ? text : `/${text}`} alt="" style={{ width: "100%", borderRadius: 8, margin: "10px 0" }} /> : null;
                 if (b[0] === "h") return <h2 key={i} style={{ fontSize: 20, fontWeight: 700, color: COLORS.ink, margin: "22px 0 8px" }}>{text}</h2>;
                 if (b[0] === "quote") return <blockquote key={i} style={{ borderLeft: `3px solid ${COLORS.brandBlue}`, padding: "4px 0 4px 16px", margin: "16px 0", color: COLORS.ink2, fontStyle: "italic" }}>{text}</blockquote>;
                 if (b[0] === "list") return <ul key={i} style={{ margin: "10px 0", paddingLeft: 22, color: COLORS.ink2, lineHeight: 1.7 }}>{text.split("\n").filter(Boolean).map((li, j) => <li key={j}>{li}</li>)}</ul>;
@@ -1291,6 +1339,7 @@ export default function CmsApp() {
           </div>
 
           <div style={panelPad}>
+            <input ref={blockImgFileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onBlockImgFile(f); }} />
             <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12, color: COLORS.ink }}>{EDITOR_UI.fields.blocksLabel}</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
               {KINDS.map((k) => (
@@ -1305,13 +1354,27 @@ export default function CmsApp() {
                     <span style={{ color: COLORS.ink3, cursor: "grab", userSelect: "none" }}>⠿</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: COLORS.ink3, marginBottom: 6 }}>{kind?.label}</div>
-                      <textarea
-                        value={b[1]}
-                        onChange={(e) => { const nb = [...draft.blocks]; nb[i] = [b[0], e.target.value]; setDraft({ ...draft, blocks: nb as [BlockKind, string][] }); }}
-                        placeholder={kind?.hint}
-                        rows={kind?.rows ?? 2}
-                        style={{ ...input, height: "auto", padding: "8px 10px", lineHeight: 1.6 }}
-                      />
+                      {b[0] === "img" ? (
+                        <div>
+                          {b[1] && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={b[1].startsWith("http") || b[1].startsWith("/") ? b[1] : `/${b[1]}`} alt="" style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 8, marginBottom: 8 }} />
+                          )}
+                          <input value={b[1]} onChange={(e) => setBlockVal(i, e.target.value)} placeholder="Dán link ảnh https://…" style={{ ...input, marginBottom: 8 }} disabled={blockImgBusy === i} />
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <button type="button" onClick={() => blockImgFile(i)} disabled={blockImgBusy === i} style={btnSm}>📤 Upload</button>
+                            <button type="button" onClick={() => genBlockImg(i)} disabled={blockImgBusy === i} style={{ ...btnSm, color: COLORS.brandBlue, borderColor: "#B3D5EA" }}>{blockImgBusy === i ? "⏳…" : "✨ Tạo ảnh AI"}</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <textarea
+                          value={b[1]}
+                          onChange={(e) => setBlockVal(i, e.target.value)}
+                          placeholder={kind?.hint}
+                          rows={kind?.rows ?? 2}
+                          style={{ ...input, height: "auto", padding: "8px 10px", lineHeight: 1.6 }}
+                        />
+                      )}
                     </div>
                     <button type="button" onClick={() => setDraft({ ...draft, blocks: draft.blocks.filter((_, j) => j !== i) })} style={{ border: "none", background: "none", color: COLORS.ink3, cursor: "pointer", fontSize: 15 }} aria-label="Xoá khối">✕</button>
                   </div>

@@ -6,7 +6,7 @@
 // Types
 // ---------------------------------------------------------------------------
 
-export type BlockKind = 'h' | 'p' | 'quote' | 'list';
+export type BlockKind = 'h' | 'p' | 'quote' | 'list' | 'img';
 
 export interface Block {
   kind: BlockKind;

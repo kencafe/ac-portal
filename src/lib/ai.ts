@@ -23,8 +23,13 @@ const DEFAULT_MODEL = "claude-sonnet-5";
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
 
 // English image prompt for a clean, appealing editorial cover (no text).
-function coverPrompt(title: string, cat: string): string {
-  return `Professional editorial cover illustration for a technical blog article about "${title}". Field: ${cat || "cloud technology"}. Modern flat vector style, abstract and clean, deep blue and green brand palette, subtle grid and network motif, soft depth. No text, no words, no letters, no watermark.`;
+// `scene` (from the AI, content-aware) or `hint` (excerpt/keywords) makes the
+// image reflect the actual article, not a generic template.
+function coverPrompt(title: string, cat: string, scene = ""): string {
+  const subject = scene.trim()
+    ? scene.trim()
+    : `the topic "${title}"${cat ? ` in the field of ${cat}` : ""}`;
+  return `Professional editorial cover illustration depicting ${subject}. Modern flat vector style, conceptual and specific to the subject, clean composition, deep blue and green brand palette, subtle depth. No text, no words, no letters, no logos, no watermark.`;
 }
 
 async function saveCover(slug: string, buf: Buffer, ext: string): Promise<string> {
@@ -34,9 +39,9 @@ async function saveCover(slug: string, buf: Buffer, ext: string): Promise<string
 }
 
 // Free, keyless AI image via Pollinations (Flux/SD). Works WITHOUT any billing.
-async function pollinationsImage(slug: string, title: string, cat: string): Promise<string> {
+async function pollinationsImage(slug: string, title: string, cat: string, scene = ""): Promise<string> {
   const seed = Math.abs(hashCode(title)) % 100000;
-  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(coverPrompt(title, cat))}?width=1200&height=630&nologo=true&seed=${seed}&model=flux`;
+  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(coverPrompt(title, cat, scene))}?width=1200&height=630&nologo=true&seed=${seed}&model=flux`;
   const res = await fetch(url, { signal: AbortSignal.timeout(120000), redirect: "follow" });
   if (!res.ok) throw new Error(`pollinations HTTP ${res.status}`);
   const ct = res.headers.get("content-type") || "";
@@ -48,12 +53,12 @@ async function pollinationsImage(slug: string, title: string, cat: string): Prom
 }
 
 // Gemini image model (reuses aiApiKey; needs billing — 429 on free tier).
-async function geminiImage(slug: string, title: string, cat: string, apiKey: string, model: string): Promise<string> {
+async function geminiImage(slug: string, title: string, cat: string, apiKey: string, model: string, scene = ""): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ contents: [{ parts: [{ text: coverPrompt(title, cat) }] }], generationConfig: { responseModalities: ["IMAGE"] } }),
+    body: JSON.stringify({ contents: [{ parts: [{ text: coverPrompt(title, cat, scene) }] }], generationConfig: { responseModalities: ["IMAGE"] } }),
     signal: AbortSignal.timeout(90000),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
@@ -76,7 +81,7 @@ function hashCode(s: string): number {
 // Generate a real cover image. Provider "pollinations" (free/keyless, default)
 // or "gemini" (needs billing). Saves to the PVC and returns its URL; falls back
 // to the generated illustration when disabled or on error.
-export async function makeCover(slug: string, title: string, cat = "", tone = "#0072BC", force = false): Promise<string> {
+export async function makeCover(slug: string, title: string, cat = "", tone = "#0072BC", force = false, scene = ""): Promise<string> {
   const fallback = coverFor(title, cat, tone);
   const s = await getSettings();
   if (!s.aiImageEnabled && !force) return fallback;
@@ -85,11 +90,11 @@ export async function makeCover(slug: string, title: string, cat = "", tone = "#
     if (provider === "gemini") {
       const apiKey = s.aiApiKey || ENV_AI_API_KEY;
       if (!apiKey) throw new Error("no api key");
-      const out = await geminiImage(slug, title, cat, apiKey, s.aiImageModel || "gemini-2.5-flash-image");
+      const out = await geminiImage(slug, title, cat, apiKey, s.aiImageModel || "gemini-2.5-flash-image", scene);
       console.log(`[ai] cover via gemini for ${slug}`);
       return out;
     }
-    const out = await pollinationsImage(slug, title, cat);
+    const out = await pollinationsImage(slug, title, cat, scene);
     console.log(`[ai] cover via pollinations for ${slug}`);
     return out;
   } catch (e) {
@@ -255,7 +260,7 @@ export function parseFeedItems(xml: string, limit = 20): FeedItem[] {
 // + content blocks.
 // Parse the model's JSON reply into content blocks (h/p/list/quote), tolerant of
 // fences and the legacy paragraphs[] shape. Falls back to a single block.
-function blocksFromRaw(raw: string): { title: string; blocks: Block[] } {
+function blocksFromRaw(raw: string): { title: string; blocks: Block[]; imagePrompt: string } {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let parsed: any;
   try {
@@ -282,7 +287,7 @@ function blocksFromRaw(raw: string): { title: string; blocks: Block[] } {
     blocks = parsed.paragraphs.filter(Boolean).map((p: string) => ({ kind: "p", text: p }) as Block);
   }
   if (blocks.length === 0) blocks = [{ kind: "p", text: raw.slice(0, 1500) }];
-  return { title: parsed?.title || "", blocks };
+  return { title: parsed?.title || "", blocks, imagePrompt: typeof parsed?.imagePrompt === "string" ? parsed.imagePrompt : "" };
 }
 
 type AiEditOpts = {
@@ -296,7 +301,7 @@ async function aiEdit(
   title: string,
   text: string,
   opts: AiEditOpts = {},
-): Promise<{ title: string; blocks: Block[]; aiUsed: boolean }> {
+): Promise<{ title: string; blocks: Block[]; aiUsed: boolean; imagePrompt: string }> {
   const { instruction, summarize, sourceName, sourceUrl } = opts;
   const clipped = text.slice(0, 12000);
 
@@ -313,7 +318,7 @@ async function aiEdit(
       { kind: "p", text: "[AI chưa cấu hình khóa — chưa biên tập, đây là nội dung gốc]" },
       { kind: "p", text: clipped.slice(0, 1500) },
     ];
-    return { title: title || "Bài nhập tự động", blocks, aiUsed: false };
+    return { title: title || "Bài nhập tự động", blocks, aiUsed: false, imagePrompt: "" };
   }
 
   const styleRules =
@@ -336,13 +341,14 @@ async function aiEdit(
     `Trả về JSON THUẦN theo đúng schema (không thêm chữ ngoài JSON):\n` +
     `{"title":"...","blocks":[{"type":"h","text":"Tiêu đề phụ"},{"type":"p","text":"đoạn văn"},{"type":"list","items":["ý 1","ý 2"]},{"type":"quote","text":"trích dẫn"}]}\n` +
     `type chỉ nhận: "h" (tiêu đề phụ), "p" (đoạn văn), "list" (danh sách), "quote" (trích dẫn). Bài nên có 2–5 heading.\n` +
+    `Kèm thêm trường "imagePrompt": một câu tiếng ANH mô tả cảnh minh hoạ bìa CỤ THỂ theo nội dung bài (đối tượng, bối cảnh kỹ thuật rõ ràng) để sinh ảnh — KHÔNG chứa chữ trong ảnh.\n` +
     (instruction?.trim()
       ? `\nYÊU CẦU CHỈNH SỬA THÊM TỪ BIÊN TẬP VIÊN (ưu tiên cao, bám sát): ${instruction.trim()}\n`
       : "") +
     `\nTIÊU ĐỀ GỐC: ${title}\n\nNỘI DUNG:\n${clipped}`;
 
   const raw = await chatComplete(provider, apiKey, model, prompt);
-  const { title: genTitle, blocks } = blocksFromRaw(raw);
+  const { title: genTitle, blocks, imagePrompt } = blocksFromRaw(raw);
 
   // Attribution — always cite the source (required for the copyright-safe path,
   // added whenever a source is provided). Avoid duplicating if the model wrote one.
@@ -352,7 +358,7 @@ async function aiEdit(
     if (!already) blocks.push({ kind: "quote", text: cite });
   }
 
-  return { title: genTitle || title || "Bài nhập tự động", blocks, aiUsed: true };
+  return { title: genTitle || title || "Bài nhập tự động", blocks, aiUsed: true, imagePrompt };
 }
 
 // Core: run AI edit over raw {title,text} → create a post + log history.
@@ -363,7 +369,7 @@ export async function ingestText(
   opts?: { forcePublish?: boolean; cat?: string; mode?: IngestMode; source?: string; note?: string; url?: string; cover?: string; summarize?: boolean; sourceName?: string; sourceUrl?: string },
 ): Promise<IngestResult> {
   const settings = await getSettings();
-  const { title, blocks, aiUsed } = await aiEdit(rawTitle, text, {
+  const { title, blocks, aiUsed, imagePrompt } = await aiEdit(rawTitle, text, {
     summarize: opts?.summarize,
     sourceName: opts?.sourceName,
     sourceUrl: opts?.sourceUrl ?? opts?.url,
@@ -373,14 +379,17 @@ export async function ingestText(
   const status: "draft" | "published" = publish ? "published" : "draft";
   const slug = await availableSlug(slugify(title));
   const url = opts?.url ?? opts?.source ?? "";
-  const cover = opts?.cover || (await makeCover(slug, title, opts?.cat || "AIOps"));
+  const excerpt = (blocks.find((b) => b.kind === "p")?.text ?? "").slice(0, 160);
+  // Content-aware cover: AI imagePrompt if any, else title + excerpt.
+  const scene = imagePrompt || `${title}. ${excerpt}`;
+  const cover = opts?.cover || (await makeCover(slug, title, opts?.cat || "AIOps", "#0072BC", false, scene));
 
   const saved = await upsertPost({
     slug,
     title,
     cat: opts?.cat || "AIOps",
     tone: "#0072BC",
-    excerpt: (blocks.find((b) => b.kind === "p")?.text ?? "").slice(0, 160),
+    excerpt,
     author: "AI Studio",
     role: "Tự động",
     initials: "AI",
@@ -464,6 +473,7 @@ export async function generateArticle(
   let title = opts?.title?.trim() || "";
   let blocks: Block[];
   let aiUsed = false;
+  let imagePrompt = "";
 
   if (!apiKey) {
     blocks = [
@@ -481,26 +491,29 @@ export async function generateArticle(
       (opts?.audience?.trim() ? `- Đối tượng người đọc: ${opts.audience.trim()}.\n` : "") +
       `Trả về JSON THUẦN theo schema (không thêm chữ ngoài JSON):\n` +
       `{"title":"...","blocks":[{"type":"h","text":"..."},{"type":"p","text":"..."},{"type":"list","items":["..."]},{"type":"quote","text":"..."}]}\n` +
-      `type chỉ nhận: "h","p","list","quote".\n\n` +
+      `type chỉ nhận: "h","p","list","quote".\n` +
+      `Kèm trường "imagePrompt": một câu tiếng ANH mô tả cảnh minh hoạ bìa CỤ THỂ theo nội dung bài (không chữ trong ảnh).\n\n` +
       `ĐỀ BÀI: ${brief.slice(0, 4000)}`;
     const raw = await chatComplete(provider, apiKey, model, prompt);
     const out = blocksFromRaw(raw);
     title = title || out.title || "Bài đặt hàng";
     blocks = out.blocks;
+    imagePrompt = out.imagePrompt;
     aiUsed = true;
   }
 
   const publish = opts?.forcePublish ?? false;
   const status: "draft" | "published" = publish ? "published" : "draft";
   const slug = await availableSlug(slugify(title));
-  const cover = await makeCover(slug, title, opts?.cat || "SRE");
+  const excerpt = (blocks.find((b) => b.kind === "p")?.text ?? "").slice(0, 160);
+  const cover = await makeCover(slug, title, opts?.cat || "SRE", "#0072BC", false, imagePrompt || `${title}. ${excerpt}. ${brief.slice(0, 200)}`);
 
   const saved = await upsertPost({
     slug,
     title,
     cat: opts?.cat || "SRE",
     tone: "#0072BC",
-    excerpt: (blocks.find((b) => b.kind === "p")?.text ?? "").slice(0, 160),
+    excerpt,
     author: "AI Studio",
     role: "Biên soạn",
     initials: "AI",

@@ -19,6 +19,7 @@ export default function CoverArt({
   minHeight,
   rounded = false,
   showTitle = true,
+  compact = false,
 }: {
   coverUrl?: string;
   title: string;
@@ -28,6 +29,7 @@ export default function CoverArt({
   minHeight?: number;
   rounded?: boolean;
   showTitle?: boolean;
+  compact?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
   const t = tone || COLORS.brandBlue;
@@ -57,7 +59,7 @@ export default function CoverArt({
           loading="lazy"
         />
       )}
-      {!hasImg && (
+      {!hasImg && !compact && (
         <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "18px 20px", color: "#fff" }}>
           {/* subtle motif */}
           <span aria-hidden style={{ position: "absolute", right: -30, bottom: -30, width: 160, height: 160, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.18)" }} />

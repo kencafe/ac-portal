@@ -36,6 +36,11 @@ function BlockView({ block }: { block: Block }) {
           {block.text}
         </blockquote>
       );
+    case "img":
+      return block.text ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={block.text} alt="" style={{ display: "block", width: "100%", borderRadius: 10, margin: "8px 0 22px" }} loading="lazy" />
+      ) : null;
     case "list":
       return (
         <ul style={{ listStyle: "none", margin: "0 0 22px", padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
