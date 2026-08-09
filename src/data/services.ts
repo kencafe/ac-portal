@@ -575,6 +575,46 @@ export const SERVICES: Record<string, ServiceDetail> = {
       "Tối ưu chi phí cloud và tuân thủ liên tục",
     ],
   },
+
+  incident: {
+    slug: "incident",
+    code: "IRC",
+    serviceCode: "NS-IRC",
+    accent: "orange",
+    accentHex: ORANGE,
+    name: "Ứng cứu sự cố Cloud",
+    nameEn: "Cloud incident response & emergency remediation",
+    group: "Emergency & Assurance",
+    positioning:
+      "Ứng cứu sự cố khẩn cấp cho hệ thống trên cloud: tiếp nhận 24/7, phản ứng nhanh, lập war-room, khoanh vùng và khôi phục dịch vụ, rồi điều tra nguyên nhân gốc. Xử lý cả sự cố vận hành (downtime, quá tải, lỗi phát hành) lẫn sự cố an ninh (tấn công, xâm nhập, rò rỉ, ransomware). Dùng theo thuê bao ứng cứu (retainer) hoặc gọi khẩn theo vụ.",
+    specs: [
+      { k: "Mã dịch vụ", v: "NS-IRC" },
+      { k: "Nhóm dịch vụ", v: "Emergency & Assurance — ứng cứu & khôi phục" },
+      { k: "Phạm vi", v: "Tiếp nhận & phân mức sự cố 24/7, war-room, khoanh vùng/ngăn chặn/khôi phục, điều tra nguyên nhân gốc; sự cố vận hành lẫn an ninh (DDoS, xâm nhập, ransomware), forensics cơ bản" },
+      { k: "Đối tượng", v: "Hệ thống cloud quan trọng cần cam kết ứng cứu nhanh; tổ chức chưa có đội IR chuyên trách" },
+      { k: "Mô hình hợp tác", v: "Retainer (thuê bao ứng cứu) · khẩn cấp theo vụ (call-out) · đồng trực với đội khách hàng" },
+      { k: "Cam kết", v: "Hotline 24/7 · thời gian phản hồi theo mức độ sự cố · RTO mục tiêu · báo cáo sau sự cố" },
+    ],
+    phases: buildPhases([
+      ["Đánh giá rủi ro & kịch bản sự cố", "Thiết lập kênh tiếp nhận & phân mức", "Xây IR playbook & mô hình war-room", "Thống nhất SLA phản hồi & liên hệ khẩn"],
+      ["Tích hợp giám sát/cảnh báo & escalation", "Chuẩn bị công cụ forensics & khôi phục", "Diễn tập kịch bản (tabletop/drill)", "Thiết lập kênh war-room & on-call"],
+      ["Tiếp nhận & ứng cứu 24/7", "Khoanh vùng, ngăn chặn & khôi phục dịch vụ", "Điều phối war-room, cập nhật liên tục", "Thu thập chứng cứ, log & mốc thời gian"],
+      ["Điều tra nguyên nhân gốc (RCA)", "Blameless postmortem & khuyến nghị", "Cập nhật playbook, phòng ngừa tái diễn", "Rà soát & diễn tập định kỳ"],
+    ]),
+    deliverables: [
+      "IR playbook và bảng phân mức sự cố",
+      "Kênh hotline/tiếp nhận 24/7 với SLA phản hồi cam kết",
+      "Báo cáo ứng cứu & dòng thời gian (timeline) từng sự cố",
+      "Điều tra nguyên nhân gốc (RCA) + postmortem + khuyến nghị khắc phục",
+      "Báo cáo diễn tập ứng phó sự cố định kỳ",
+    ],
+    stack: ["PagerDuty", "Opsgenie", "Prometheus", "Grafana", "ELK", "SIEM", "Falco", "Velero", "Veeam", "AWS", "Azure", "GCP"],
+    outcomes: [
+      "Rút ngắn MTTR khi xảy ra sự cố lớn",
+      "Giảm thiệt hại và thời gian gián đoạn dịch vụ",
+      "Sẵn sàng ứng cứu cả sự cố vận hành lẫn an ninh",
+    ],
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -592,6 +632,7 @@ export const ORDER: string[] = [
   "cloudapp",
   "outsourcing",
   "managed",
+  "incident",
   "attt",
 ];
 

@@ -224,6 +224,8 @@ export const SERVICES_META = [
     desc: "Tuân thủ Luật An ninh mạng, Luật ATTT mạng; phân định & lập hồ sơ cấp độ an toàn hệ thống thông tin (NĐ 85), bảo vệ dữ liệu cá nhân (NĐ 13)." },
   { num: 12, name: "Cloud Managed Service", en: "Comprehensive managed service", slug: "managed", accent: "green", ribbon: "MỚI",
     desc: "Vận hành hạ tầng cloud toàn diện 24/7 theo SLA: giám sát, sự cố, vá bảo mật, backup/DR, FinOps — một đầu mối chịu trách nhiệm." },
+  { num: 13, name: "Ứng cứu sự cố Cloud", en: "Cloud incident response", slug: "incident", accent: "orange", ribbon: "MỚI",
+    desc: "Ứng cứu sự cố khẩn cấp 24/7: war-room, khoanh vùng & khôi phục, điều tra nguyên nhân gốc — cả sự cố vận hành lẫn an ninh." },
 ] as const;
 // NOTE: card #3 (AIOps) is the "hot" card — green border + "MỚI" ribbon.
 //   Its EN subtitle is Vietnamese ("Triển khai & vận hành"), authored that way.
