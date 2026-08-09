@@ -123,18 +123,23 @@ export async function listModels(p: Provider, key: string): Promise<ModelInfo[]>
 }
 
 // Single-shot chat completion, provider-agnostic. Returns the assistant text.
+// maxTokens defaults to 8192 (up from 4096) so long-form articles (~10-min read
+// ≈ ~2000 Vietnamese syllables + JSON overhead) don't get truncated mid-output
+// — truncation would break JSON parsing and collapse the post to a stub. Well
+// under the model ceilings (e.g. Groq llama-3.3-70b = 32768 completion tokens).
 export async function chatComplete(
   p: Provider,
   key: string,
   model: string,
   prompt: string,
+  maxTokens = 8192,
 ): Promise<string> {
   if (p.apiStyle === "anthropic") {
     const res = await fetch(p.chatUrl, {
       method: "POST",
       headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model, max_tokens: 4096, messages: [{ role: "user", content: prompt }] }),
-      signal: AbortSignal.timeout(60000),
+      body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
+      signal: AbortSignal.timeout(120000),
     });
     if (!res.ok) throw new Error(`${model} → HTTP ${res.status}: ${await res.text()}`);
     const d = await res.json();
@@ -143,8 +148,8 @@ export async function chatComplete(
   const res = await fetch(p.chatUrl, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
-    body: JSON.stringify({ model, max_tokens: 4096, messages: [{ role: "user", content: prompt }] }),
-    signal: AbortSignal.timeout(60000),
+    body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
+    signal: AbortSignal.timeout(120000),
   });
   if (!res.ok) throw new Error(`${model} → HTTP ${res.status}: ${await res.text()}`);
   const d = await res.json();

@@ -131,17 +131,32 @@ function todayVN(): string {
   return `${p(d.getHours())}:${p(d.getMinutes())} · ${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
-// Estimate reading time from block text (~200 words/min, min 1).
-function readingTime(blocks: Block[]): string {
-  const words = blocks
+// Count words (space-tokens) across all blocks — the same measure the reading
+// time uses, so length targets and the displayed "N phút đọc" label agree.
+function wordCount(blocks: Block[]): number {
+  return blocks
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((b: any) => (b.kind === "list" ? (b.items ?? []).join(" ") : b.text ?? ""))
     .join(" ")
     .trim()
     .split(/\s+/)
     .filter(Boolean).length;
-  return `${Math.max(1, Math.round(words / 200))} phút đọc`;
 }
+
+// Estimate reading time from block text (~200 words/min, min 1).
+function readingTime(blocks: Block[]): string {
+  return `${Math.max(1, Math.round(wordCount(blocks) / 200))} phút đọc`;
+}
+
+// Target length for full articles: ~10-minute read. readingTime uses 200
+// words/min, so ~2000 space-tokens ≈ 10 min; TOO_SHORT triggers one expand pass.
+const TARGET_WORDS = 2000;
+const TOO_SHORT = 1600;
+
+// House length/depth guidance appended to full-article prompts (NOT the
+// copyright-safe summarize path, which stays intentionally short).
+const LENGTH_GUIDE =
+  `\nMỤC TIÊU ĐỘ DÀI (bắt buộc): Bài phải đủ dài để đọc trong khoảng 8–10 phút — tương đương KHOẢNG 1.900–2.200 chữ tiếng Việt. Đây là bài CHUYÊN SÂU, KHÔNG phải tóm tắt: khai thác đầy đủ từng phần. Mỗi tiêu đề phụ có ít nhất 2–3 đoạn văn có chiều sâu, kèm ví dụ thực tế/số liệu/tình huống minh hoạ cụ thể, cùng lý do "tại sao" và cách áp dụng. Có mở bài nêu bối cảnh và một phần kết luận/khuyến nghị. Câu chữ súc tích NHƯNG tổng thể phải đủ dài và đủ sâu — tuyệt đối KHÔNG nhồi chữ sáo rỗng, KHÔNG lặp ý để kéo dài.\n`;
 
 // Resolve a possibly-relative image URL against the article URL. Returns "" on
 // failure so the gradient placeholder kicks in.
@@ -260,14 +275,36 @@ export function parseFeedItems(xml: string, limit = 20): FeedItem[] {
 // + content blocks.
 // Parse the model's JSON reply into content blocks (h/p/list/quote), tolerant of
 // fences and the legacy paragraphs[] shape. Falls back to a single block.
+// Best-effort parse of the model's JSON reply, tolerant of TRUNCATED output
+// (when the completion is cut mid-array the brackets don't close). Tries the
+// greedy match first, then salvages by trimming to the last complete object and
+// re-closing the array + root so a long-but-cut reply still yields most blocks.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseModelJson(raw: string): any {
+  try {
+    return JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? raw);
+  } catch {
+    /* try to repair a truncated reply */
+  }
+  const start = raw.indexOf("{");
+  if (start < 0) return null;
+  const s = raw.slice(start);
+  const lastObj = s.lastIndexOf("}");
+  if (lastObj > 0) {
+    for (const suffix of ["]}", "}"]) {
+      try {
+        return JSON.parse(s.slice(0, lastObj + 1) + suffix);
+      } catch {
+        /* keep trying */
+      }
+    }
+  }
+  return null;
+}
+
 function blocksFromRaw(raw: string): { title: string; blocks: Block[]; imagePrompt: string } {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let parsed: any;
-  try {
-    parsed = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? raw);
-  } catch {
-    parsed = null;
-  }
+  const parsed: any = parseModelJson(raw);
   const KINDS = new Set(["h", "p", "list", "quote"]);
   let blocks: Block[] = [];
   if (parsed && Array.isArray(parsed.blocks)) {
@@ -286,7 +323,11 @@ function blocksFromRaw(raw: string): { title: string; blocks: Block[]; imageProm
   } else if (parsed && Array.isArray(parsed.paragraphs)) {
     blocks = parsed.paragraphs.filter(Boolean).map((p: string) => ({ kind: "p", text: p }) as Block);
   }
-  if (blocks.length === 0) blocks = [{ kind: "p", text: raw.slice(0, 1500) }];
+  if (blocks.length === 0) {
+    // Last resort: keep the raw text (split into paragraphs) instead of a tiny stub.
+    blocks = raw.replace(/```json|```/g, "").split(/\n{2,}/).map((s) => s.trim()).filter(Boolean).slice(0, 40).map((t) => ({ kind: "p", text: t.slice(0, 2000) }) as Block);
+    if (blocks.length === 0) blocks = [{ kind: "p", text: raw.slice(0, 2000) }];
+  }
   return { title: parsed?.title || "", blocks, imagePrompt: typeof parsed?.imagePrompt === "string" ? parsed.imagePrompt : "" };
 }
 
@@ -303,7 +344,7 @@ async function aiEdit(
   opts: AiEditOpts = {},
 ): Promise<{ title: string; blocks: Block[]; aiUsed: boolean; imagePrompt: string }> {
   const { instruction, summarize, sourceName, sourceUrl } = opts;
-  const clipped = text.slice(0, 12000);
+  const clipped = text.slice(0, 24000);
 
   // Provider + token + model come from the CMS "Cấu hình API" (settings) first,
   // then env. The provider decides Anthropic-style vs OpenAI-compatible calls.
@@ -334,13 +375,14 @@ async function aiEdit(
       `- Diễn đạt lại bằng lời của bạn, độ dài chỉ ~40–50% bản gốc.\n` +
       `- Nêu các ý chính, sau đó thêm một mục "Góc nhìn NS" (nhận định/khuyến nghị ngắn của đội ngũ).\n` +
       `- Không trích quá 1 câu ngắn từ bản gốc; nếu trích phải để trong "quote".\n` + styleRules
-    : `Bạn là biên tập viên kỹ thuật của blog FPT-IS Next Gen Service. Hãy BIÊN TẬP LẠI nội dung sau thành một bài viết hoàn chỉnh, CÓ CẤU TRÚC, chuẩn để xuất bản, bằng tiếng Việt.\n` + styleRules;
+    : `Bạn là biên tập viên kỹ thuật của blog FPT-IS Next Gen Service. Hãy BIÊN TẬP LẠI nội dung sau thành một bài viết hoàn chỉnh, CÓ CẤU TRÚC, chuyên sâu, chuẩn để xuất bản, bằng tiếng Việt.\n` + styleRules + LENGTH_GUIDE;
 
   const prompt =
     head +
     `Trả về JSON THUẦN theo đúng schema (không thêm chữ ngoài JSON):\n` +
     `{"title":"...","blocks":[{"type":"h","text":"Tiêu đề phụ"},{"type":"p","text":"đoạn văn"},{"type":"list","items":["ý 1","ý 2"]},{"type":"quote","text":"trích dẫn"}]}\n` +
-    `type chỉ nhận: "h" (tiêu đề phụ), "p" (đoạn văn), "list" (danh sách), "quote" (trích dẫn). Bài nên có 2–5 heading.\n` +
+    `type chỉ nhận: "h" (tiêu đề phụ), "p" (đoạn văn), "list" (danh sách), "quote" (trích dẫn). ` +
+    (summarize ? `Bài tóm tắt nên có 2–4 heading.\n` : `Bài nên có 5–7 heading, mỗi heading có ít nhất 2–3 đoạn văn.\n`) +
     `Kèm thêm trường "imagePrompt": một câu tiếng ANH mô tả cảnh minh hoạ bìa CỤ THỂ theo nội dung bài (đối tượng, bối cảnh kỹ thuật rõ ràng) để sinh ảnh — KHÔNG chứa chữ trong ảnh.\n` +
     (instruction?.trim()
       ? `\nYÊU CẦU CHỈNH SỬA THÊM TỪ BIÊN TẬP VIÊN (ưu tiên cao, bám sát): ${instruction.trim()}\n`
@@ -348,7 +390,29 @@ async function aiEdit(
     `\nTIÊU ĐỀ GỐC: ${title}\n\nNỘI DUNG:\n${clipped}`;
 
   const raw = await chatComplete(provider, apiKey, model, prompt);
-  const { title: genTitle, blocks, imagePrompt } = blocksFromRaw(raw);
+  let { title: genTitle, blocks, imagePrompt } = blocksFromRaw(raw);
+
+  // Enforce the ~10-minute length target: if a full edit came back too short,
+  // ask once to expand it (keeping topic + structure). Skipped for summaries.
+  if (!summarize && wordCount(blocks) < TOO_SHORT) {
+    try {
+      const expandPrompt =
+        `Bản nháp JSON dưới đây CÒN NGẮN so với yêu cầu (~${TARGET_WORDS} chữ, đọc 8–10 phút). ` +
+        `Hãy VIẾT LẠI DÀI HƠN và SÂU HƠN: giữ nguyên chủ đề, ngôn ngữ (tiếng Việt) và cấu trúc heading, ` +
+        `bổ sung ví dụ thực tế/số liệu/giải thích "tại sao" cho mỗi phần, thêm mở bài và kết luận nếu thiếu. ` +
+        `KHÔNG nhồi chữ sáo rỗng, KHÔNG lặp ý. Trả về JSON THUẦN đúng schema cũ (title/blocks/imagePrompt).\n\nBẢN NHÁP:\n` +
+        JSON.stringify({ title: genTitle, blocks });
+      const raw2 = await chatComplete(provider, apiKey, model, expandPrompt);
+      const out2 = blocksFromRaw(raw2);
+      if (wordCount(out2.blocks) > wordCount(blocks)) {
+        genTitle = out2.title || genTitle;
+        blocks = out2.blocks;
+        if (out2.imagePrompt) imagePrompt = out2.imagePrompt;
+      }
+    } catch (e) {
+      console.error("[ai] expand pass failed:", (e as Error).message);
+    }
+  }
 
   // Attribution — always cite the source (required for the copyright-safe path,
   // added whenever a source is provided). Avoid duplicating if the model wrote one.
@@ -487,8 +551,9 @@ export async function generateArticle(
       `PHONG CÁCH & BỐ CỤC:\n` +
       `- Tiếng Việt kỹ thuật, chuyên nghiệp, chính xác; giữ thuật ngữ tiếng Anh phổ biến.\n` +
       `- Nếu là bài đào tạo/hướng dẫn: trình bày từ khái niệm nền tảng → chi tiết → ví dụ/thực hành thực tế → lưu ý & khuyến nghị.\n` +
-      `- Chia phần rõ ràng: mỗi phần một TIÊU ĐỀ PHỤ (heading); dùng bullet khi liệt kê; có thể dùng trích dẫn/nhấn mạnh khi cần. Bài nên có 4–8 heading, đủ sâu để dùng đào tạo.\n` +
+      `- Chia phần rõ ràng: mỗi phần một TIÊU ĐỀ PHỤ (heading); dùng bullet khi liệt kê; có thể dùng trích dẫn/nhấn mạnh khi cần. Bài nên có 5–8 heading, mỗi heading ít nhất 2–3 đoạn, đủ sâu để dùng đào tạo.\n` +
       (opts?.audience?.trim() ? `- Đối tượng người đọc: ${opts.audience.trim()}.\n` : "") +
+      LENGTH_GUIDE +
       `Trả về JSON THUẦN theo schema (không thêm chữ ngoài JSON):\n` +
       `{"title":"...","blocks":[{"type":"h","text":"..."},{"type":"p","text":"..."},{"type":"list","items":["..."]},{"type":"quote","text":"..."}]}\n` +
       `type chỉ nhận: "h","p","list","quote".\n` +
@@ -500,6 +565,25 @@ export async function generateArticle(
     blocks = out.blocks;
     imagePrompt = out.imagePrompt;
     aiUsed = true;
+
+    // Enforce the ~10-minute length target with one expand pass if too short.
+    if (wordCount(blocks) < TOO_SHORT) {
+      try {
+        const expandPrompt =
+          `Bản nháp JSON dưới đây CÒN NGẮN so với yêu cầu (~${TARGET_WORDS} chữ, đọc 8–10 phút). ` +
+          `Hãy VIẾT LẠI DÀI HƠN và SÂU HƠN: giữ chủ đề, tiếng Việt và cấu trúc heading, bổ sung ví dụ/số liệu/giải thích cho mỗi phần, thêm mở bài và kết luận. ` +
+          `KHÔNG nhồi chữ, KHÔNG lặp ý. Trả về JSON THUẦN đúng schema cũ.\n\nBẢN NHÁP:\n` +
+          JSON.stringify({ title, blocks });
+        const out2 = blocksFromRaw(await chatComplete(provider, apiKey, model, expandPrompt));
+        if (wordCount(out2.blocks) > wordCount(blocks)) {
+          title = out2.title || title;
+          blocks = out2.blocks;
+          if (out2.imagePrompt) imagePrompt = out2.imagePrompt;
+        }
+      } catch (e) {
+        console.error("[ai] generate expand pass failed:", (e as Error).message);
+      }
+    }
   }
 
   const publish = opts?.forcePublish ?? false;
