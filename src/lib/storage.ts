@@ -12,6 +12,16 @@ import { Client as MinioClient } from "minio";
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
 const BUCKET = process.env.MINIO_BUCKET || "covers";
 const ENDPOINT = process.env.MINIO_ENDPOINT || "";
+// Public (browser-reachable) MinIO base, e.g. https://minio-dev.appcarrier.cloud
+// Set per environment; used only to SHOW where an image is stored.
+const PUBLIC_BASE = process.env.MINIO_PUBLIC_BASE || "";
+
+// Direct MinIO object URL for a stored image (empty when MinIO/public base not
+// configured — the caller then just shows the app-served /api/cover-img path).
+export function imagePublicUrl(name: string): string {
+  if (!ENDPOINT || !PUBLIC_BASE) return "";
+  return `${PUBLIC_BASE.replace(/\/$/, "")}/${BUCKET}/${name}`;
+}
 
 let _client: MinioClient | null | undefined;
 function client(): MinioClient | null {

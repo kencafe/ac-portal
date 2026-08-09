@@ -4,3 +4,10 @@ metadata:
   name: ac-portal
 spec:
   replicas: 2
+  template:
+    spec:
+      containers:
+        - name: ac-portal
+          env:
+            - name: MINIO_PUBLIC_BASE
+              value: https://minio.appcarrier.cloud

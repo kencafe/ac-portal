@@ -4,3 +4,11 @@ metadata:
   name: ac-portal
 spec:
   replicas: 1
+  template:
+    spec:
+      containers:
+        - name: ac-portal
+          env:
+            # Browser-reachable MinIO base for this env (shows where AI images are stored).
+            - name: MINIO_PUBLIC_BASE
+              value: https://minio-dev.appcarrier.cloud

@@ -199,6 +199,7 @@ export default function CmsApp() {
   // Editor cover controls (paste URL / upload / AI generate)
   const [coverBusy, setCoverBusy] = useState(false);
   const [coverAiPrompt, setCoverAiPrompt] = useState(""); // prompt for AI cover generation (empty = auto from title)
+  const [coverMinioUrl, setCoverMinioUrl] = useState(""); // direct MinIO link of the last AI-generated image
   const [coverMsg, setCoverMsg] = useState("");
   const coverFileRef = useRef<HTMLInputElement | null>(null);
   // In-content image blocks
@@ -679,7 +680,7 @@ export default function CmsApp() {
     try {
       const res = await fetch("/api/v1/cover/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: `${draft.slug || "post"}-b${i}`, title: caption || draft.title, cat: draft.cat, tone: TONE[draft.cat] ?? "#0072BC", scene: scene.trim() }) });
       const d = await res.json();
-      if (res.ok) setBlockVal(i, d.url); else alert(d.error || "Tạo ảnh lỗi");
+      if (res.ok) { setBlockVal(i, d.url); if (d.minioUrl) setCoverMinioUrl(d.minioUrl); } else alert(d.error || "Tạo ảnh lỗi");
     } catch (e) { alert((e as Error).message); }
     setBlockImgBusy(null);
   }
@@ -700,7 +701,7 @@ export default function CmsApp() {
     try {
       const res = await fetch("/api/v1/cover/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: draft.slug, title: draft.title, cat: draft.cat, tone: TONE[draft.cat] ?? "#0072BC", scene: coverAiPrompt.trim() }) });
       const d = await res.json();
-      if (res.ok) { setDraft((dr) => ({ ...dr, coverUrl: d.url })); setCoverMsg((d.aiUsed ? "✅ " : "⚠️ ") + (d.note || "")); }
+      if (res.ok) { setDraft((dr) => ({ ...dr, coverUrl: d.url })); setCoverMsg((d.aiUsed ? "✅ " : "⚠️ ") + (d.note || "")); setCoverMinioUrl(d.minioUrl || ""); }
       else setCoverMsg(`❌ ${d.error || res.status}`);
     } catch (e) { setCoverMsg(`❌ ${(e as Error).message}`); }
     setCoverBusy(false);
@@ -1460,6 +1461,11 @@ export default function CmsApp() {
                 <button type="button" onClick={() => { setDraft({ ...draft, coverUrl: "" }); setCoverMsg("Dùng ảnh minh hoạ tự động."); }} disabled={coverBusy} style={btnSm}>Ảnh tự động</button>
               </div>
               {coverMsg && <div style={{ fontSize: 12, color: COLORS.ink2, marginTop: 10 }}>{coverMsg}</div>}
+              {coverMinioUrl && (
+                <div style={{ fontSize: 12, marginTop: 6, wordBreak: "break-all" }}>
+                  🔗 MinIO: <a href={coverMinioUrl} target="_blank" rel="noreferrer" style={{ color: COLORS.brandBlue, fontFamily: "monospace" }}>{coverMinioUrl}</a>
+                </div>
+              )}
               <div style={{ fontSize: 11.5, color: COLORS.ink3, marginTop: 8 }}>Ảnh đã chọn/tạo hiển thị ở khung trên và <b>áp dụng khi bấm “Lưu bài viết”</b>. Ưu tiên: link/upload → ảnh AI → ảnh minh hoạ tự động.</div>
             </div>
           </div>

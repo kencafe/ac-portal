@@ -64,6 +64,36 @@ export const IMAGE_PROVIDERS: ImageProvider[] = [
     keyUrl: "https://console.x.ai",
     models: ["grok-2-image"],
   },
+  {
+    id: "together",
+    name: "Together.ai (FLUX)",
+    apiStyle: "openai-images",
+    keyless: false,
+    endpoint: "https://api.together.xyz/v1",
+    keyHint: "…",
+    keyUrl: "https://api.together.ai/settings/api-keys",
+    models: ["black-forest-labs/FLUX.1-schnell-Free", "black-forest-labs/FLUX.1-schnell", "black-forest-labs/FLUX.1-dev"],
+  },
+  {
+    id: "deepinfra",
+    name: "DeepInfra (FLUX/SD)",
+    apiStyle: "openai-images",
+    keyless: false,
+    endpoint: "https://api.deepinfra.com/v1/openai",
+    keyHint: "…",
+    keyUrl: "https://deepinfra.com/dash/api_keys",
+    models: ["black-forest-labs/FLUX-1-schnell", "black-forest-labs/FLUX-1-dev"],
+  },
+  {
+    id: "recraft",
+    name: "Recraft (vector/illustration)",
+    apiStyle: "openai-images",
+    keyless: false,
+    endpoint: "https://external.api.recraft.ai/v1",
+    keyHint: "…",
+    keyUrl: "https://www.recraft.ai/profile/api",
+    models: ["recraftv3", "recraftv2"],
+  },
 ];
 
 export function getImageProvider(id?: string): ImageProvider {

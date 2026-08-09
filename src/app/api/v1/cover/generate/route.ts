@@ -1,5 +1,6 @@
 import { getIdentity, hasRole, CAN_WRITE } from "@/lib/identity";
 import { makeCover, coverFor } from "@/lib/ai";
+import { imagePublicUrl } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -22,11 +23,15 @@ export async function POST(req: Request) {
   const raw = await makeCover(s, title, cat || "", tone || "#0072BC", true, (scene || "").trim(), nonce);
   const aiUsed = raw.startsWith("/api/cover-img/");
   const url = aiUsed ? `${raw}?v=${nonce}` : raw;
+  // Direct MinIO object link (so the editor sees where the image is stored).
+  const key = aiUsed ? raw.replace("/api/cover-img/", "") : "";
+  const minioUrl = key ? imagePublicUrl(key) : "";
   return Response.json({
     url,
     aiUsed,
+    minioUrl,
     note: aiUsed
-      ? "Đã tạo ảnh bằng AI (theo prompt)"
+      ? `Đã tạo ảnh bằng AI (theo prompt)${minioUrl ? ` · MinIO: ${minioUrl}` : ""}`
       : "AI ảnh chưa bật/không dùng được (kiểm tra Cấu hình API → Tạo ảnh bìa) — đã dùng ảnh minh hoạ thương hiệu.",
     fallback: coverFor(title, cat || "", tone || "#0072BC"),
   });

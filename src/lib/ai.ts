@@ -76,10 +76,13 @@ async function geminiImage(slug: string, title: string, cat: string, apiKey: str
 // OpenAI-images-compatible generation (OpenAI gpt-image-1/DALL·E, xAI Grok
 // image, and any gateway exposing POST {endpoint}/images/generations → b64_json).
 async function openaiImage(slug: string, title: string, cat: string, endpoint: string, apiKey: string, model: string, scene = ""): Promise<string> {
-  const size = /dall-e-3/.test(model) ? "1792x1024" : /dall-e-2/.test(model) ? "1024x1024" : "1536x1024";
-  const body: Record<string, unknown> = { model, prompt: coverPrompt(title, cat, scene), n: 1, size };
-  // gpt-image-1 always returns b64_json; DALL·E needs it requested explicitly.
-  if (!/^gpt-image/.test(model)) body.response_format = "b64_json";
+  const body: Record<string, unknown> = { model, prompt: coverPrompt(title, cat, scene), n: 1 };
+  // `size` only for genuine OpenAI models (other OpenAI-compatible providers —
+  // Together/DeepInfra/Recraft/xAI — reject OpenAI's size strings; use defaults).
+  if (/^gpt-image/.test(model)) body.size = "1536x1024";
+  else if (/dall-e-3/.test(model)) { body.size = "1792x1024"; body.response_format = "b64_json"; }
+  else if (/dall-e-2/.test(model)) { body.size = "1024x1024"; body.response_format = "b64_json"; }
+  else body.response_format = "b64_json"; // gpt-image-1 ignores this; others honor it
   const res = await fetch(`${endpoint.replace(/\/$/, "")}/images/generations`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
@@ -88,9 +91,17 @@ async function openaiImage(slug: string, title: string, cat: string, endpoint: s
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
   const d = await res.json();
-  const b64: string | undefined = d?.data?.[0]?.b64_json;
-  if (!b64) throw new Error("no image in response");
-  return saveCover(slug, Buffer.from(b64, "base64"), "png");
+  const item = d?.data?.[0] ?? {};
+  if (item.b64_json) return saveCover(slug, Buffer.from(item.b64_json, "base64"), "png");
+  if (item.url) {
+    // Provider returned a URL instead of base64 — fetch the bytes.
+    const r = await fetch(item.url, { signal: AbortSignal.timeout(60000) });
+    if (!r.ok) throw new Error(`image url HTTP ${r.status}`);
+    const ct = r.headers.get("content-type") || "";
+    const ext = ct.includes("jpeg") || ct.includes("jpg") ? "jpg" : ct.includes("webp") ? "webp" : "png";
+    return saveCover(slug, Buffer.from(await r.arrayBuffer()), ext);
+  }
+  throw new Error("no image in response");
 }
 
 function hashCode(s: string): number {
