@@ -1,0 +1,40 @@
+# Kargo PoC — isolated sandbox values (Helm chart oci://ghcr.io/akuity/kargo-charts/kargo v1.11.0)
+# Namespace: kargo (dedicated). NOT wired to any real flow / Argo CD / Tekton / workload.
+#
+# Install:
+#   helm upgrade --install kargo oci://ghcr.io/akuity/kargo-charts/kargo --version 1.11.0 \
+#     -n kargo --create-namespace -f k8s/kargo/values.yaml
+#
+# Credentials are NOT in this file. A pre-created Secret (kargo-api-admin) supplies the
+# admin password hash + token signing key; see api.secret.name below. The plaintext admin
+# password for the UI is stored in Secret kargo-admin-poc-credentials (key: password).
+
+# Cluster nodes cannot pull ghcr.io directly; the image was mirrored into the internal
+# registry via `oc -n kargo import-image kargo:v1.11.0 --from=ghcr.io/akuity/kargo:v1.11.0`.
+image:
+  repository: image-registry.openshift-image-registry.svc:5000/kargo/kargo
+  tag: v1.11.0
+  pullPolicy: IfNotPresent
+
+api:
+  enabled: true
+  # UI/API served over plain HTTP; TLS terminates at the OpenShift edge Route.
+  host: kargo.appcarrier.cloud
+  tls:
+    enabled: false
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: false
+  # Reference a pre-created Secret so the bcrypt hash + signing key are never
+  # rendered into Helm values or committed to git.
+  secret:
+    name: kargo-api-admin
+  adminAccount:
+    enabled: true
+  # No external identity provider for the PoC.
+  oidc:
+    enabled: false
+
+# Internal admission webhooks use cert-manager self-signed certs (cert-manager is
+# present cluster-wide). Left at chart defaults (selfSignedCert: true).
