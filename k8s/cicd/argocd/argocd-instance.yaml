@@ -1,0 +1,61 @@
+# Namespaced ArgoCD instance for the Model C CI hub (ac-portal-cicd), provisioned
+# by the cluster-wide Red Hat OpenShift GitOps operator. Same shape/version as the
+# previous ac-portal-dev instance. Server runs plain-HTTP; TLS terminates at the
+# OpenShift edge route (golden wildcard cert). Local admin login, manual-sync apps.
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+  namespace: ac-portal-cicd
+spec:
+  server:
+    insecure: true
+    replicas: 1
+    route:
+      enabled: false
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { cpu: 500m, memory: 256Mi }
+  repo:
+    replicas: 1
+    # Build/git egress on this cluster is slow; raise the exec timeout so the
+    # initial `git fetch` of the repo does not hit the 90s default and abort
+    # manifest generation (leaves apps stuck at sync=Unknown otherwise).
+    env:
+      - name: ARGOCD_EXEC_TIMEOUT
+        value: "300s"
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { cpu: 500m, memory: 512Mi }
+  controller:
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { cpu: 1000m, memory: 1Gi }
+  redis:
+    resources:
+      requests: { cpu: 50m, memory: 64Mi }
+      limits: { cpu: 250m, memory: 256Mi }
+  ha:
+    enabled: false
+  monitoring:
+    enabled: false
+  notifications:
+    enabled: false
+  prometheus:
+    enabled: false
+  rbac:
+    defaultPolicy: role:readonly
+    policy: |
+      g, admin, role:admin
+    scopes: '[groups]'
+  # This namespaced instance's controller has no cluster-wide read; skip building
+  # a cache for CRDs it isn't permitted to list (otherwise the cluster-cache sync
+  # aborts and every app is stuck at sync=Unknown). None of these are managed by
+  # the ac-portal overlays.
+  resourceExclusions: |
+    - apiGroups: ["tekton.dev"]
+      kinds: ["PipelineResource"]
+      clusters: ["*"]
+    - apiGroups: ["configuration.konghq.com"]
+      kinds: ["*"]
+      clusters: ["*"]

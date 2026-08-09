@@ -1,0 +1,74 @@
+# AppProject + 3 Applications for the ac-portal-cicd ArgoCD instance. These live in
+# the instance's own namespace (ac-portal-cicd) and deploy OUT to the three env
+# namespaces. MANUAL sync only, no auto-prune/selfHeal, so ArgoCD is a drift viewer
+# and never mutates a running site on its own.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: ac-portal
+  namespace: ac-portal-cicd
+spec:
+  description: ac-portal GitOps project (Model C CI hub)
+  sourceRepos:
+    - https://github.com/kencafe/ac-portal
+  destinations:
+    - { server: https://kubernetes.default.svc, namespace: ac-portal-dev }
+    - { server: https://kubernetes.default.svc, namespace: ac-portal-staging }
+    - { server: https://kubernetes.default.svc, namespace: ac-portal-prod }
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - { group: "*", kind: "*" }
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ac-portal-dev
+  namespace: ac-portal-cicd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: ac-portal
+  source:
+    repoURL: https://github.com/kencafe/ac-portal
+    targetRevision: dev
+    path: k8s/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ac-portal-dev
+  syncPolicy: {}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ac-portal-staging
+  namespace: ac-portal-cicd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: ac-portal
+  source:
+    repoURL: https://github.com/kencafe/ac-portal
+    targetRevision: staging
+    path: k8s/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ac-portal-staging
+  syncPolicy: {}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ac-portal-prod
+  namespace: ac-portal-cicd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: ac-portal
+  source:
+    repoURL: https://github.com/kencafe/ac-portal
+    targetRevision: main
+    path: k8s/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ac-portal-prod
+  syncPolicy: {}

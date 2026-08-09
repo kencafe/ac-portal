@@ -1,0 +1,49 @@
+# Grant the ac-portal-cicd ArgoCD application-controller `admin` in each target
+# environment so it can reconcile the ac-portal workload objects it watches.
+# Namespace-scoped RoleBindings (not ClusterRoleBinding) keep the blast radius to
+# these three namespaces. Distinct names so they don't collide with any leftover
+# bindings from the old ac-portal-dev instance during the migration.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-cicd-app-controller-admin
+  namespace: ac-portal-dev
+  labels: { app: argocd, component: cicd-gitops }
+subjects:
+  - kind: ServiceAccount
+    name: argocd-argocd-application-controller
+    namespace: ac-portal-cicd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-cicd-app-controller-admin
+  namespace: ac-portal-staging
+  labels: { app: argocd, component: cicd-gitops }
+subjects:
+  - kind: ServiceAccount
+    name: argocd-argocd-application-controller
+    namespace: ac-portal-cicd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-cicd-app-controller-admin
+  namespace: ac-portal-prod
+  labels: { app: argocd, component: cicd-gitops }
+subjects:
+  - kind: ServiceAccount
+    name: argocd-argocd-application-controller
+    namespace: ac-portal-cicd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
