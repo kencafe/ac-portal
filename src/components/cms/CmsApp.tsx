@@ -273,6 +273,24 @@ export default function CmsApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Paste an image from the clipboard anywhere in the editor → upload as cover.
+  // Only reacts to image clipboard items, so pasting text into fields is unaffected.
+  useEffect(() => {
+    if (view !== "editor") return;
+    const onPaste = (e: ClipboardEvent) => {
+      if (coverBusy) return;
+      for (const it of Array.from(e.clipboardData?.items || [])) {
+        if (it.type.startsWith("image/")) {
+          const f = it.getAsFile();
+          if (f) { e.preventDefault(); uploadCover(f); return; }
+        }
+      }
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, coverBusy]);
+
   function signOut() {
     window.location.href = me?.signOutUrl || "/oauth/sign_out?rd=%2F";
   }
@@ -1440,12 +1458,19 @@ export default function CmsApp() {
               <input style={{ ...input, marginBottom: 10 }} placeholder="https://…/anh.jpg" value={draft.coverUrl?.startsWith("http") ? draft.coverUrl : ""} onChange={(e) => setDraft({ ...draft, coverUrl: e.target.value })} disabled={coverBusy} />
               <input ref={coverFileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadCover(f); }} />
               <div
+                tabIndex={0}
                 onClick={() => !coverBusy && coverFileRef.current?.click()}
                 onDragOver={(e) => { e.preventDefault(); }}
                 onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f && !coverBusy) uploadCover(f); }}
-                style={{ height: 90, border: `1px dashed ${COLORS.border}`, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", color: COLORS.ink3, fontSize: 12.5, padding: 12, cursor: coverBusy ? "default" : "pointer", marginBottom: 10 }}
+                onPaste={(e) => {
+                  if (coverBusy) return;
+                  for (const it of Array.from(e.clipboardData?.items || [])) {
+                    if (it.type.startsWith("image/")) { const f = it.getAsFile(); if (f) { e.preventDefault(); uploadCover(f); return; } }
+                  }
+                }}
+                style={{ minHeight: 90, border: `1px dashed ${COLORS.border}`, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", color: COLORS.ink3, fontSize: 12.5, padding: 12, cursor: coverBusy ? "default" : "pointer", marginBottom: 10, outline: "none" }}
               >
-                {coverBusy ? "⏳ Đang xử lý ảnh…" : "📤 Kéo ảnh vào đây, hoặc bấm để chọn ảnh từ máy"}
+                {coverBusy ? "⏳ Đang xử lý ảnh…" : "📋 Dán ảnh (Ctrl/Cmd+V) · kéo-thả vào đây · hoặc bấm để chọn ảnh từ máy"}
               </div>
               <label style={{ ...label, marginBottom: 4 }}>Prompt tạo ảnh AI <span style={{ color: COLORS.ink3, fontWeight: 400 }}>(để trống → AI tự suy từ tiêu đề/nội dung)</span></label>
               <textarea
