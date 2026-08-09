@@ -279,6 +279,10 @@ export default function CmsApp() {
     if (view !== "editor") return;
     const onPaste = (e: ClipboardEvent) => {
       if (coverBusy) return;
+      // If the paste happens inside a content-image block input, let that block
+      // handle it (upload into the block), not the cover.
+      const el = e.target as HTMLElement | null;
+      if (el && typeof el.closest === "function" && el.closest("[data-blockimg]")) return;
       for (const it of Array.from(e.clipboardData?.items || [])) {
         if (it.type.startsWith("image/")) {
           const f = it.getAsFile();
@@ -676,17 +680,22 @@ export default function CmsApp() {
     blockImgIdxRef.current = i;
     blockImgFileRef.current?.click();
   }
-  async function onBlockImgFile(file: File) {
-    const i = blockImgIdxRef.current; if (i < 0) return;
+  // Upload a file into a specific content-image block (shared by file-picker + paste).
+  async function uploadBlockImage(i: number, file: File) {
+    if (i < 0) return;
     setBlockImgBusy(i);
     try {
       const fd = new FormData(); fd.append("file", file); fd.append("slug", `${draft.slug || "post"}-b${i}`);
       const res = await fetch("/api/v1/cover/upload", { method: "POST", body: fd });
       const d = await res.json();
-      if (res.ok) setBlockVal(i, d.url); else alert(d.error || "Upload lỗi");
+      if (res.ok) { setBlockVal(i, d.url); if (d.minioUrl) setCoverMinioUrl(d.minioUrl); } else alert(d.error || "Upload lỗi");
     } catch (e) { alert((e as Error).message); }
-    if (blockImgFileRef.current) blockImgFileRef.current.value = "";
     setBlockImgBusy(null);
+  }
+  async function onBlockImgFile(file: File) {
+    const i = blockImgIdxRef.current; if (i < 0) return;
+    await uploadBlockImage(i, file);
+    if (blockImgFileRef.current) blockImgFileRef.current.value = "";
   }
   async function genBlockImg(i: number) {
     // Prompt-driven: editor describes the image to generate (prefilled from the
@@ -1400,7 +1409,19 @@ export default function CmsApp() {
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={b[1].startsWith("http") || b[1].startsWith("/") ? b[1] : `/${b[1]}`} alt="" style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 8, marginBottom: 8 }} />
                           )}
-                          <input value={b[1]} onChange={(e) => setBlockVal(i, e.target.value)} placeholder="Dán link ảnh https://…" style={{ ...input, marginBottom: 8 }} disabled={blockImgBusy === i} />
+                          <input
+                            value={b[1]}
+                            onChange={(e) => setBlockVal(i, e.target.value)}
+                            data-blockimg={i}
+                            onPaste={(e) => {
+                              for (const it of Array.from(e.clipboardData?.items || [])) {
+                                if (it.type.startsWith("image/")) { const f = it.getAsFile(); if (f) { e.preventDefault(); e.stopPropagation(); uploadBlockImage(i, f); return; } }
+                              }
+                            }}
+                            placeholder="Dán link ảnh, hoặc dán ảnh (Ctrl/Cmd+V)…"
+                            style={{ ...input, marginBottom: 8 }}
+                            disabled={blockImgBusy === i}
+                          />
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                             <button type="button" onClick={() => blockImgFile(i)} disabled={blockImgBusy === i} style={btnSm}>📤 Upload</button>
                             <button type="button" onClick={() => genBlockImg(i)} disabled={blockImgBusy === i} style={{ ...btnSm, color: COLORS.brandBlue, borderColor: "#B3D5EA" }}>{blockImgBusy === i ? "⏳…" : "✨ Tạo ảnh AI"}</button>
