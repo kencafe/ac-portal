@@ -31,9 +31,9 @@ spec:
           - name: shared
             volumeClaimTemplate:
               spec:
-                accessModes: ["ReadWriteOnce"]
-                resources: { requests: { storage: 1Gi } }
-                storageClassName: ac-bronze-single
+                accessModes: ["ReadWriteMany"]
+                resources: { requests: { storage: 2Gi } }
+                storageClassName: ac-bronze-share
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerTemplate
@@ -58,9 +58,9 @@ spec:
           - name: shared
             volumeClaimTemplate:
               spec:
-                accessModes: ["ReadWriteOnce"]
-                resources: { requests: { storage: 1Gi } }
-                storageClassName: ac-bronze-single
+                accessModes: ["ReadWriteMany"]
+                resources: { requests: { storage: 2Gi } }
+                storageClassName: ac-bronze-share
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerTemplate
@@ -85,9 +85,9 @@ spec:
           - name: shared
             volumeClaimTemplate:
               spec:
-                accessModes: ["ReadWriteOnce"]
-                resources: { requests: { storage: 1Gi } }
-                storageClassName: ac-bronze-single
+                accessModes: ["ReadWriteMany"]
+                resources: { requests: { storage: 2Gi } }
+                storageClassName: ac-bronze-share
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding

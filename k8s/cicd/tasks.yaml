@@ -224,7 +224,7 @@ spec:
             "$DD_URL/api/v2/import-scan/" -o /dev/null -w "DD import [$typ] HTTP %{http_code}\n" || true
         }
         imp "Dependency Check Scan" reports/dependency-check-report.json
-        imp "Semgrep JSON Report"   reports/semgrep.sarif
+        imp "SARIF"                 reports/semgrep.sarif
         imp "Trivy Scan"            reports/trivy-image.json
         imp "Gitleaks Scan"         reports/gitleaks.json
 ---
