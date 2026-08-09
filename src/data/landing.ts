@@ -116,12 +116,17 @@ export const SERVICE_GLYPHS: Record<string, string> = {
 export const HERO = {
   tag: "FPT-IS Next Gen Service",
   h1: "Đối tác Cloud & AI end-to-end cho doanh nghiệp",
+  h1En: "Your end-to-end Cloud & AI partner",
   h1sub: "Your end-to-end Cloud & AI partner",
   lead:
     "Tư vấn, triển khai, vận hành và tối ưu trên đa nền tảng cloud — một đầu mối chịu trách nhiệm suốt vòng đời hệ thống, với đội ngũ kỹ sư chứng chỉ quốc tế.",
+  leadEn:
+    "Consulting, implementation, operations and optimization across multi-cloud — a single point of accountability across the system lifecycle, delivered by internationally-certified engineers.",
   buttons: {
     primary: "Liên hệ tư vấn", // -> #contact
     secondary: "Xem các dịch vụ", // -> #services
+    primaryEn: "Contact us",
+    secondaryEn: "View services",
   },
   // Decorative navy panel next to the hero copy
   panel: {
@@ -132,6 +137,11 @@ export const HERO = {
       "Nền tảng = tàu sân bay",
       "App & microservice = phi đội",
       "Bảo mật = vành đai",
+    ],
+    chipsEn: [
+      "Platform = aircraft carrier",
+      "Apps & microservices = squadrons",
+      "Security = the perimeter",
     ],
   },
   // NOTE: no separate EN copy set — EN toggle does not translate body text.
@@ -376,6 +386,7 @@ export const CASES = [
       { id: "logo-techcombank", src: "assets/logo-techcombank.png", placeholderHint: "Techcombank — kéo logo vào" },
       { id: "logo-vib", src: "assets/logo-vib.png", placeholderHint: "VIB — kéo logo vào" },
       { id: "logo-ocb", src: "assets/logo-ocb.png", placeholderHint: "OCB — kéo logo vào" },
+      { id: "logo-ncb", src: "assets/logo-ncb.png", placeholderHint: "NCB Bank — kéo logo vào" },
     ],
   },
   {

@@ -1,9 +1,20 @@
+"use client";
+
 import Image from "next/image";
 import { HERO, STATS } from "@/data/landing";
 import { COLORS, GRAD, CONTENT_MAX } from "@/lib/tokens";
 import { btnPrimary, btnDefault } from "@/lib/ui";
+import { useLang } from "@/components/shared/LangContext";
 
 export default function Hero() {
+  const { lang } = useLang();
+  const en = lang === "en";
+  const h1 = en ? HERO.h1En : HERO.h1;
+  const h1sub = en ? HERO.h1 : HERO.h1sub;
+  const lead = en ? HERO.leadEn : HERO.lead;
+  const btnPrimaryLabel = en ? HERO.buttons.primaryEn : HERO.buttons.primary;
+  const btnSecondaryLabel = en ? HERO.buttons.secondaryEn : HERO.buttons.secondary;
+  const chips = en ? HERO.panel.chipsEn : HERO.panel.chips;
   return (
     <section id="top" style={{ background: GRAD.hero, padding: "64px 24px 40px" }}>
       <div style={{ maxWidth: CONTENT_MAX, margin: "0 auto" }}>
@@ -43,7 +54,7 @@ export default function Hero() {
                 color: COLORS.ink,
               }}
             >
-              {HERO.h1}
+              {h1}
             </h1>
             <p
               style={{
@@ -53,17 +64,17 @@ export default function Hero() {
                 margin: "10px 0 0",
               }}
             >
-              {HERO.h1sub}
+              {h1sub}
             </p>
             <p style={{ fontSize: 16, lineHeight: 1.72, color: COLORS.ink2, maxWidth: 660, margin: "20px 0 0" }}>
-              {HERO.lead}
+              {lead}
             </p>
             <div style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
               <a href="#contact" style={btnPrimary}>
-                {HERO.buttons.primary}
+                {btnPrimaryLabel}
               </a>
               <a href="#services" style={btnDefault}>
-                {HERO.buttons.secondary}
+                {btnSecondaryLabel}
               </a>
             </div>
           </div>
@@ -100,7 +111,7 @@ export default function Hero() {
               {HERO.panel.tag}
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-              {HERO.panel.chips.map((chip) => (
+              {chips.map((chip) => (
                 <span
                   key={chip}
                   style={{

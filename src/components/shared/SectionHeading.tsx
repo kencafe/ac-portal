@@ -1,8 +1,13 @@
+"use client";
+
 import { ReactNode } from "react";
 import { ACCENTS, Accent } from "@/lib/tokens";
 import { h2, h2Sub } from "@/lib/ui";
+import { useLang } from "./LangContext";
 
-/** Section heading: 10×10 colour square + VN title + EN sub-line. */
+/** Section heading: colour square + title in the active language + sub-line in
+ *  the other language. VN is primary by default; EN becomes primary when the
+ *  language toggle is set to English. */
 export default function SectionHeading({
   vi,
   en,
@@ -14,6 +19,9 @@ export default function SectionHeading({
   mark?: Accent;
   right?: ReactNode;
 }) {
+  const { lang } = useLang();
+  const primary = lang === "en" ? en || vi : vi;
+  const sub = lang === "en" ? vi : en;
   return (
     <div style={{ marginBottom: 28 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
@@ -27,11 +35,11 @@ export default function SectionHeading({
               flexShrink: 0,
             }}
           />
-          <h2 style={h2}>{vi}</h2>
+          <h2 style={h2}>{primary}</h2>
         </div>
         {right && <div style={{ marginLeft: "auto" }}>{right}</div>}
       </div>
-      <p style={h2Sub}>{en}</p>
+      <p style={h2Sub}>{sub}</p>
     </div>
   );
 }
