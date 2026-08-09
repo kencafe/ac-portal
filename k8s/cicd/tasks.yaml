@@ -89,8 +89,10 @@ spec:
         #!/bin/sh
         mkdir -p reports
         echo "== Semgrep SAST =="
-        semgrep scan --config auto --metrics off --error=false \
-          --sarif -o reports/semgrep.sarif . || echo "semgrep skipped (offline rules)"
+        # NOTE: --config auto fetches rules from the Semgrep registry (needs egress);
+        # offline it produces no findings. --error removed (it is a flag, not key=val).
+        semgrep scan --config auto --metrics off \
+          --sarif -o reports/semgrep.sarif . || echo "semgrep skipped (offline rules/egress)"
 ---
 apiVersion: tekton.dev/v1
 kind: Task
