@@ -1,0 +1,10 @@
+# Neutral CI/CD hub namespace (Model C). Hosts the Tekton pipeline, tasks,
+# triggers and the build ImageStream/BuildConfig. Deploys OUT to
+# ac-portal-dev / -staging / -prod via cross-namespace RBAC (see rbac.yaml).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ac-portal-cicd
+  labels:
+    app.kubernetes.io/part-of: ac-portal
+    ac-portal.role: cicd-hub

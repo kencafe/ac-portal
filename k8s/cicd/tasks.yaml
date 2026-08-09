@@ -1,0 +1,253 @@
+# DevSecOps security tasks — OWASP DevSecOps Guideline aligned.
+#
+# Toolchain:
+#   secret scan  → Gitleaks
+#   SCA          → OWASP Dependency-Check      (owasp/dependency-check)
+#   SAST         → Semgrep
+#   image scan   → Trivy (image only)
+#   DAST         → OWASP ZAP (staging)
+#   compliance   → kube-linter
+#   aggregation  → DefectDojo (import-scan)
+#
+# Images are mirrored into the internal registry (see BOOTSTRAP.md); nodes can't
+# pull Docker Hub / ghcr directly. Scans are advisory (`onError: continue`) and
+# write reports into <workspace>/reports for the defectdojo-upload task.
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: gitleaks-scan
+  namespace: ac-portal-cicd
+spec:
+  description: Secret/leak scan (pre-commit stage).
+  workspaces:
+    - name: source
+  steps:
+    - name: gitleaks
+      onError: continue
+      image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/gitleaks:v8.18.4
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/sh
+        mkdir -p reports
+        echo "== Gitleaks secret scan =="
+        gitleaks detect --source=. --redact -v --exit-code=0 \
+          --report-format=json --report-path=reports/gitleaks.json || true
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: dependency-check-scan
+  namespace: ac-portal-cicd
+spec:
+  description: SCA — OWASP Dependency-Check against the dependency manifests.
+  workspaces:
+    - name: source
+  steps:
+    - name: dependency-check
+      onError: continue
+      image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/dependency-check:latest
+      workingDir: $(workspaces.source.path)
+      computeResources:
+        requests: { memory: 1Gi, cpu: 500m }
+        limits: { memory: 4Gi, cpu: "2" }
+      script: |
+        #!/bin/sh
+        mkdir -p reports .dc-data
+        echo "== OWASP Dependency-Check (SCA) =="
+        # NVD update needs egress; if unavailable the scan still runs (advisory).
+        /usr/share/dependency-check/bin/dependency-check.sh \
+          --scan . \
+          --project "ac-portal" \
+          --format JSON --format HTML \
+          --out reports \
+          --data .dc-data \
+          --enableExperimental \
+          --disableAssembly \
+          --nvdApiDelay 6000 || echo "dependency-check finished with warnings (offline NVD?)"
+        ls -la reports || true
+        exit 0
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: semgrep-sast
+  namespace: ac-portal-cicd
+spec:
+  description: Static application security testing.
+  workspaces:
+    - name: source
+  steps:
+    - name: semgrep
+      onError: continue
+      image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/semgrep:latest
+      workingDir: $(workspaces.source.path)
+      computeResources:
+        requests: { memory: 512Mi, cpu: 250m }
+        limits: { memory: 2Gi, cpu: "1" }
+      script: |
+        #!/bin/sh
+        mkdir -p reports
+        echo "== Semgrep SAST =="
+        semgrep scan --config auto --metrics off --error=false \
+          --sarif -o reports/semgrep.sarif . || echo "semgrep skipped (offline rules)"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: trivy-image-scan
+  namespace: ac-portal-cicd
+spec:
+  description: Container image vulnerability scan (Trivy — image only).
+  params:
+    - name: IMAGE
+      type: string
+  workspaces:
+    - name: source
+  steps:
+    - name: trivy-image
+      onError: continue
+      image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/trivy:0.53.0
+      workingDir: $(workspaces.source.path)
+      computeResources:
+        requests: { memory: 512Mi, cpu: 250m }
+        limits: { memory: 2Gi, cpu: "1" }
+      script: |
+        #!/bin/sh
+        mkdir -p reports
+        echo "== Trivy image scan: $(params.IMAGE) =="
+        TOKEN_FILE=/var/run/secrets/kubernetes.io/serviceaccount/token
+        if [ -f "$TOKEN_FILE" ]; then
+          export TRIVY_USERNAME="serviceaccount"
+          export TRIVY_PASSWORD="$(cat $TOKEN_FILE)"
+        fi
+        trivy image --severity HIGH,CRITICAL --no-progress --exit-code 0 --insecure \
+          --format json -o reports/trivy-image.json $(params.IMAGE) || echo "image scan skipped"
+        trivy image --severity HIGH,CRITICAL --no-progress --exit-code 0 --insecure $(params.IMAGE) || true
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kube-linter-scan
+  namespace: ac-portal-cicd
+spec:
+  description: Kubernetes manifest compliance auditing.
+  workspaces:
+    - name: source
+  steps:
+    - name: kube-linter
+      onError: continue
+      image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/kube-linter:latest
+      workingDir: $(workspaces.source.path)
+      command: ["/kube-linter"]
+      args: ["lint", "k8s/"]
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: zap-dast
+  namespace: ac-portal-cicd
+spec:
+  description: OWASP ZAP baseline DAST + push to DefectDojo.
+  params:
+    - name: TARGET_URL
+      type: string
+    - name: ENGAGEMENT
+      type: string
+      default: dast
+  workspaces:
+    - name: source
+  steps:
+    - name: zap-baseline
+      onError: continue
+      image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/zaproxy:stable
+      workingDir: $(workspaces.source.path)
+      computeResources:
+        requests: { memory: 512Mi, cpu: 250m }
+        limits: { memory: 2Gi, cpu: "1" }
+      env:
+        - name: DD_URL
+          valueFrom: { secretKeyRef: { name: ns-web-defectdojo, key: DD_URL } }
+        - name: DD_HOST
+          valueFrom: { secretKeyRef: { name: ns-web-defectdojo, key: DD_HOST } }
+        - name: DD_TOKEN
+          valueFrom: { secretKeyRef: { name: ns-web-defectdojo, key: DD_TOKEN } }
+      script: |
+        #!/bin/bash
+        mkdir -p reports
+        echo "== OWASP ZAP baseline DAST: $(params.TARGET_URL) =="
+        zap-baseline.py -t $(params.TARGET_URL) -I -m 2 -J reports/zap.json || true
+        if [ -s reports/zap.json ]; then
+          echo "Uploading ZAP report to DefectDojo…"
+          curl -sk -m 60 -H "Host: $DD_HOST" -H "Authorization: Token $DD_TOKEN" -H "Accept: application/json" \
+            -F "scan_type=ZAP Scan" -F "file=@reports/zap.json" \
+            -F "auto_create_context=true" -F "product_name=AC-Portal" -F "product_type_name=Research and Development" \
+            -F "engagement_name=$(params.ENGAGEMENT)" -F "active=true" -F "verified=false" \
+            "$DD_URL/api/v2/import-scan/" -o /dev/null -w "DD ZAP import HTTP %{http_code}\n" || true
+        fi
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: defectdojo-upload
+  namespace: ac-portal-cicd
+spec:
+  description: Import SAST/SCA/image scan reports into DefectDojo.
+  params:
+    - name: ENGAGEMENT
+      type: string
+  workspaces:
+    - name: source
+  steps:
+    - name: upload
+      onError: continue
+      image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/trivy:0.53.0
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: DD_URL
+          valueFrom: { secretKeyRef: { name: ns-web-defectdojo, key: DD_URL } }
+        - name: DD_HOST
+          valueFrom: { secretKeyRef: { name: ns-web-defectdojo, key: DD_HOST } }
+        - name: DD_TOKEN
+          valueFrom: { secretKeyRef: { name: ns-web-defectdojo, key: DD_TOKEN } }
+      script: |
+        #!/bin/sh
+        # trivy image ships curl-less; use wget? Use the openshift cli image instead would lack curl too.
+        # trivy alpine base has wget; but DD import needs multipart → use curl if present, else apk add.
+        command -v curl >/dev/null 2>&1 || (apk add --no-cache curl >/dev/null 2>&1 || true)
+        imp() {
+          typ="$1"; f="$2"; [ -s "$f" ] || { echo "skip $typ ($f missing)"; return; }
+          curl -sk -m 60 -H "Host: $DD_HOST" -H "Authorization: Token $DD_TOKEN" -H "Accept: application/json" \
+            -F "scan_type=$typ" -F "file=@$f" \
+            -F "auto_create_context=true" -F "product_name=AC-Portal" -F "product_type_name=Research and Development" \
+            -F "engagement_name=$(params.ENGAGEMENT)" -F "active=true" -F "verified=false" \
+            "$DD_URL/api/v2/import-scan/" -o /dev/null -w "DD import [$typ] HTTP %{http_code}\n" || true
+        }
+        imp "Dependency Check Scan" reports/dependency-check-report.json
+        imp "Semgrep JSON Report"   reports/semgrep.sarif
+        imp "Trivy Scan"            reports/trivy-image.json
+        imp "Gitleaks Scan"         reports/gitleaks.json
+---
+# oc runner with enough memory for `oc apply -k` (kustomize) + start-build.
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: oc-run
+  namespace: ac-portal-cicd
+spec:
+  params:
+    - name: SCRIPT
+      type: string
+  workspaces:
+    - name: manifest-dir
+  steps:
+    - name: oc
+      image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+      workingDir: $(workspaces.manifest-dir.path)
+      computeResources:
+        requests: { memory: 512Mi, cpu: 250m }
+        limits: { memory: 1536Mi, cpu: "1" }
+      script: |
+        #!/usr/bin/env bash
+        set -eo pipefail
+        $(params.SCRIPT)

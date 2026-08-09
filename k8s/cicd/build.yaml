@@ -1,0 +1,41 @@
+# Build-once artefacts live in the CI hub. The pipeline builds ac-portal:latest
+# HERE (binary Docker build), then promotes it to each env by `oc tag`.
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: ac-portal
+  namespace: ac-portal-cicd
+  labels:
+    app: ac-portal
+    component: cicd
+spec:
+  lookupPolicy:
+    local: true
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: ac-portal
+  namespace: ac-portal-cicd
+  labels:
+    app: ac-portal
+    component: cicd
+spec:
+  # Binary source streamed by the pipeline via `oc start-build --from-dir`.
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: ac-portal:latest
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "500m"
+    limits:
+      memory: "8Gi"
+      cpu: "2"

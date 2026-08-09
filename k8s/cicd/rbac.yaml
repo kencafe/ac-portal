@@ -1,0 +1,198 @@
+# RBAC for the Model C CI hub (ac-portal-cicd).
+#
+#  * ns-web-pipeline  : runs every PipelineRun. Builds in ac-portal-cicd and
+#                       deploys OUT to ac-portal-{dev,staging,prod}.
+#  * ns-web-triggers  : the EventListener SA (creates PipelineRuns from webhooks).
+#
+# Least privilege: cross-namespace grants use the built-in `edit` ClusterRole
+# (no cluster-admin, no cluster-scoped write). Image pull is granted via the
+# built-in `system:image-puller` ClusterRole scoped per namespace.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ns-web-pipeline
+  namespace: ac-portal-cicd
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ns-web-triggers
+  namespace: ac-portal-cicd
+---
+# ---- local (ac-portal-cicd) rights for the pipeline SA ----
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-pipeline-edit
+  namespace: ac-portal-cicd
+subjects:
+  - kind: ServiceAccount
+    name: ns-web-pipeline
+    namespace: ac-portal-cicd
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io
+---
+# Push the freshly built image into the ac-portal-cicd internal registry.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-pipeline-imagebuilder
+  namespace: ac-portal-cicd
+subjects:
+  - kind: ServiceAccount
+    name: ns-web-pipeline
+    namespace: ac-portal-cicd
+roleRef:
+  kind: ClusterRole
+  name: system:image-builder
+  apiGroup: rbac.authorization.k8s.io
+---
+# pipelines-scc so the shared workspace PVC (Ceph RBD) gets an fsGroup and is
+# group-writable — otherwise git-clone hits Permission denied creating .git.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-pipeline-scc
+  namespace: ac-portal-cicd
+subjects:
+  - kind: ServiceAccount
+    name: ns-web-pipeline
+    namespace: ac-portal-cicd
+roleRef:
+  kind: ClusterRole
+  name: system:openshift:scc:pipelines-scc
+  apiGroup: rbac.authorization.k8s.io
+---
+# ---- cross-namespace deploy rights (apply -k, oc tag, set image, rollout,
+#      patch route, read ns-web-tls) in each target env ----
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-cicd-pipeline-edit
+  namespace: ac-portal-dev
+subjects:
+  - kind: ServiceAccount
+    name: ns-web-pipeline
+    namespace: ac-portal-cicd
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-cicd-pipeline-edit
+  namespace: ac-portal-staging
+subjects:
+  - kind: ServiceAccount
+    name: ns-web-pipeline
+    namespace: ac-portal-cicd
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-cicd-pipeline-edit
+  namespace: ac-portal-prod
+subjects:
+  - kind: ServiceAccount
+    name: ns-web-pipeline
+    namespace: ac-portal-cicd
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io
+---
+# ---- image pull: CI hub pulls the mirrored security-tool images from
+#      ac-portal-dev's registry (gitleaks/trivy/semgrep/…) ----
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-cicd-puller-tools
+  namespace: ac-portal-dev
+subjects:
+  - kind: Group
+    name: system:serviceaccounts:ac-portal-cicd
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: system:image-puller
+  apiGroup: rbac.authorization.k8s.io
+---
+# ---- image pull: each env pulls the PROMOTED app image from the CI hub
+#      registry (deployments reference the ac-portal-cicd digest) ----
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-env-puller-from-cicd-dev
+  namespace: ac-portal-cicd
+subjects:
+  - kind: Group
+    name: system:serviceaccounts:ac-portal-dev
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: system:image-puller
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-env-puller-from-cicd-staging
+  namespace: ac-portal-cicd
+subjects:
+  - kind: Group
+    name: system:serviceaccounts:ac-portal-staging
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: system:image-puller
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-env-puller-from-cicd-prod
+  namespace: ac-portal-cicd
+subjects:
+  - kind: Group
+    name: system:serviceaccounts:ac-portal-prod
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: system:image-puller
+  apiGroup: rbac.authorization.k8s.io
+---
+# ---- Triggers SA (EventListener creates PipelineRuns) ----
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-web-triggers-binding
+  namespace: ac-portal-cicd
+subjects:
+  - kind: ServiceAccount
+    name: ns-web-triggers
+    namespace: ac-portal-cicd
+roleRef:
+  kind: ClusterRole
+  name: tekton-triggers-eventlistener-roles
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ns-web-cicd-triggers-clusterinterceptors
+subjects:
+  - kind: ServiceAccount
+    name: ns-web-triggers
+    namespace: ac-portal-cicd
+roleRef:
+  kind: ClusterRole
+  name: tekton-triggers-eventlistener-clusterroles
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,134 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: ns-web-cicd
+  namespace: ac-portal-cicd
+spec:
+  description: >
+    DevSecOps CI/CD for AC-Portal (Model C — neutral CI hub ac-portal-cicd).
+    pre-commit (gitleaks) → SCA (Dependency-Check) + SAST (Semgrep) + compliance
+    (kube-linter) → BUILD ONCE in ac-portal-cicd → Trivy image scan → DefectDojo
+    import → PROMOTE (oc tag) + deploy into the target env → DAST (staging).
+  params:
+    - { name: git-url, type: string }
+    - { name: git-revision, type: string, default: dev }
+    - { name: env, type: string }
+    - { name: target-namespace, type: string }
+    - { name: deploy-host, type: string }
+    - { name: run-dast, type: string, default: "false" }
+  workspaces:
+    - name: shared
+  tasks:
+    - name: fetch
+      taskRef: { kind: ClusterTask, name: git-clone }
+      params:
+        - { name: url, value: $(params.git-url) }
+        - { name: revision, value: $(params.git-revision) }
+        - { name: deleteExisting, value: "true" }
+      workspaces:
+        - { name: output, workspace: shared }
+
+    # ---- pre-commit: secret scan ----
+    - name: secret-scan
+      runAfter: [fetch]
+      taskRef: { kind: Task, name: gitleaks-scan }
+      workspaces: [{ name: source, workspace: shared }]
+
+    # ---- vulnerability scanning: SCA (Dependency-Check) + SAST (Semgrep) ----
+    - name: sca
+      runAfter: [fetch]
+      timeout: "20m"
+      taskRef: { kind: Task, name: dependency-check-scan }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: sast
+      runAfter: [fetch]
+      timeout: "15m"
+      taskRef: { kind: Task, name: semgrep-sast }
+      workspaces: [{ name: source, workspace: shared }]
+
+    # ---- compliance audit (parallel) ----
+    - name: compliance
+      runAfter: [fetch]
+      taskRef: { kind: Task, name: kube-linter-scan }
+      workspaces: [{ name: source, workspace: shared }]
+
+    # ---- build image ONCE in the CI hub (gated on the fast secret scan) ----
+    - name: build
+      runAfter: [secret-scan]
+      taskRef: { kind: Task, name: oc-run }
+      params:
+        - name: SCRIPT
+          value: |
+            set -e
+            # Apply the env's manifests (routes/deploy/svc/cronjob/…) to the target ns.
+            oc apply -k k8s/overlays/$(params.env)
+            echo "Building image ONCE in ac-portal-cicd…"
+            oc -n ac-portal-cicd start-build ac-portal --from-dir=. --follow --wait
+      workspaces: [{ name: manifest-dir, workspace: shared }]
+
+    # ---- container image scan (Trivy — the CI-hub image) ----
+    - name: image-scan
+      runAfter: [build]
+      taskRef: { kind: Task, name: trivy-image-scan }
+      params:
+        - { name: IMAGE, value: "image-registry.openshift-image-registry.svc:5000/ac-portal-cicd/ac-portal:latest" }
+      workspaces: [{ name: source, workspace: shared }]
+
+    # ---- aggregate findings into DefectDojo ----
+    - name: defectdojo
+      runAfter: [image-scan, sca, sast, secret-scan]
+      taskRef: { kind: Task, name: defectdojo-upload }
+      params:
+        - { name: ENGAGEMENT, value: "ci-$(params.env)" }
+      workspaces: [{ name: source, workspace: shared }]
+
+    # ---- PROMOTE the built image into the target env + roll out ----
+    - name: deploy
+      runAfter: [image-scan]
+      taskRef: { kind: Task, name: oc-run }
+      params:
+        - name: SCRIPT
+          value: |
+            set -e
+            NS=$(params.target-namespace)
+            # Promote (tag) the CI-hub image into the target env's ImageStream so the
+            # env keeps a provenance record of exactly what was deployed.
+            oc tag ac-portal-cicd/ac-portal:latest "$NS/ac-portal:latest"
+            # Pin the exact digest from the CI hub so the rollout is deterministic
+            # and the env pulls the promoted image directly from the hub registry.
+            REF=$(oc -n ac-portal-cicd get istag ac-portal:latest -o jsonpath='{.image.dockerImageReference}')
+            echo "Promoting $REF -> $NS"
+            oc -n "$NS" set image deploy/ac-portal ac-portal="$REF"
+            oc -n "$NS" rollout status deploy/ac-portal --timeout=240s
+            # Re-apply the appcarrier.cloud TLS cert (Secret ns-web-tls) since
+            # `oc apply -k` resets inline route certs. Key is never in git.
+            # Retry + verify admitted to avoid a silent patch race leaving a stale key.
+            if oc -n "$NS" get secret ns-web-tls >/dev/null 2>&1; then
+              CRT=$(oc -n "$NS" get secret ns-web-tls -o go-template='{{index .data "tls.crt"}}' | base64 -d | sed ':a;N;$!ba;s/\n/\\n/g')
+              KEY=$(oc -n "$NS" get secret ns-web-tls -o go-template='{{index .data "tls.key"}}' | base64 -d | sed ':a;N;$!ba;s/\n/\\n/g')
+              for r in ac-portal ac-portal-cms ac-portal-blog; do
+                oc -n "$NS" get route "$r" >/dev/null 2>&1 || continue
+                for attempt in 1 2 3; do
+                  oc -n "$NS" patch route "$r" --type=merge \
+                    -p "{\"spec\":{\"tls\":{\"termination\":\"edge\",\"insecureEdgeTerminationPolicy\":\"Redirect\",\"certificate\":\"$CRT\",\"key\":\"$KEY\"}}}" || true
+                  sleep 2
+                  st=$(oc -n "$NS" get route "$r" -o jsonpath='{.status.ingress[0].conditions[0].status}' 2>/dev/null)
+                  if [ "$st" = "True" ]; then echo "cert ok: $r"; break; fi
+                  echo "retry cert patch: $r (attempt $attempt, admitted=$st)"
+                done
+              done
+            fi
+      workspaces: [{ name: manifest-dir, workspace: shared }]
+
+    # ---- DAST against the running site → DefectDojo (staging only) ----
+    - name: dast
+      runAfter: [deploy]
+      when:
+        - input: $(params.run-dast)
+          operator: in
+          values: ["true"]
+      taskRef: { kind: Task, name: zap-dast }
+      params:
+        - { name: TARGET_URL, value: "https://$(params.deploy-host)" }
+        - { name: ENGAGEMENT, value: "dast-$(params.env)" }
+      workspaces: [{ name: source, workspace: shared }]
