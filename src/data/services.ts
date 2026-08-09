@@ -461,15 +461,16 @@ export const SERVICES: Record<string, ServiceDetail> = {
     serviceCode: "NS-EOS",
     accent: "blue",
     accentHex: BLUE,
-    name: "Outsourcing kỹ sư",
+    name: "Thuê kỹ sư theo vị trí",
     nameEn: "Engineer outsourcing & staff augmentation",
     group: "Talent & Delivery",
     positioning:
-      "Cung cấp kỹ sư Cloud, DevOps, SRE, Platform và Security theo hình thức thuê ngoài — bổ sung năng lực cho đội ngũ khách hàng theo dự án hoặc dài hạn. Kỹ sư được tuyển chọn, đào tạo theo chuẩn nội bộ và làm việc trực tiếp trong quy trình của khách hàng.",
+      "Cung cấp kỹ sư theo từng vị trí — Cloud Engineer, DevOps Engineer, Platform Engineer, Security Engineer — theo hình thức thuê ngoài, bổ sung năng lực cho đội ngũ khách hàng theo dự án hoặc dài hạn. Kỹ sư được tuyển chọn, đào tạo theo chuẩn nội bộ và làm việc trực tiếp trong quy trình của khách hàng.",
     specs: [
       { k: "Mã dịch vụ", v: "NS-EOS" },
       { k: "Nhóm dịch vụ", v: "Talent & Delivery — bổ sung năng lực kỹ thuật" },
-      { k: "Phạm vi", v: "Cung ứng kỹ sư DevOps/SRE/Cloud/Platform/Security theo cấp độ Junior→Expert" },
+      { k: "Vị trí cung cấp", v: "Cloud Engineer · DevOps Engineer · Platform Engineer · Security Engineer (Junior → Expert)" },
+      { k: "Phạm vi", v: "Cung ứng kỹ sư Cloud/DevOps/Platform/Security theo cấp độ Junior→Expert" },
       { k: "Đối tượng", v: "Doanh nghiệp thiếu nhân sự chuyên sâu, cần mở rộng đội nhanh, hoặc cần chuyên gia theo giai đoạn" },
       { k: "Mô hình hợp tác", v: "Body-shopping · team thuê ngoài · managed team (có team lead) · onsite/hybrid/remote" },
       { k: "Cam kết", v: "SLA thay thế nhân sự · NDA & bảo mật · đánh giá năng lực định kỳ" },
@@ -534,6 +535,46 @@ export const SERVICES: Record<string, ServiceDetail> = {
       "Sẵn sàng thẩm định với cơ quan quản lý nhà nước",
     ],
   },
+
+  managed: {
+    slug: "managed",
+    code: "MSP",
+    serviceCode: "NS-MSP",
+    accent: "green",
+    accentHex: GREEN,
+    name: "Cloud Managed Service toàn diện",
+    nameEn: "Comprehensive cloud managed service",
+    group: "Managed Operations",
+    positioning:
+      "Vận hành toàn diện hạ tầng cloud của khách hàng 24/7 với một đầu mối chịu trách nhiệm: giám sát, xử lý sự cố, vá bảo mật, sao lưu & phục hồi thảm hoạ, quản trị thay đổi, tối ưu chi phí và tuân thủ. Khách hàng tập trung vào sản phẩm, phần vận hành nền tảng do đội ngũ managed service đảm nhiệm theo SLA cam kết.",
+    specs: [
+      { k: "Mã dịch vụ", v: "NS-MSP" },
+      { k: "Nhóm dịch vụ", v: "Managed Operations — vận hành nền tảng theo SLA" },
+      { k: "Phạm vi", v: "Giám sát 24/7, quản trị sự cố & thay đổi (ITSM), vá & cập nhật, backup/DR, security operations, FinOps, đa đám mây (AWS/Azure/GCP) và on-prem/K8s" },
+      { k: "Đối tượng", v: "Doanh nghiệp muốn thuê ngoài toàn bộ vận hành hạ tầng, hệ thống yêu cầu sẵn sàng cao và tuân thủ" },
+      { k: "Mô hình hợp tác", v: "Managed service theo gói · co-managed (đồng vận hành) · trọn gói theo SLA · onsite/remote" },
+      { k: "Cam kết", v: "SLA 24/7 · uptime cam kết · RTO/RPO theo hợp đồng · báo cáo vận hành & chi phí định kỳ" },
+    ],
+    phases: buildPhases([
+      ["Đánh giá hiện trạng hạ tầng & rủi ro", "Định nghĩa danh mục dịch vụ & SLA", "Kiểm kê tài sản, quyền truy cập, tuân thủ", "Lập runbook & service catalog"],
+      ["Onboard hệ thống vào quản trị", "Dựng giám sát/cảnh báo & tooling", "Thiết lập backup/DR & security baseline", "Tích hợp ITSM và quy trình change/incident"],
+      ["Vận hành & trực sự cố 24/7", "Vá, cập nhật & quản trị thay đổi", "Sao lưu và kiểm thử phục hồi định kỳ", "Báo cáo SLA, uptime & FinOps"],
+      ["Tối ưu chi phí và hiệu năng", "Tự động hoá vận hành, giảm toil", "Cải tiến kiến trúc & bảo mật liên tục", "Rà soát SLA và lộ trình nâng cấp"],
+    ]),
+    deliverables: [
+      "Danh mục dịch vụ (service catalog) và cam kết SLA rõ ràng",
+      "Hệ thống giám sát 24/7, dashboard & cảnh báo theo SLA",
+      "Runbook vận hành và quy trình ITSM (incident/change/problem)",
+      "Kế hoạch backup/DR đã kiểm thử phục hồi",
+      "Báo cáo vận hành, uptime và tối ưu chi phí định kỳ",
+    ],
+    stack: ["Prometheus", "Grafana", "ELK", "Zabbix", "Kubernetes", "Terraform", "Ansible", "AWS", "Azure", "GCP", "Veeam", "ITSM"],
+    outcomes: [
+      "Giảm gánh nặng vận hành cho đội ngũ nội bộ",
+      "SLA cam kết với một đầu mối chịu trách nhiệm",
+      "Tối ưu chi phí cloud và tuân thủ liên tục",
+    ],
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -550,6 +591,7 @@ export const ORDER: string[] = [
   "migration",
   "cloudapp",
   "outsourcing",
+  "managed",
   "attt",
 ];
 

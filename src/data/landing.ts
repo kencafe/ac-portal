@@ -218,10 +218,12 @@ export const SERVICES_META = [
     desc: "Đánh giá và di trú ứng dụng/dữ liệu, hiện đại hoá hệ thống." },
   { num: 9, name: "Cloud App", en: "Cloud-native apps", slug: "cloudapp", accent: "green",
     desc: "Phát triển và hiện đại hoá ứng dụng cloud-native, container/K8s." },
-  { num: 10, name: "Outsourcing kỹ sư", en: "Engineer outsourcing", slug: "outsourcing", accent: "blue", ribbon: "MỚI",
-    desc: "Cung cấp kỹ sư Cloud/DevOps/SRE/Security theo dự án hoặc dài hạn — bổ sung năng lực đội ngũ nhanh, linh hoạt." },
+  { num: 10, name: "Thuê kỹ sư theo vị trí", en: "Engineer outsourcing", slug: "outsourcing", accent: "blue", ribbon: "MỚI",
+    desc: "Cung cấp Cloud Engineer, DevOps Engineer, Platform Engineer, Security Engineer theo dự án hoặc dài hạn — bổ sung năng lực đội ngũ nhanh, linh hoạt." },
   { num: 11, name: "ATTT theo luật VN", en: "Vietnam IT-security compliance", slug: "attt", accent: "orange", ribbon: "MỚI",
     desc: "Tuân thủ Luật An ninh mạng, Luật ATTT mạng; phân định & lập hồ sơ cấp độ an toàn hệ thống thông tin (NĐ 85), bảo vệ dữ liệu cá nhân (NĐ 13)." },
+  { num: 12, name: "Cloud Managed Service", en: "Comprehensive managed service", slug: "managed", accent: "green", ribbon: "MỚI",
+    desc: "Vận hành hạ tầng cloud toàn diện 24/7 theo SLA: giám sát, sự cố, vá bảo mật, backup/DR, FinOps — một đầu mối chịu trách nhiệm." },
 ] as const;
 // NOTE: card #3 (AIOps) is the "hot" card — green border + "MỚI" ribbon.
 //   Its EN subtitle is Vietnamese ("Triển khai & vận hành"), authored that way.
