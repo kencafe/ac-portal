@@ -24,7 +24,6 @@ spec:
     - { name: env, type: string, default: dev }
     - { name: target-namespace, type: string, default: ac-portal-dev }
     - { name: deploy-host, type: string, default: dev.appcarrier.cloud }
-    - { name: run-dast, type: string, default: "false" }
   workspaces:
     - name: shared
   tasks:
@@ -105,15 +104,7 @@ spec:
               done
             fi
       workspaces: [{ name: manifest-dir, workspace: shared }]
-    - name: dast
-      runAfter: [deploy]
-      when:
-        - { input: $(params.run-dast), operator: in, values: ["true"] }
-      taskRef: { kind: Task, name: zap-dast }
-      params:
-        - { name: TARGET_URL, value: "https://$(params.deploy-host)" }
-        - { name: ENGAGEMENT, value: "dast-$(params.env)" }
-      workspaces: [{ name: source, workspace: shared }]
+
 ---
 apiVersion: tekton.dev/v1
 kind: Pipeline
@@ -129,7 +120,6 @@ spec:
     - { name: env, type: string, default: staging }
     - { name: target-namespace, type: string, default: ac-portal-staging }
     - { name: deploy-host, type: string, default: staging.appcarrier.cloud }
-    - { name: run-dast, type: string, default: "true" }
   workspaces:
     - name: shared
   tasks:
@@ -212,8 +202,6 @@ spec:
       workspaces: [{ name: manifest-dir, workspace: shared }]
     - name: dast
       runAfter: [deploy]
-      when:
-        - { input: $(params.run-dast), operator: in, values: ["true"] }
       taskRef: { kind: Task, name: zap-dast }
       params:
         - { name: TARGET_URL, value: "https://$(params.deploy-host)" }
@@ -234,7 +222,6 @@ spec:
     - { name: env, type: string, default: prod }
     - { name: target-namespace, type: string, default: ac-portal-prod }
     - { name: deploy-host, type: string, default: appcarrier.cloud }
-    - { name: run-dast, type: string, default: "false" }
   workspaces:
     - name: shared
   tasks:
@@ -315,12 +302,3 @@ spec:
               done
             fi
       workspaces: [{ name: manifest-dir, workspace: shared }]
-    - name: dast
-      runAfter: [deploy]
-      when:
-        - { input: $(params.run-dast), operator: in, values: ["true"] }
-      taskRef: { kind: Task, name: zap-dast }
-      params:
-        - { name: TARGET_URL, value: "https://$(params.deploy-host)" }
-        - { name: ENGAGEMENT, value: "dast-$(params.env)" }
-      workspaces: [{ name: source, workspace: shared }]
