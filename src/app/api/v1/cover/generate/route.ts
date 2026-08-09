@@ -20,7 +20,8 @@ export async function POST(req: Request) {
   if (!title) return Response.json({ error: "Thiếu tiêu đề" }, { status: 400 });
   const s = (slug || title).toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60) || "cover";
   const nonce = Date.now() % 1000000; // vary + cache-bust each manual generate
-  const raw = await makeCover(s, title, cat || "", tone || "#0072BC", true, (scene || "").trim(), nonce);
+  // raw=true → the editor's prompt is used verbatim (allows text/logos/own style).
+  const raw = await makeCover(s, title, cat || "", tone || "#0072BC", true, (scene || "").trim(), nonce, true);
   const aiUsed = raw.startsWith("/api/cover-img/");
   const url = aiUsed ? `${raw}?v=${nonce}` : raw;
   // Direct MinIO object link (so the editor sees where the image is stored).

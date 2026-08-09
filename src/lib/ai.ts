@@ -24,7 +24,10 @@ const DEFAULT_MODEL = "claude-sonnet-5";
 // English image prompt for a clean, appealing editorial cover (no text).
 // `scene` (from the AI, content-aware) or `hint` (excerpt/keywords) makes the
 // image reflect the actual article, not a generic template.
-function coverPrompt(title: string, cat: string, scene = ""): string {
+function coverPrompt(title: string, cat: string, scene = "", raw = false): string {
+  // Manual/raw prompt from the editor → use it verbatim (they control text,
+  // logos, style). Auto covers keep the brand editorial style + no-text rule.
+  if (raw && scene.trim()) return scene.trim();
   const subject = scene.trim()
     ? scene.trim()
     : `the topic "${title}"${cat ? ` in the field of ${cat}` : ""}`;
@@ -39,10 +42,10 @@ async function saveCover(slug: string, buf: Buffer, ext: string): Promise<string
 }
 
 // Free, keyless AI image via Pollinations (Flux/SD). Works WITHOUT any billing.
-async function pollinationsImage(slug: string, title: string, cat: string, scene = "", nonce = 0): Promise<string> {
+async function pollinationsImage(slug: string, title: string, cat: string, scene = "", nonce = 0, raw = false): Promise<string> {
   // Deterministic seed by default; a nonce (manual re-generate) varies the image.
   const seed = nonce > 0 ? nonce % 1000000 : Math.abs(hashCode(title)) % 100000;
-  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(coverPrompt(title, cat, scene))}?width=1200&height=630&nologo=true&seed=${seed}&model=flux`;
+  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(coverPrompt(title, cat, scene, raw))}?width=1200&height=630&nologo=true&seed=${seed}&model=flux`;
   const res = await fetch(url, { signal: AbortSignal.timeout(120000), redirect: "follow" });
   if (!res.ok) throw new Error(`pollinations HTTP ${res.status}`);
   const ct = res.headers.get("content-type") || "";
@@ -54,12 +57,12 @@ async function pollinationsImage(slug: string, title: string, cat: string, scene
 }
 
 // Gemini image model (reuses aiApiKey; needs billing — 429 on free tier).
-async function geminiImage(slug: string, title: string, cat: string, apiKey: string, model: string, scene = ""): Promise<string> {
+async function geminiImage(slug: string, title: string, cat: string, apiKey: string, model: string, scene = "", raw = false): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ contents: [{ parts: [{ text: coverPrompt(title, cat, scene) }] }], generationConfig: { responseModalities: ["IMAGE"] } }),
+    body: JSON.stringify({ contents: [{ parts: [{ text: coverPrompt(title, cat, scene, raw) }] }], generationConfig: { responseModalities: ["IMAGE"] } }),
     signal: AbortSignal.timeout(90000),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
@@ -75,8 +78,8 @@ async function geminiImage(slug: string, title: string, cat: string, apiKey: str
 
 // OpenAI-images-compatible generation (OpenAI gpt-image-1/DALL·E, xAI Grok
 // image, and any gateway exposing POST {endpoint}/images/generations → b64_json).
-async function openaiImage(slug: string, title: string, cat: string, endpoint: string, apiKey: string, model: string, scene = ""): Promise<string> {
-  const body: Record<string, unknown> = { model, prompt: coverPrompt(title, cat, scene), n: 1 };
+async function openaiImage(slug: string, title: string, cat: string, endpoint: string, apiKey: string, model: string, scene = "", raw = false): Promise<string> {
+  const body: Record<string, unknown> = { model, prompt: coverPrompt(title, cat, scene, raw), n: 1 };
   // `size` only for genuine OpenAI models (other OpenAI-compatible providers —
   // Together/DeepInfra/Recraft/xAI — reject OpenAI's size strings; use defaults).
   if (/^gpt-image/.test(model)) body.size = "1536x1024";
@@ -114,7 +117,7 @@ function hashCode(s: string): number {
 // lib/imageProviders): pollinations (free/keyless, default), gemini (billing),
 // or any OpenAI-images-compatible provider (OpenAI/xAI). Saves to storage and
 // returns its URL; falls back to the branded illustration when disabled/on error.
-export async function makeCover(slug: string, title: string, cat = "", tone = "#0072BC", force = false, scene = "", nonce = 0): Promise<string> {
+export async function makeCover(slug: string, title: string, cat = "", tone = "#0072BC", force = false, scene = "", nonce = 0, raw = false): Promise<string> {
   const fallback = coverFor(title, cat, tone);
   const s = await getSettings();
   if (!s.aiImageEnabled && !force) return fallback;
@@ -124,18 +127,18 @@ export async function makeCover(slug: string, title: string, cat = "", tone = "#
     if (provider.apiStyle === "gemini") {
       const apiKey = s.aiImageApiKey || "";
       if (!apiKey) throw new Error("no image api key (đặt ở Cấu hình API → Tạo ảnh bìa)");
-      const out = await geminiImage(slug, title, cat, apiKey, model || "gemini-2.5-flash-image", scene);
+      const out = await geminiImage(slug, title, cat, apiKey, model || "gemini-2.5-flash-image", scene, raw);
       console.log(`[ai] cover via gemini for ${slug}`);
       return out;
     }
     if (provider.apiStyle === "openai-images") {
       const apiKey = s.aiImageApiKey || "";
       if (!apiKey) throw new Error("no image api key (đặt ở Cấu hình API → Tạo ảnh bìa)");
-      const out = await openaiImage(slug, title, cat, provider.endpoint, apiKey, model, scene);
+      const out = await openaiImage(slug, title, cat, provider.endpoint, apiKey, model, scene, raw);
       console.log(`[ai] cover via ${provider.id} for ${slug}`);
       return out;
     }
-    const out = await pollinationsImage(slug, title, cat, scene, nonce);
+    const out = await pollinationsImage(slug, title, cat, scene, nonce, raw);
     console.log(`[ai] cover via pollinations for ${slug}`);
     return out;
   } catch (e) {
