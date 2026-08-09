@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   const slug = ((form?.get("slug") as string) || "cover").replace(/[^a-z0-9._-]/gi, "-").slice(0, 60) || "cover";
   if (!(file instanceof File)) return Response.json({ error: "Thiếu file" }, { status: 400 });
   if (!/^image\/(png|jpe?g|webp|gif|svg\+xml)$/.test(file.type)) return Response.json({ error: "Chỉ nhận ảnh (png/jpg/webp/gif/svg)" }, { status: 400 });
-  if (file.size > 6 * 1024 * 1024) return Response.json({ error: "Ảnh quá lớn (>6MB)" }, { status: 400 });
+  if (file.size > 10 * 1024 * 1024) return Response.json({ error: "Ảnh quá lớn (>10MB)" }, { status: 400 });
 
   const ext = file.type.includes("svg") ? "svg" : file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : file.type.includes("gif") ? "gif" : "jpg";
   const name = `${slug}-up.${ext}`;
