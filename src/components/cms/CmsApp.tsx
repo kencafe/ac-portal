@@ -9,6 +9,7 @@ import {
 } from "@/data/cms";
 import { COLORS, RADIUS } from "@/lib/tokens";
 import { PROVIDERS_PUBLIC } from "@/lib/providers";
+import { IMAGE_PROVIDERS_PUBLIC } from "@/lib/imageProviders";
 import CoverArt from "@/components/shared/CoverArt";
 
 type View = "posts" | "editor" | "taxonomy" | "feeds" | "inbox" | "translate" | "api" | "admin" | "aistudio";
@@ -51,8 +52,10 @@ type SiteSettings = {
   aiApiKeySet: boolean;
   aiApiKeyHint: string;
   aiImageEnabled: boolean;
-  aiImageProvider: "pollinations" | "gemini";
+  aiImageProvider: string;
   aiImageModel: string;
+  aiImageApiKeySet: boolean;
+  aiImageApiKeyHint: string;
 };
 
 const panel: CSSProperties = { background: "#fff", border: `1px solid ${COLORS.split}`, borderRadius: RADIUS.card };
@@ -210,9 +213,13 @@ export default function CmsApp() {
   const [aiModelSel, setAiModelSel] = useState("");
   const [aiCfgBusy, setAiCfgBusy] = useState(false);
   const [aiCfgMsg, setAiCfgMsg] = useState("");
-  // Dedicated image model (runs alongside the text model; reuses the Gemini key)
+  // Dedicated image config (runs alongside the text model): provider + model + own key
   const [aiImageModelSel, setAiImageModelSel] = useState("gemini-2.5-flash-image");
   const [aiImageProviderSel, setAiImageProviderSel] = useState("pollinations");
+  const [aiImageKeyInput, setAiImageKeyInput] = useState("");
+  const [aiImageKeyShow, setAiImageKeyShow] = useState(false);
+  const [aiImageModelList, setAiImageModelList] = useState<{ id: string; name: string }[]>([]);
+  const [aiImageCfgBusy, setAiImageCfgBusy] = useState(false);
   const [aiImageMsg, setAiImageMsg] = useState("");
 
   // AI auto-discovery + ingest history
@@ -1604,17 +1611,49 @@ export default function CmsApp() {
   }
 
 
-  async function saveImageCfg(enabled: boolean, provider: string, model: string) {
-    setAiImageMsg("⏳ Đang lưu…");
+  async function aiGetImageModels() {
+    setAiImageCfgBusy(true);
+    setAiImageMsg("Đang lấy danh sách model ảnh…");
     try {
-      const res = await fetch("/api/v1/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aiImageEnabled: enabled, aiImageProvider: provider, aiImageModel: model }) });
-      if (res.ok) { setSettings(await res.json()); setAiImageMsg(enabled ? `✅ Đã bật — nguồn ảnh: ${provider === "gemini" ? "Gemini (" + model + ")" : "Pollinations (miễn phí)"}` : "✅ Đã tắt tạo ảnh AI (dùng ảnh minh hoạ tự động)"); }
-      else { const d = await res.json().catch(() => ({})); setAiImageMsg(`❌ ${d.error || res.status}`); }
+      const res = await fetch("/api/v1/ai/image-models", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: aiImageProviderSel, ...(aiImageKeyInput.trim() ? { token: aiImageKeyInput.trim() } : {}) }),
+      });
+      const d = await res.json();
+      if (res.ok && Array.isArray(d.models)) {
+        setAiImageModelList(d.models);
+        if (!d.models.some((m: { id: string }) => m.id === aiImageModelSel) && d.models[0]) setAiImageModelSel(d.models[0].id);
+        setAiImageMsg(`Đã lấy ${d.models.length} model ảnh.`);
+      } else {
+        setAiImageMsg(`❌ ${d.error || res.status}`);
+      }
+    } catch (e) {
+      setAiImageMsg(`❌ ${(e as Error).message}`);
+    }
+    setAiImageCfgBusy(false);
+  }
+  // Save the image config (provider + model + own key), and enable/disable AI image gen.
+  async function saveImageCfg(enabled: boolean) {
+    setAiImageCfgBusy(true);
+    setAiImageMsg("⏳ Đang lưu…");
+    const body: Record<string, unknown> = { aiImageEnabled: enabled, aiImageProvider: aiImageProviderSel, aiImageModel: aiImageModelSel };
+    if (aiImageKeyInput.trim()) body.aiImageApiKey = aiImageKeyInput.trim();
+    try {
+      const res = await fetch("/api/v1/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (res.ok) {
+        const s: SiteSettings = await res.json();
+        setSettings(s);
+        setAiImageKeyInput("");
+        setAiImageMsg(enabled
+          ? `✅ Đã bật — nguồn ảnh: ${aiImageProviderSel} · model: ${aiImageModelSel}${s.aiImageApiKeySet ? ` · token: ${s.aiImageApiKeyHint}` : ""}`
+          : "✅ Đã tắt tạo ảnh AI (dùng ảnh minh hoạ vector tự động)");
+      } else { const d = await res.json().catch(() => ({})); setAiImageMsg(`❌ ${d.error || res.status}`); }
     } catch (e) { setAiImageMsg(`❌ ${(e as Error).message}`); }
+    setAiImageCfgBusy(false);
   }
   function ApiView() {
     const canEditAi = me?.isAdmin ?? true;
-    const IMAGE_MODELS = ["gemini-2.5-flash-image", "gemini-3-pro-image", "gemini-3.1-flash-image", "gemini-3.1-flash-lite-image"];
     const curProvider = PROVIDERS_PUBLIC.find((p) => p.id === aiProviderSel) ?? PROVIDERS_PUBLIC[0];
     const dropdownModels =
       aiModelList.length > 0
@@ -1622,6 +1661,14 @@ export default function CmsApp() {
         : aiModelSel
           ? [{ id: aiModelSel, name: aiModelSel }]
           : [];
+    // Image config (mirrors the text config): provider + model + own key.
+    const curImageProvider = IMAGE_PROVIDERS_PUBLIC.find((p) => p.id === aiImageProviderSel) ?? IMAGE_PROVIDERS_PUBLIC[0];
+    const dropdownImageModels =
+      aiImageModelList.length > 0
+        ? aiImageModelList
+        : aiImageModelSel
+          ? [{ id: aiImageModelSel, name: aiImageModelSel }]
+          : (curImageProvider.models || []).map((m) => ({ id: m, name: m }));
     return (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 16, alignItems: "start" }}>
         {/* Real Anthropic connection — paste token → get models → choose → save */}
@@ -1692,38 +1739,79 @@ export default function CmsApp() {
           {!canEditAi && <div style={{ fontSize: 12.5, color: COLORS.ink3, marginTop: 8 }}>Chỉ Quản trị mới sửa được cấu hình AI.</div>}
         </section>
 
-        {/* Image model — runs alongside the text model */}
+        {/* Image AI config — mirrors the text config: provider + model + own key */}
         <section style={{ ...panelPad, gridColumn: "1 / -1" }}>
-          <PanelHead right={<span style={{ fontSize: 12.5, color: settings?.aiImageEnabled ? COLORS.brandGreen : COLORS.ink3 }}>{settings?.aiImageEnabled ? `Đang bật · ${settings?.aiImageProvider === "gemini" ? "Gemini" : "Pollinations"}` : "Đang tắt"}</span>}>
+          <PanelHead
+            right={
+              <span style={{ fontSize: 12.5, color: settings?.aiImageEnabled ? COLORS.brandGreen : COLORS.ink3 }}>
+                {settings?.aiImageEnabled ? `Đang bật · ${settings?.aiImageProvider}` : "Đang tắt"}
+                {settings?.aiImageEnabled && settings?.aiImageModel ? ` · ${settings.aiImageModel}` : ""}
+                {settings?.aiImageApiKeySet ? ` · token: ${settings.aiImageApiKeyHint}` : ""}
+              </span>
+            }
+          >
             Tạo ảnh bìa bằng AI (chạy song song với model bài viết)
           </PanelHead>
           <div style={{ fontSize: 12.5, color: COLORS.ink3, margin: "6px 0 14px" }}>
-            Mỗi bài AI được sinh <b>ảnh bìa thật</b>. Chọn nguồn ảnh:
-            <br/>• <b>Pollinations</b> — miễn phí, <b>không cần key/billing</b> (khuyến nghị, dùng được ngay).
-            <br/>• <b>Gemini</b> — chất lượng cao nhưng <b>cần bật billing</b> cho key (free tier bị chặn).
+            Cấu hình <b>độc lập với model bài viết</b>: chọn nhà cung cấp ảnh → dán API token (nếu cần) → <b>Lấy model</b> → chọn model → <b>Bật &amp; lưu</b>. Token ảnh lưu riêng (server, không hiển thị lại).
+            <br/>• <b>Pollinations</b> — miễn phí, không cần key/billing. • <b>Gemini</b> — chất lượng cao, <b>cần bật billing</b> cho key.
             <br/>Tắt thì dùng ảnh minh hoạ vector tự động. Ưu tiên mỗi bài: <i>ảnh bạn đặt → ảnh AI → ảnh minh hoạ</i>.
           </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
-            <div style={{ minWidth: 200 }}>
-              <label style={label}>Nguồn ảnh</label>
-              <select value={aiImageProviderSel} onChange={(e) => setAiImageProviderSel(e.target.value)} disabled={!canEditAi} style={input}>
-                <option value="pollinations">Pollinations (miễn phí)</option>
-                <option value="gemini">Gemini (cần billing)</option>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 14 }}>
+            <div>
+              <label style={label}>Nhà cung cấp ảnh</label>
+              <select
+                value={aiImageProviderSel}
+                onChange={(e) => { setAiImageProviderSel(e.target.value); setAiImageModelList([]); setAiImageModelSel(""); setAiImageMsg(""); }}
+                disabled={!canEditAi}
+                style={input}
+              >
+                {IMAGE_PROVIDERS_PUBLIC.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
-            {aiImageProviderSel === "gemini" && (
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={label}>Model Gemini</label>
-                <select value={aiImageModelSel} onChange={(e) => setAiImageModelSel(e.target.value)} disabled={!canEditAi} style={input}>
-                  {IMAGE_MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
-                </select>
+            <div>
+              <label style={label}>Endpoint (tự điền)</label>
+              <input readOnly value={curImageProvider.endpoint} style={{ ...input, fontFamily: "monospace", color: COLORS.ink3 }} />
+            </div>
+          </div>
+          {!curImageProvider.keyless && (
+            <>
+              <label style={label}>
+                API token{" "}
+                <a href={curImageProvider.keyUrl} target="_blank" rel="noreferrer" style={{ color: COLORS.brandBlue, fontWeight: 500 }}>· lấy token ở đâu?</a>
+              </label>
+              <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                <input
+                  type={aiImageKeyShow ? "text" : "password"}
+                  value={aiImageKeyInput}
+                  onChange={(e) => setAiImageKeyInput(e.target.value)}
+                  placeholder={settings?.aiImageApiKeySet && settings.aiImageProvider === aiImageProviderSel ? "•••••• (đã lưu — dán mới để thay)" : curImageProvider.keyHint}
+                  disabled={!canEditAi || aiImageCfgBusy}
+                  style={{ ...input, flex: 1, fontFamily: "monospace" }}
+                />
+                <button type="button" onClick={() => setAiImageKeyShow(!aiImageKeyShow)} style={btnSm}>{aiImageKeyShow ? "Ẩn" : "Hiện"}</button>
               </div>
-            )}
-            <button type="button" onClick={() => saveImageCfg(true, aiImageProviderSel, aiImageModelSel)} disabled={!canEditAi} style={{ ...btnBlue, height: 40, opacity: canEditAi ? 1 : 0.5 }}>Bật &amp; lưu</button>
-            <button type="button" onClick={() => saveImageCfg(false, aiImageProviderSel, aiImageModelSel)} disabled={!canEditAi} style={{ ...btnSm, height: 40 }}>Tắt</button>
+            </>
+          )}
+          <label style={label}>Model</label>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 14 }}>
+            <select
+              value={aiImageModelSel}
+              onChange={(e) => setAiImageModelSel(e.target.value)}
+              disabled={!canEditAi || dropdownImageModels.length === 0}
+              style={{ ...input, flex: 1 }}
+            >
+              {dropdownImageModels.length === 0 && <option value="">— Bấm "Lấy model" để tải danh sách —</option>}
+              {dropdownImageModels.map((m) => <option key={m.id} value={m.id}>{m.name}{m.name !== m.id ? ` (${m.id})` : ""}</option>)}
+            </select>
+            <button type="button" onClick={aiGetImageModels} disabled={!canEditAi || aiImageCfgBusy} style={{ ...btnSm, opacity: canEditAi && !aiImageCfgBusy ? 1 : 0.5 }}>↻ Lấy model</button>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" onClick={() => saveImageCfg(true)} disabled={!canEditAi || aiImageCfgBusy} style={{ ...btnBlue, opacity: canEditAi && !aiImageCfgBusy ? 1 : 0.5 }}>Bật &amp; lưu</button>
+            <button type="button" onClick={() => saveImageCfg(false)} disabled={!canEditAi || aiImageCfgBusy} style={btnSm}>Tắt</button>
           </div>
           {aiImageMsg && <div style={{ fontSize: 12.5, color: COLORS.ink2, marginTop: 10 }}>{aiImageMsg}</div>}
-          <div style={{ fontSize: 11.5, color: COLORS.ink3, marginTop: 8 }}>Ảnh sinh không kèm chữ, phong cách vector phẳng; lưu trên máy chủ (PVC). Mỗi ảnh thêm ~vài giây khi tạo bài.</div>
+          <div style={{ fontSize: 11.5, color: COLORS.ink3, marginTop: 8 }}>Ảnh sinh không kèm chữ, phong cách vector phẳng; lưu vào MinIO (fallback PVC). Mỗi ảnh thêm ~vài giây khi tạo bài.</div>
         </section>
 
         <div style={panel}>

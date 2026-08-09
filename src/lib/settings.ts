@@ -44,8 +44,9 @@ export type Settings = {
   //  - "gemini": Gemini image model (reuses aiApiKey; needs billing).
   // Falls back to the generated illustration when off or on failure.
   aiImageEnabled: boolean;
-  aiImageProvider: "pollinations" | "gemini";
-  aiImageModel: string; // Gemini image model id (used when provider = "gemini")
+  aiImageProvider: string; // image provider id from lib/imageProviders (e.g. "pollinations", "gemini")
+  aiImageModel: string; // selected image model id (used when the provider needs one)
+  aiImageApiKey: string; // token for the image provider — SECRET; never returned (see publicSettings). Separate from the text aiApiKey.
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -79,6 +80,7 @@ export const DEFAULT_SETTINGS: Settings = {
   aiImageEnabled: false,
   aiImageProvider: "pollinations",
   aiImageModel: "gemini-2.5-flash-image",
+  aiImageApiKey: "",
 };
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
@@ -102,10 +104,12 @@ export async function saveSettings(patch: Partial<Settings>): Promise<Settings> 
 
 // Settings safe to send to the browser: the raw token is stripped and replaced
 // with a boolean + a short masked hint.
-export type PublicSettings = Omit<Settings, "aiApiKey" | "mailPassword"> & {
+export type PublicSettings = Omit<Settings, "aiApiKey" | "mailPassword" | "aiImageApiKey"> & {
   aiApiKeySet: boolean;
   aiApiKeyHint: string;
   mailPasswordSet: boolean;
+  aiImageApiKeySet: boolean;
+  aiImageApiKeyHint: string;
 };
 
 function maskKey(k: string): string {
@@ -114,11 +118,13 @@ function maskKey(k: string): string {
 }
 
 export async function getPublicSettings(): Promise<PublicSettings> {
-  const { aiApiKey, mailPassword, ...rest } = await getSettings();
+  const { aiApiKey, mailPassword, aiImageApiKey, ...rest } = await getSettings();
   return {
     ...rest,
     aiApiKeySet: !!aiApiKey,
     aiApiKeyHint: maskKey(aiApiKey),
     mailPasswordSet: !!mailPassword,
+    aiImageApiKeySet: !!aiImageApiKey,
+    aiImageApiKeyHint: maskKey(aiImageApiKey),
   };
 }

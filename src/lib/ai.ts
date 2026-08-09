@@ -88,8 +88,9 @@ export async function makeCover(slug: string, title: string, cat = "", tone = "#
   const provider = s.aiImageProvider || "pollinations";
   try {
     if (provider === "gemini") {
-      const apiKey = s.aiApiKey || ENV_AI_API_KEY;
-      if (!apiKey) throw new Error("no api key");
+      // Dedicated image key (separate from the text model's key).
+      const apiKey = s.aiImageApiKey || "";
+      if (!apiKey) throw new Error("no image api key (đặt ở Cấu hình API → Tạo ảnh bìa)");
       const out = await geminiImage(slug, title, cat, apiKey, s.aiImageModel || "gemini-2.5-flash-image", scene);
       console.log(`[ai] cover via gemini for ${slug}`);
       return out;

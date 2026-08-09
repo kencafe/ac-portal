@@ -19,6 +19,7 @@ export async function PUT(req: Request) {
   // sends aiApiKey / mailPassword when the admin typed a fresh one.
   if (!patch.aiApiKey || !patch.aiApiKey.trim()) delete patch.aiApiKey;
   if (!patch.mailPassword || !patch.mailPassword.trim()) delete patch.mailPassword;
+  if (!patch.aiImageApiKey || !patch.aiImageApiKey.trim()) delete patch.aiImageApiKey;
   await saveSettings(patch);
   console.log(`[audit] ${id.user} updated settings`);
   return Response.json(await getPublicSettings());
