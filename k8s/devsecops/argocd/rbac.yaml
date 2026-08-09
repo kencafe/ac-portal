@@ -15,3 +15,39 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: admin
+---
+# Same grant in ac-portal-staging so the ArgoCD app-controller can manage the
+# ac-portal-staging Application. Namespace-scoped RoleBinding keeps the blast
+# radius to that namespace; the controller SA still lives in ac-portal-dev.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-app-controller-admin
+  namespace: ac-portal-staging
+  labels: { app: argocd, component: devsecops }
+subjects:
+  - kind: ServiceAccount
+    name: argocd-argocd-application-controller
+    namespace: ac-portal-dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+---
+# Same grant in ac-portal-prod. NOTE: the ac-portal-prod Application is MANUAL sync
+# with no auto-prune/selfHeal, so this RBAC does not by itself change the live prod
+# site — it only lets a human-initiated Sync reconcile prod when intended.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-app-controller-admin
+  namespace: ac-portal-prod
+  labels: { app: argocd, component: devsecops }
+subjects:
+  - kind: ServiceAccount
+    name: argocd-argocd-application-controller
+    namespace: ac-portal-dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin

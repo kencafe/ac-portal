@@ -14,6 +14,10 @@ spec:
   destinations:
     - server: https://kubernetes.default.svc
       namespace: ac-portal-dev
+    - server: https://kubernetes.default.svc
+      namespace: ac-portal-staging
+    - server: https://kubernetes.default.svc
+      namespace: ac-portal-prod
   # No cluster-scoped resources managed by this project.
   clusterResourceWhitelist: []
   namespaceResourceWhitelist:
@@ -40,4 +44,47 @@ spec:
   # MANUAL sync only. No automated prune/selfHeal on first sync so ArgoCD will not
   # fight the objects already applied live in ac-portal-dev. Flip on later once the
   # live state and Git are confirmed to match.
+  syncPolicy: {}
+---
+# Staging app. The namespaced ArgoCD (in ac-portal-dev) can manage this namespace
+# because rbac.yaml grants its application-controller `admin` in ac-portal-staging.
+# Tekton remains the primary deploy path (build + promote + DAST); this Application
+# gives GitOps drift visibility. MANUAL sync only.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ac-portal-staging
+  namespace: ac-portal-dev
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: ac-portal
+  source:
+    repoURL: https://github.com/kencafe/ac-portal
+    targetRevision: staging
+    path: k8s/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ac-portal-staging
+  syncPolicy: {}
+---
+# Production app. PROD is live; MANUAL sync only and NO auto-prune/selfHeal, so
+# creating this Application never mutates the running apex site on its own. A human
+# must review the diff and click Sync (or run the Tekton prod pipeline) to promote.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ac-portal-prod
+  namespace: ac-portal-dev
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: ac-portal
+  source:
+    repoURL: https://github.com/kencafe/ac-portal
+    targetRevision: main
+    path: k8s/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ac-portal-prod
   syncPolicy: {}
