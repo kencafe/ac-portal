@@ -14,6 +14,7 @@ import { notifyPublished } from "@/lib/notify";
 import { getProvider, chatComplete } from "@/lib/providers";
 import { addHistory, seenUrls, type IngestMode } from "@/lib/history";
 import { putImage } from "@/lib/storage";
+import { getImageProvider } from "@/lib/imageProviders";
 import type { Block } from "@/data/posts";
 
 const ENV_AI_API_KEY = process.env.AI_API_KEY || process.env.ANTHROPIC_API_KEY || "";
@@ -72,34 +73,62 @@ async function geminiImage(slug: string, title: string, cat: string, apiKey: str
   return saveCover(slug, Buffer.from(img.inlineData.data, "base64"), ext);
 }
 
+// OpenAI-images-compatible generation (OpenAI gpt-image-1/DALL·E, xAI Grok
+// image, and any gateway exposing POST {endpoint}/images/generations → b64_json).
+async function openaiImage(slug: string, title: string, cat: string, endpoint: string, apiKey: string, model: string, scene = ""): Promise<string> {
+  const size = /dall-e-3/.test(model) ? "1792x1024" : /dall-e-2/.test(model) ? "1024x1024" : "1536x1024";
+  const body: Record<string, unknown> = { model, prompt: coverPrompt(title, cat, scene), n: 1, size };
+  // gpt-image-1 always returns b64_json; DALL·E needs it requested explicitly.
+  if (!/^gpt-image/.test(model)) body.response_format = "b64_json";
+  const res = await fetch(`${endpoint.replace(/\/$/, "")}/images/generations`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(120000),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
+  const d = await res.json();
+  const b64: string | undefined = d?.data?.[0]?.b64_json;
+  if (!b64) throw new Error("no image in response");
+  return saveCover(slug, Buffer.from(b64, "base64"), "png");
+}
+
 function hashCode(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) { h = (Math.imul(31, h) + s.charCodeAt(i)) | 0; }
   return h;
 }
 
-// Generate a real cover image. Provider "pollinations" (free/keyless, default)
-// or "gemini" (needs billing). Saves to the PVC and returns its URL; falls back
-// to the generated illustration when disabled or on error.
+// Generate a real cover image via the configured image provider (see
+// lib/imageProviders): pollinations (free/keyless, default), gemini (billing),
+// or any OpenAI-images-compatible provider (OpenAI/xAI). Saves to storage and
+// returns its URL; falls back to the branded illustration when disabled/on error.
 export async function makeCover(slug: string, title: string, cat = "", tone = "#0072BC", force = false, scene = "", nonce = 0): Promise<string> {
   const fallback = coverFor(title, cat, tone);
   const s = await getSettings();
   if (!s.aiImageEnabled && !force) return fallback;
-  const provider = s.aiImageProvider || "pollinations";
+  const provider = getImageProvider(s.aiImageProvider);
+  const model = s.aiImageModel || provider.models[0] || "";
   try {
-    if (provider === "gemini") {
-      // Dedicated image key (separate from the text model's key).
+    if (provider.apiStyle === "gemini") {
       const apiKey = s.aiImageApiKey || "";
       if (!apiKey) throw new Error("no image api key (đặt ở Cấu hình API → Tạo ảnh bìa)");
-      const out = await geminiImage(slug, title, cat, apiKey, s.aiImageModel || "gemini-2.5-flash-image", scene);
+      const out = await geminiImage(slug, title, cat, apiKey, model || "gemini-2.5-flash-image", scene);
       console.log(`[ai] cover via gemini for ${slug}`);
+      return out;
+    }
+    if (provider.apiStyle === "openai-images") {
+      const apiKey = s.aiImageApiKey || "";
+      if (!apiKey) throw new Error("no image api key (đặt ở Cấu hình API → Tạo ảnh bìa)");
+      const out = await openaiImage(slug, title, cat, provider.endpoint, apiKey, model, scene);
+      console.log(`[ai] cover via ${provider.id} for ${slug}`);
       return out;
     }
     const out = await pollinationsImage(slug, title, cat, scene, nonce);
     console.log(`[ai] cover via pollinations for ${slug}`);
     return out;
   } catch (e) {
-    console.error(`[ai] cover image failed for ${slug} (${provider}):`, (e as Error).message);
+    console.error(`[ai] cover image failed for ${slug} (${provider.id}):`, (e as Error).message);
     return fallback;
   }
 }

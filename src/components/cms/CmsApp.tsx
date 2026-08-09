@@ -198,6 +198,7 @@ export default function CmsApp() {
   const [previewBusy, setPreviewBusy] = useState(false);
   // Editor cover controls (paste URL / upload / AI generate)
   const [coverBusy, setCoverBusy] = useState(false);
+  const [coverAiPrompt, setCoverAiPrompt] = useState(""); // prompt for AI cover generation (empty = auto from title)
   const [coverMsg, setCoverMsg] = useState("");
   const coverFileRef = useRef<HTMLInputElement | null>(null);
   // In-content image blocks
@@ -669,10 +670,14 @@ export default function CmsApp() {
     setBlockImgBusy(null);
   }
   async function genBlockImg(i: number) {
+    // Prompt-driven: editor describes the image to generate (prefilled from the
+    // current block text). Empty/cancel → the server auto-derives from title.
+    const caption = (draft.blocks[i]?.[1] || "").trim();
+    const scene = window.prompt("Mô tả ảnh muốn tạo (prompt) — để trống thì AI tự suy từ nội dung:", caption || draft.title || "");
+    if (scene === null) return; // cancelled
     setBlockImgBusy(i);
     try {
-      const caption = (draft.blocks[i]?.[1] || "").trim();
-      const res = await fetch("/api/v1/cover/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: `${draft.slug || "post"}-b${i}`, title: caption || draft.title, cat: draft.cat, tone: TONE[draft.cat] ?? "#0072BC" }) });
+      const res = await fetch("/api/v1/cover/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: `${draft.slug || "post"}-b${i}`, title: caption || draft.title, cat: draft.cat, tone: TONE[draft.cat] ?? "#0072BC", scene: scene.trim() }) });
       const d = await res.json();
       if (res.ok) setBlockVal(i, d.url); else alert(d.error || "Tạo ảnh lỗi");
     } catch (e) { alert((e as Error).message); }
@@ -693,7 +698,7 @@ export default function CmsApp() {
   async function genCoverAI() {
     setCoverBusy(true); setCoverMsg("⏳ AI đang tạo ảnh bìa…");
     try {
-      const res = await fetch("/api/v1/cover/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: draft.slug, title: draft.title, cat: draft.cat, tone: TONE[draft.cat] ?? "#0072BC" }) });
+      const res = await fetch("/api/v1/cover/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: draft.slug, title: draft.title, cat: draft.cat, tone: TONE[draft.cat] ?? "#0072BC", scene: coverAiPrompt.trim() }) });
       const d = await res.json();
       if (res.ok) { setDraft((dr) => ({ ...dr, coverUrl: d.url })); setCoverMsg((d.aiUsed ? "✅ " : "⚠️ ") + (d.note || "")); }
       else setCoverMsg(`❌ ${d.error || res.status}`);
@@ -1441,8 +1446,17 @@ export default function CmsApp() {
               >
                 {coverBusy ? "⏳ Đang xử lý ảnh…" : "📤 Kéo ảnh vào đây, hoặc bấm để chọn ảnh từ máy"}
               </div>
+              <label style={{ ...label, marginBottom: 4 }}>Prompt tạo ảnh AI <span style={{ color: COLORS.ink3, fontWeight: 400 }}>(để trống → AI tự suy từ tiêu đề/nội dung)</span></label>
+              <textarea
+                value={coverAiPrompt}
+                onChange={(e) => setCoverAiPrompt(e.target.value)}
+                placeholder="VD: isometric data center với các node Kubernetes nối nhau, tông xanh dương/cam, phong cách editorial phẳng, không chữ"
+                disabled={coverBusy}
+                rows={2}
+                style={{ ...input, height: "auto", padding: 10, marginBottom: 8, fontFamily: "inherit", resize: "vertical" }}
+              />
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button type="button" onClick={genCoverAI} disabled={coverBusy || !draft.title} style={{ ...btnBlue, opacity: coverBusy || !draft.title ? 0.5 : 1 }}>✨ Tạo ảnh bằng AI</button>
+                <button type="button" onClick={genCoverAI} disabled={coverBusy || !draft.title} style={{ ...btnBlue, opacity: coverBusy || !draft.title ? 0.5 : 1 }}>{coverBusy ? "⏳ Đang tạo…" : "✨ Tạo ảnh AI theo prompt"}</button>
                 <button type="button" onClick={() => { setDraft({ ...draft, coverUrl: "" }); setCoverMsg("Dùng ảnh minh hoạ tự động."); }} disabled={coverBusy} style={btnSm}>Ảnh tự động</button>
               </div>
               {coverMsg && <div style={{ fontSize: 12, color: COLORS.ink2, marginTop: 10 }}>{coverMsg}</div>}
