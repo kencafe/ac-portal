@@ -1,33 +1,32 @@
+# Branch -> env-specific Pipeline routing. One EventListener with three triggers;
+# each trigger has its own TriggerTemplate that starts the matching pinned
+# Pipeline (ac-portal-cicd-{dev,staging,prod}). The env/namespace/host/run-dast
+# come from the Pipeline's own parameter defaults, so the template only forwards
+# git-url and git-revision from the webhook.
+#
+#   refs/heads/dev     -> ac-portal-cicd-dev
+#   refs/heads/staging -> ac-portal-cicd-staging  (DAST)
+#   refs/heads/main    -> ac-portal-cicd-prod
+---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerTemplate
-metadata:
-  name: ns-web-triggertemplate
-  namespace: ac-portal-cicd
+metadata: { name: ns-web-tt-dev, namespace: ac-portal-cicd }
 spec:
   params:
     - { name: git-revision }
     - { name: git-url }
-    - { name: env }
-    - { name: target-namespace }
-    - { name: deploy-host }
-    - { name: run-dast }
   resourcetemplates:
     - apiVersion: tekton.dev/v1
       kind: PipelineRun
       metadata:
-        generateName: ns-web-$(tt.params.env)-
+        generateName: ns-web-dev-
         namespace: ac-portal-cicd
       spec:
-        pipelineRef: { name: ns-web-cicd }
-        taskRunTemplate:
-          serviceAccountName: ns-web-pipeline
+        pipelineRef: { name: ac-portal-cicd-dev }
+        taskRunTemplate: { serviceAccountName: ns-web-pipeline }
         params:
           - { name: git-url, value: $(tt.params.git-url) }
           - { name: git-revision, value: $(tt.params.git-revision) }
-          - { name: env, value: $(tt.params.env) }
-          - { name: target-namespace, value: $(tt.params.target-namespace) }
-          - { name: deploy-host, value: $(tt.params.deploy-host) }
-          - { name: run-dast, value: $(tt.params.run-dast) }
         workspaces:
           - name: shared
             volumeClaimTemplate:
@@ -36,7 +35,60 @@ spec:
                 resources: { requests: { storage: 1Gi } }
                 storageClassName: ac-bronze-single
 ---
-# One binding per branch/environment.
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata: { name: ns-web-tt-staging, namespace: ac-portal-cicd }
+spec:
+  params:
+    - { name: git-revision }
+    - { name: git-url }
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1
+      kind: PipelineRun
+      metadata:
+        generateName: ns-web-staging-
+        namespace: ac-portal-cicd
+      spec:
+        pipelineRef: { name: ac-portal-cicd-staging }
+        taskRunTemplate: { serviceAccountName: ns-web-pipeline }
+        params:
+          - { name: git-url, value: $(tt.params.git-url) }
+          - { name: git-revision, value: $(tt.params.git-revision) }
+        workspaces:
+          - name: shared
+            volumeClaimTemplate:
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                resources: { requests: { storage: 1Gi } }
+                storageClassName: ac-bronze-single
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata: { name: ns-web-tt-prod, namespace: ac-portal-cicd }
+spec:
+  params:
+    - { name: git-revision }
+    - { name: git-url }
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1
+      kind: PipelineRun
+      metadata:
+        generateName: ns-web-prod-
+        namespace: ac-portal-cicd
+      spec:
+        pipelineRef: { name: ac-portal-cicd-prod }
+        taskRunTemplate: { serviceAccountName: ns-web-pipeline }
+        params:
+          - { name: git-url, value: $(tt.params.git-url) }
+          - { name: git-revision, value: $(tt.params.git-revision) }
+        workspaces:
+          - name: shared
+            volumeClaimTemplate:
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                resources: { requests: { storage: 1Gi } }
+                storageClassName: ac-bronze-single
+---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
 metadata: { name: ns-web-bind-dev, namespace: ac-portal-cicd }
@@ -44,10 +96,6 @@ spec:
   params:
     - { name: git-url, value: $(body.repository.clone_url) }
     - { name: git-revision, value: dev }
-    - { name: env, value: dev }
-    - { name: target-namespace, value: ac-portal-dev }
-    - { name: deploy-host, value: dev.appcarrier.cloud }
-    - { name: run-dast, value: "false" }
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
@@ -56,10 +104,6 @@ spec:
   params:
     - { name: git-url, value: $(body.repository.clone_url) }
     - { name: git-revision, value: staging }
-    - { name: env, value: staging }
-    - { name: target-namespace, value: ac-portal-staging }
-    - { name: deploy-host, value: staging.appcarrier.cloud }
-    - { name: run-dast, value: "true" }
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
@@ -68,10 +112,6 @@ spec:
   params:
     - { name: git-url, value: $(body.repository.clone_url) }
     - { name: git-revision, value: main }
-    - { name: env, value: prod }
-    - { name: target-namespace, value: ac-portal-prod }
-    - { name: deploy-host, value: appcarrier.cloud }
-    - { name: run-dast, value: "false" }
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener
@@ -91,7 +131,7 @@ spec:
           params:
             - { name: filter, value: "body.ref == 'refs/heads/dev'" }
       bindings: [{ ref: ns-web-bind-dev }]
-      template: { ref: ns-web-triggertemplate }
+      template: { ref: ns-web-tt-dev }
     - name: push-staging
       interceptors:
         - ref: { name: github }
@@ -102,7 +142,7 @@ spec:
           params:
             - { name: filter, value: "body.ref == 'refs/heads/staging'" }
       bindings: [{ ref: ns-web-bind-staging }]
-      template: { ref: ns-web-triggertemplate }
+      template: { ref: ns-web-tt-staging }
     - name: push-prod
       interceptors:
         - ref: { name: github }
@@ -113,7 +153,7 @@ spec:
           params:
             - { name: filter, value: "body.ref == 'refs/heads/main'" }
       bindings: [{ ref: ns-web-bind-prod }]
-      template: { ref: ns-web-triggertemplate }
+      template: { ref: ns-web-tt-prod }
 ---
 # EventListener ingress. No explicit host → OpenShift assigns the default apps
 # wildcard host (served by the default ingress cert), so no custom TLS material

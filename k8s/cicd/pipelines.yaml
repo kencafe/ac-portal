@@ -1,0 +1,326 @@
+# Three env-specific Pipelines in the CI hub (ac-portal-cicd). They share the
+# SAME 8 Tasks (see tasks.yaml) — DRY at the task layer — and differ only in the
+# per-env parameter DEFAULTS, so a PipelineRun needs to pass nothing (or just
+# override git-revision). Each keeps the build-once + promote-by-tag flow.
+#
+#   ac-portal-cicd-dev      env=dev     -> ac-portal-dev      dev.appcarrier.cloud      DAST off
+#   ac-portal-cicd-staging  env=staging -> ac-portal-staging  staging.appcarrier.cloud  DAST ON
+#   ac-portal-cicd-prod     env=prod    -> ac-portal-prod      appcarrier.cloud          DAST off
+#
+# NOTE: The task graph below is identical across the three Pipelines; only the
+# `params` default block changes. Keep them in sync when editing the graph.
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: ac-portal-cicd-dev
+  namespace: ac-portal-cicd
+  labels: { app: ac-portal, ac-portal.env: dev }
+spec:
+  description: DevSecOps CI/CD pinned to the dev environment (build once + promote by tag).
+  params:
+    - { name: git-url, type: string, default: "https://github.com/kencafe/ac-portal.git" }
+    - { name: git-revision, type: string, default: dev }
+    - { name: env, type: string, default: dev }
+    - { name: target-namespace, type: string, default: ac-portal-dev }
+    - { name: deploy-host, type: string, default: dev.appcarrier.cloud }
+    - { name: run-dast, type: string, default: "false" }
+  workspaces:
+    - name: shared
+  tasks:
+    - name: fetch
+      taskRef: { kind: ClusterTask, name: git-clone }
+      params:
+        - { name: url, value: $(params.git-url) }
+        - { name: revision, value: $(params.git-revision) }
+        - { name: deleteExisting, value: "true" }
+      workspaces: [{ name: output, workspace: shared }]
+    - name: secret-scan
+      runAfter: [fetch]
+      taskRef: { kind: Task, name: gitleaks-scan }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: sca
+      runAfter: [fetch]
+      timeout: "20m"
+      taskRef: { kind: Task, name: dependency-check-scan }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: sast
+      runAfter: [fetch]
+      timeout: "15m"
+      taskRef: { kind: Task, name: semgrep-sast }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: compliance
+      runAfter: [fetch]
+      taskRef: { kind: Task, name: kube-linter-scan }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: build
+      runAfter: [secret-scan]
+      taskRef: { kind: Task, name: oc-run }
+      params:
+        - name: SCRIPT
+          value: |
+            set -e
+            oc apply -k k8s/overlays/$(params.env)
+            echo "Building image ONCE in ac-portal-cicd…"
+            oc -n ac-portal-cicd start-build ac-portal --from-dir=. --follow --wait
+      workspaces: [{ name: manifest-dir, workspace: shared }]
+    - name: image-scan
+      runAfter: [build]
+      taskRef: { kind: Task, name: trivy-image-scan }
+      params:
+        - { name: IMAGE, value: "image-registry.openshift-image-registry.svc:5000/ac-portal-cicd/ac-portal:latest" }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: defectdojo
+      runAfter: [image-scan, sca, sast, secret-scan]
+      taskRef: { kind: Task, name: defectdojo-upload }
+      params:
+        - { name: ENGAGEMENT, value: "ci-$(params.env)" }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: deploy
+      runAfter: [image-scan]
+      taskRef: { kind: Task, name: oc-run }
+      params:
+        - name: SCRIPT
+          value: |
+            set -e
+            NS=$(params.target-namespace)
+            oc tag ac-portal-cicd/ac-portal:latest "$NS/ac-portal:latest"
+            REF=$(oc -n ac-portal-cicd get istag ac-portal:latest -o jsonpath='{.image.dockerImageReference}')
+            echo "Promoting $REF -> $NS"
+            oc -n "$NS" set image deploy/ac-portal ac-portal="$REF"
+            oc -n "$NS" rollout status deploy/ac-portal --timeout=240s
+            if oc -n "$NS" get secret ns-web-tls >/dev/null 2>&1; then
+              CRT=$(oc -n "$NS" get secret ns-web-tls -o go-template='{{index .data "tls.crt"}}' | base64 -d | sed ':a;N;$!ba;s/\n/\\n/g')
+              KEY=$(oc -n "$NS" get secret ns-web-tls -o go-template='{{index .data "tls.key"}}' | base64 -d | sed ':a;N;$!ba;s/\n/\\n/g')
+              for r in ac-portal ac-portal-cms ac-portal-blog; do
+                oc -n "$NS" get route "$r" >/dev/null 2>&1 || continue
+                for attempt in 1 2 3; do
+                  oc -n "$NS" patch route "$r" --type=merge \
+                    -p "{\"spec\":{\"tls\":{\"termination\":\"edge\",\"insecureEdgeTerminationPolicy\":\"Redirect\",\"certificate\":\"$CRT\",\"key\":\"$KEY\"}}}" || true
+                  sleep 2
+                  st=$(oc -n "$NS" get route "$r" -o jsonpath='{.status.ingress[0].conditions[0].status}' 2>/dev/null)
+                  if [ "$st" = "True" ]; then echo "cert ok: $r"; break; fi
+                  echo "retry cert patch: $r (attempt $attempt, admitted=$st)"
+                done
+              done
+            fi
+      workspaces: [{ name: manifest-dir, workspace: shared }]
+    - name: dast
+      runAfter: [deploy]
+      when:
+        - { input: $(params.run-dast), operator: in, values: ["true"] }
+      taskRef: { kind: Task, name: zap-dast }
+      params:
+        - { name: TARGET_URL, value: "https://$(params.deploy-host)" }
+        - { name: ENGAGEMENT, value: "dast-$(params.env)" }
+      workspaces: [{ name: source, workspace: shared }]
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: ac-portal-cicd-staging
+  namespace: ac-portal-cicd
+  labels: { app: ac-portal, ac-portal.env: staging }
+spec:
+  description: DevSecOps CI/CD pinned to the staging environment (build once + promote by tag, DAST on).
+  params:
+    - { name: git-url, type: string, default: "https://github.com/kencafe/ac-portal.git" }
+    - { name: git-revision, type: string, default: staging }
+    - { name: env, type: string, default: staging }
+    - { name: target-namespace, type: string, default: ac-portal-staging }
+    - { name: deploy-host, type: string, default: staging.appcarrier.cloud }
+    - { name: run-dast, type: string, default: "true" }
+  workspaces:
+    - name: shared
+  tasks:
+    - name: fetch
+      taskRef: { kind: ClusterTask, name: git-clone }
+      params:
+        - { name: url, value: $(params.git-url) }
+        - { name: revision, value: $(params.git-revision) }
+        - { name: deleteExisting, value: "true" }
+      workspaces: [{ name: output, workspace: shared }]
+    - name: secret-scan
+      runAfter: [fetch]
+      taskRef: { kind: Task, name: gitleaks-scan }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: sca
+      runAfter: [fetch]
+      timeout: "20m"
+      taskRef: { kind: Task, name: dependency-check-scan }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: sast
+      runAfter: [fetch]
+      timeout: "15m"
+      taskRef: { kind: Task, name: semgrep-sast }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: compliance
+      runAfter: [fetch]
+      taskRef: { kind: Task, name: kube-linter-scan }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: build
+      runAfter: [secret-scan]
+      taskRef: { kind: Task, name: oc-run }
+      params:
+        - name: SCRIPT
+          value: |
+            set -e
+            oc apply -k k8s/overlays/$(params.env)
+            echo "Building image ONCE in ac-portal-cicd…"
+            oc -n ac-portal-cicd start-build ac-portal --from-dir=. --follow --wait
+      workspaces: [{ name: manifest-dir, workspace: shared }]
+    - name: image-scan
+      runAfter: [build]
+      taskRef: { kind: Task, name: trivy-image-scan }
+      params:
+        - { name: IMAGE, value: "image-registry.openshift-image-registry.svc:5000/ac-portal-cicd/ac-portal:latest" }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: defectdojo
+      runAfter: [image-scan, sca, sast, secret-scan]
+      taskRef: { kind: Task, name: defectdojo-upload }
+      params:
+        - { name: ENGAGEMENT, value: "ci-$(params.env)" }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: deploy
+      runAfter: [image-scan]
+      taskRef: { kind: Task, name: oc-run }
+      params:
+        - name: SCRIPT
+          value: |
+            set -e
+            NS=$(params.target-namespace)
+            oc tag ac-portal-cicd/ac-portal:latest "$NS/ac-portal:latest"
+            REF=$(oc -n ac-portal-cicd get istag ac-portal:latest -o jsonpath='{.image.dockerImageReference}')
+            echo "Promoting $REF -> $NS"
+            oc -n "$NS" set image deploy/ac-portal ac-portal="$REF"
+            oc -n "$NS" rollout status deploy/ac-portal --timeout=240s
+            if oc -n "$NS" get secret ns-web-tls >/dev/null 2>&1; then
+              CRT=$(oc -n "$NS" get secret ns-web-tls -o go-template='{{index .data "tls.crt"}}' | base64 -d | sed ':a;N;$!ba;s/\n/\\n/g')
+              KEY=$(oc -n "$NS" get secret ns-web-tls -o go-template='{{index .data "tls.key"}}' | base64 -d | sed ':a;N;$!ba;s/\n/\\n/g')
+              for r in ac-portal ac-portal-cms ac-portal-blog; do
+                oc -n "$NS" get route "$r" >/dev/null 2>&1 || continue
+                for attempt in 1 2 3; do
+                  oc -n "$NS" patch route "$r" --type=merge \
+                    -p "{\"spec\":{\"tls\":{\"termination\":\"edge\",\"insecureEdgeTerminationPolicy\":\"Redirect\",\"certificate\":\"$CRT\",\"key\":\"$KEY\"}}}" || true
+                  sleep 2
+                  st=$(oc -n "$NS" get route "$r" -o jsonpath='{.status.ingress[0].conditions[0].status}' 2>/dev/null)
+                  if [ "$st" = "True" ]; then echo "cert ok: $r"; break; fi
+                  echo "retry cert patch: $r (attempt $attempt, admitted=$st)"
+                done
+              done
+            fi
+      workspaces: [{ name: manifest-dir, workspace: shared }]
+    - name: dast
+      runAfter: [deploy]
+      when:
+        - { input: $(params.run-dast), operator: in, values: ["true"] }
+      taskRef: { kind: Task, name: zap-dast }
+      params:
+        - { name: TARGET_URL, value: "https://$(params.deploy-host)" }
+        - { name: ENGAGEMENT, value: "dast-$(params.env)" }
+      workspaces: [{ name: source, workspace: shared }]
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: ac-portal-cicd-prod
+  namespace: ac-portal-cicd
+  labels: { app: ac-portal, ac-portal.env: prod }
+spec:
+  description: DevSecOps CI/CD pinned to the PROD environment. Deliberate promotion only — never auto-run.
+  params:
+    - { name: git-url, type: string, default: "https://github.com/kencafe/ac-portal.git" }
+    - { name: git-revision, type: string, default: main }
+    - { name: env, type: string, default: prod }
+    - { name: target-namespace, type: string, default: ac-portal-prod }
+    - { name: deploy-host, type: string, default: appcarrier.cloud }
+    - { name: run-dast, type: string, default: "false" }
+  workspaces:
+    - name: shared
+  tasks:
+    - name: fetch
+      taskRef: { kind: ClusterTask, name: git-clone }
+      params:
+        - { name: url, value: $(params.git-url) }
+        - { name: revision, value: $(params.git-revision) }
+        - { name: deleteExisting, value: "true" }
+      workspaces: [{ name: output, workspace: shared }]
+    - name: secret-scan
+      runAfter: [fetch]
+      taskRef: { kind: Task, name: gitleaks-scan }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: sca
+      runAfter: [fetch]
+      timeout: "20m"
+      taskRef: { kind: Task, name: dependency-check-scan }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: sast
+      runAfter: [fetch]
+      timeout: "15m"
+      taskRef: { kind: Task, name: semgrep-sast }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: compliance
+      runAfter: [fetch]
+      taskRef: { kind: Task, name: kube-linter-scan }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: build
+      runAfter: [secret-scan]
+      taskRef: { kind: Task, name: oc-run }
+      params:
+        - name: SCRIPT
+          value: |
+            set -e
+            oc apply -k k8s/overlays/$(params.env)
+            echo "Building image ONCE in ac-portal-cicd…"
+            oc -n ac-portal-cicd start-build ac-portal --from-dir=. --follow --wait
+      workspaces: [{ name: manifest-dir, workspace: shared }]
+    - name: image-scan
+      runAfter: [build]
+      taskRef: { kind: Task, name: trivy-image-scan }
+      params:
+        - { name: IMAGE, value: "image-registry.openshift-image-registry.svc:5000/ac-portal-cicd/ac-portal:latest" }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: defectdojo
+      runAfter: [image-scan, sca, sast, secret-scan]
+      taskRef: { kind: Task, name: defectdojo-upload }
+      params:
+        - { name: ENGAGEMENT, value: "ci-$(params.env)" }
+      workspaces: [{ name: source, workspace: shared }]
+    - name: deploy
+      runAfter: [image-scan]
+      taskRef: { kind: Task, name: oc-run }
+      params:
+        - name: SCRIPT
+          value: |
+            set -e
+            NS=$(params.target-namespace)
+            oc tag ac-portal-cicd/ac-portal:latest "$NS/ac-portal:latest"
+            REF=$(oc -n ac-portal-cicd get istag ac-portal:latest -o jsonpath='{.image.dockerImageReference}')
+            echo "Promoting $REF -> $NS"
+            oc -n "$NS" set image deploy/ac-portal ac-portal="$REF"
+            oc -n "$NS" rollout status deploy/ac-portal --timeout=240s
+            if oc -n "$NS" get secret ns-web-tls >/dev/null 2>&1; then
+              CRT=$(oc -n "$NS" get secret ns-web-tls -o go-template='{{index .data "tls.crt"}}' | base64 -d | sed ':a;N;$!ba;s/\n/\\n/g')
+              KEY=$(oc -n "$NS" get secret ns-web-tls -o go-template='{{index .data "tls.key"}}' | base64 -d | sed ':a;N;$!ba;s/\n/\\n/g')
+              for r in ac-portal ac-portal-cms ac-portal-blog; do
+                oc -n "$NS" get route "$r" >/dev/null 2>&1 || continue
+                for attempt in 1 2 3; do
+                  oc -n "$NS" patch route "$r" --type=merge \
+                    -p "{\"spec\":{\"tls\":{\"termination\":\"edge\",\"insecureEdgeTerminationPolicy\":\"Redirect\",\"certificate\":\"$CRT\",\"key\":\"$KEY\"}}}" || true
+                  sleep 2
+                  st=$(oc -n "$NS" get route "$r" -o jsonpath='{.status.ingress[0].conditions[0].status}' 2>/dev/null)
+                  if [ "$st" = "True" ]; then echo "cert ok: $r"; break; fi
+                  echo "retry cert patch: $r (attempt $attempt, admitted=$st)"
+                done
+              done
+            fi
+      workspaces: [{ name: manifest-dir, workspace: shared }]
+    - name: dast
+      runAfter: [deploy]
+      when:
+        - { input: $(params.run-dast), operator: in, values: ["true"] }
+      taskRef: { kind: Task, name: zap-dast }
+      params:
+        - { name: TARGET_URL, value: "https://$(params.deploy-host)" }
+        - { name: ENGAGEMENT, value: "dast-$(params.env)" }
+      workspaces: [{ name: source, workspace: shared }]

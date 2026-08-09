@@ -28,9 +28,9 @@ Branch → env mapping (TriggerBindings):
 | `namespace.yaml`| the `ac-portal-cicd` namespace |
 | `build.yaml`    | `ImageStream` + `BuildConfig ac-portal` (binary Docker build, output `ac-portal:latest`) |
 | `rbac.yaml`     | SAs `ns-web-pipeline` / `ns-web-triggers`; local edit/image-builder/pipelines-scc; cross-ns `edit` in dev/staging/prod; image-puller (hub→tool images in dev, envs→promoted image in hub) |
-| `tasks.yaml`    | DevSecOps Tasks (gitleaks, dependency-check, semgrep, trivy, kube-linter, zap, defectdojo, oc-run). Tool images are pulled from the `ac-portal-dev` mirror |
-| `pipeline.yaml` | Pipeline `ns-web-cicd` (build-once + promote-by-tag) |
-| `triggers.yaml` | TriggerTemplate/Bindings, EventListener `ns-web-el`, EL Route |
+| `tasks.yaml`    | The 8 shared DevSecOps Tasks (gitleaks, dependency-check, semgrep, trivy, kube-linter, zap, defectdojo, oc-run). Tool images from the `ac-portal-dev` mirror. Shared by all 3 pipelines — DRY at the task layer |
+| `pipelines.yaml`| Three env-pinned Pipelines `ac-portal-cicd-{dev,staging,prod}` (same task graph, per-env param defaults; build-once + promote-by-tag) |
+| `triggers.yaml` | Per-env TriggerTemplates `ns-web-tt-{dev,staging,prod}` + Bindings, one EventListener `ns-web-el`, EL Route. Branch→pipeline: dev→dev, staging→staging, main→prod |
 
 ## One-time secrets (NOT in git — create imperatively)
 
@@ -54,21 +54,17 @@ self-contained, re-mirror them into `ac-portal-cicd` and drop that puller grant.
 
 ## Manual run
 
+Env params are pinned as Pipeline defaults, so a run only needs to pick the
+pipeline (and may override `git-revision`):
+
 ```bash
 oc -n ac-portal-cicd create -f - <<'YAML'
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata: { generateName: ns-web-dev-, namespace: ac-portal-cicd }
 spec:
-  pipelineRef: { name: ns-web-cicd }
+  pipelineRef: { name: ac-portal-cicd-dev }   # or -staging / -prod
   taskRunTemplate: { serviceAccountName: ns-web-pipeline }
-  params:
-    - { name: git-url, value: "https://github.com/kencafe/ac-portal.git" }
-    - { name: git-revision, value: dev }
-    - { name: env, value: dev }
-    - { name: target-namespace, value: ac-portal-dev }
-    - { name: deploy-host, value: dev.appcarrier.cloud }
-    - { name: run-dast, value: "false" }
   workspaces:
     - name: shared
       volumeClaimTemplate:
