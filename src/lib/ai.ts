@@ -113,6 +113,16 @@ function hashCode(s: string): number {
   return h;
 }
 
+// Excerpt: truncate at a word boundary (never mid-word) and add an ellipsis.
+function clipExcerpt(text: string, max = 180): string {
+  const t = (text || "").replace(/\s+/g, " ").trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  const base = lastSpace > max * 0.5 ? cut.slice(0, lastSpace) : cut;
+  return base.replace(/[\s.,;:!?…-]+$/, "") + "…";
+}
+
 // Generate a real cover image via the configured image provider (see
 // lib/imageProviders): pollinations (free/keyless, default), gemini (billing),
 // or any OpenAI-images-compatible provider (OpenAI/xAI). Saves to storage and
@@ -487,7 +497,7 @@ export async function ingestText(
   const status: "draft" | "published" = publish ? "published" : "draft";
   const slug = await availableSlug(slugify(title));
   const url = opts?.url ?? opts?.source ?? "";
-  const excerpt = (blocks.find((b) => b.kind === "p")?.text ?? "").slice(0, 160);
+  const excerpt = clipExcerpt(blocks.find((b) => b.kind === "p")?.text ?? "");
   // Content-aware cover: AI imagePrompt if any, else title + excerpt.
   const scene = imagePrompt || `${title}. ${excerpt}`;
   const cover = opts?.cover || (await makeCover(slug, title, opts?.cat || "AIOps", "#0072BC", false, scene));
@@ -546,7 +556,7 @@ export async function reeditPost(slug: string, instruction?: string): Promise<In
   await upsertPost({
     slug,
     title: title || post.title,
-    excerpt: (blocks.find((b) => b.kind === "p")?.text ?? post.excerpt ?? "").slice(0, 160),
+    excerpt: clipExcerpt(blocks.find((b) => b.kind === "p")?.text ?? post.excerpt ?? ""),
     blocks: blocks.length ? blocks : post.blocks,
     // status, cat, tone, author, cover, tags, featured are preserved by upsert merge.
   });
@@ -633,7 +643,7 @@ export async function generateArticle(
   const publish = opts?.forcePublish ?? false;
   const status: "draft" | "published" = publish ? "published" : "draft";
   const slug = await availableSlug(slugify(title));
-  const excerpt = (blocks.find((b) => b.kind === "p")?.text ?? "").slice(0, 160);
+  const excerpt = clipExcerpt(blocks.find((b) => b.kind === "p")?.text ?? "");
   const cover = await makeCover(slug, title, opts?.cat || "SRE", "#0072BC", false, imagePrompt || `${title}. ${excerpt}. ${brief.slice(0, 200)}`);
 
   const saved = await upsertPost({
