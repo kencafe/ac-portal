@@ -1502,6 +1502,22 @@ export default function CmsApp() {
                 rows={2}
                 style={{ ...input, height: "auto", padding: 10, marginBottom: 8, fontFamily: "inherit", resize: "vertical" }}
               />
+              {settings && (() => {
+                // Show which image model is configured (from saved API setup) so
+                // the admin knows the source before generating. If the provider
+                // needs a key but none is saved, it will auto-fall back to
+                // Pollinations (free) — surface that here too.
+                const p = IMAGE_PROVIDERS_PUBLIC.find((pp) => pp.id === settings.aiImageProvider);
+                const needsKey = p && !p.keyless && !settings.aiImageApiKeySet;
+                return (
+                  <div style={{ fontSize: 11.5, color: COLORS.ink3, marginBottom: 8, lineHeight: 1.5 }}>
+                    🎨 Đang gen bằng: <b style={{ color: COLORS.ink2 }}>{p?.name ?? settings.aiImageProvider}</b>
+                    {settings.aiImageModel ? <span> · model <code style={{ fontFamily: "monospace" }}>{settings.aiImageModel}</code></span> : null}
+                    {needsKey && <span style={{ color: COLORS.brandOrange }}> — chưa có API key → sẽ tự dùng Pollinations (miễn phí)</span>}
+                    <span style={{ color: COLORS.ink3 }}> · đổi ở <b>Cấu hình API → Tạo ảnh bìa</b></span>
+                  </div>
+                );
+              })()}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button type="button" onClick={genCoverAI} disabled={coverBusy || !draft.title} style={{ ...btnBlue, opacity: coverBusy || !draft.title ? 0.5 : 1 }}>{coverBusy ? "⏳ Đang tạo…" : "✨ Tạo ảnh AI theo prompt"}</button>
                 <button type="button" onClick={() => { setDraft({ ...draft, coverUrl: "" }); setCoverMsg("Dùng ảnh minh hoạ tự động."); }} disabled={coverBusy} style={btnSm}>Ảnh tự động</button>

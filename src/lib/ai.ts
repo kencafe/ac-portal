@@ -123,38 +123,75 @@ function clipExcerpt(text: string, max = 180): string {
   return base.replace(/[\s.,;:!?…-]+$/, "") + "…";
 }
 
+// Result of a cover generation: the image URL plus which provider/model actually
+// produced it. `provider` is the real source used — the configured one, the
+// "pollinations" free fallback, or "svg" when we fell back to the branded
+// illustration. The editor surfaces this so the admin sees the true source.
+export interface CoverResult {
+  url: string;
+  provider: string; // provider id actually used, or "svg"
+  model: string;    // model actually used ("" for svg)
+  aiUsed: boolean;   // true when a real AI image was produced
+  fallbackReason?: string; // set when the configured provider failed and we used Pollinations/SVG
+}
+
 // Generate a real cover image via the configured image provider (see
 // lib/imageProviders): pollinations (free/keyless, default), gemini (billing),
 // or any OpenAI-images-compatible provider (OpenAI/xAI). Saves to storage and
-// returns its URL; falls back to the branded illustration when disabled/on error.
-export async function makeCover(slug: string, title: string, cat = "", tone = "#0072BC", force = false, scene = "", nonce = 0, raw = false): Promise<string> {
+// returns the URL plus the real provider/model used. When the configured
+// provider fails (missing key / 429 / error) it auto-falls back to Pollinations
+// (free, keyless) before finally falling back to the branded SVG illustration —
+// so the manual "create AI image" button always yields a real image when
+// Pollinations egress is available.
+export async function makeCoverDetailed(slug: string, title: string, cat = "", tone = "#0072BC", force = false, scene = "", nonce = 0, raw = false): Promise<CoverResult> {
   const fallback = coverFor(title, cat, tone);
   const s = await getSettings();
-  if (!s.aiImageEnabled && !force) return fallback;
+  if (!s.aiImageEnabled && !force) return { url: fallback, provider: "svg", model: "", aiUsed: false };
   const provider = getImageProvider(s.aiImageProvider);
   const model = s.aiImageModel || provider.models[0] || "";
+  let fallbackReason = "";
   try {
     if (provider.apiStyle === "gemini") {
       const apiKey = s.aiImageApiKey || "";
       if (!apiKey) throw new Error("no image api key (đặt ở Cấu hình API → Tạo ảnh bìa)");
       const out = await geminiImage(slug, title, cat, apiKey, model || "gemini-2.5-flash-image", scene, raw);
       console.log(`[ai] cover via gemini for ${slug}`);
-      return out;
+      return { url: out, provider: provider.id, model: model || "gemini-2.5-flash-image", aiUsed: true };
     }
     if (provider.apiStyle === "openai-images") {
       const apiKey = s.aiImageApiKey || "";
       if (!apiKey) throw new Error("no image api key (đặt ở Cấu hình API → Tạo ảnh bìa)");
       const out = await openaiImage(slug, title, cat, provider.endpoint, apiKey, model, scene, raw);
       console.log(`[ai] cover via ${provider.id} for ${slug}`);
-      return out;
+      return { url: out, provider: provider.id, model, aiUsed: true };
     }
     const out = await pollinationsImage(slug, title, cat, scene, nonce, raw);
     console.log(`[ai] cover via pollinations for ${slug}`);
-    return out;
+    return { url: out, provider: "pollinations", model: model || "flux", aiUsed: true };
   } catch (e) {
-    console.error(`[ai] cover image failed for ${slug} (${provider.id}):`, (e as Error).message);
-    return fallback;
+    fallbackReason = (e as Error).message;
+    console.error(`[ai] cover image failed for ${slug} (${provider.id}):`, fallbackReason);
+    // Auto-fallback to Pollinations (free, keyless) when the configured provider
+    // isn't already Pollinations — keeps the manual button working when the
+    // billed provider has no key / hit 429.
+    if (provider.apiStyle !== "pollinations") {
+      try {
+        const out = await pollinationsImage(slug, title, cat, scene, nonce, raw);
+        console.log(`[ai] cover via pollinations (fallback) for ${slug}`);
+        return { url: out, provider: "pollinations", model: "flux", aiUsed: true, fallbackReason };
+      } catch (e2) {
+        fallbackReason = `${fallbackReason}; pollinations: ${(e2 as Error).message}`;
+        console.error(`[ai] pollinations fallback failed for ${slug}:`, (e2 as Error).message);
+      }
+    }
+    return { url: fallback, provider: "svg", model: "", aiUsed: false, fallbackReason };
   }
+}
+
+// Backwards-compatible wrapper: returns just the URL (used by the auto/ingest
+// paths that don't need to know the exact provider used).
+export async function makeCover(slug: string, title: string, cat = "", tone = "#0072BC", force = false, scene = "", nonce = 0, raw = false): Promise<string> {
+  return (await makeCoverDetailed(slug, title, cat, tone, force, scene, nonce, raw)).url;
 }
 
 // Curated, reputable tech sources so "AI tự tìm bài" works out-of-the-box even

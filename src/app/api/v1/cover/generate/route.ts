@@ -1,5 +1,6 @@
 import { getIdentity, hasRole, CAN_WRITE } from "@/lib/identity";
-import { makeCover, coverFor } from "@/lib/ai";
+import { makeCoverDetailed, coverFor } from "@/lib/ai";
+import { getImageProvider } from "@/lib/imageProviders";
 import { imagePublicUrl } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -21,19 +22,32 @@ export async function POST(req: Request) {
   const s = (slug || title).toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60) || "cover";
   const nonce = Date.now() % 1000000; // vary + cache-bust each manual generate
   // raw=true → the editor's prompt is used verbatim (allows text/logos/own style).
-  const raw = await makeCover(s, title, cat || "", tone || "#0072BC", true, (scene || "").trim(), nonce, true);
-  const aiUsed = raw.startsWith("/api/cover-img/");
-  const url = aiUsed ? `${raw}?v=${nonce}` : raw;
+  const r = await makeCoverDetailed(s, title, cat || "", tone || "#0072BC", true, (scene || "").trim(), nonce, true);
+  const aiUsed = r.aiUsed;
+  const url = aiUsed ? `${r.url}?v=${nonce}` : r.url;
   // Direct MinIO object link (so the editor sees where the image is stored).
-  const key = aiUsed ? raw.replace("/api/cover-img/", "") : "";
+  const key = aiUsed ? r.url.replace("/api/cover-img/", "") : "";
   const minioUrl = key ? imagePublicUrl(key) : "";
+  // Human-readable label of the provider that actually produced the image.
+  const providerName = r.provider === "svg" ? "Ảnh minh hoạ thương hiệu (SVG)" : getImageProvider(r.provider).name;
+  const modelLabel = r.model ? ` · model ${r.model}` : "";
+  let note: string;
+  if (aiUsed && r.fallbackReason) {
+    // Configured provider failed → we auto-used Pollinations (free).
+    note = `Đã tạo ảnh bằng ${providerName}${modelLabel} (dự phòng — nhà cung cấp đã chọn lỗi: ${r.fallbackReason})${minioUrl ? ` · MinIO: ${minioUrl}` : ""}`;
+  } else if (aiUsed) {
+    note = `Đã tạo ảnh bằng ${providerName}${modelLabel}${minioUrl ? ` · MinIO: ${minioUrl}` : ""}`;
+  } else {
+    note = `Không tạo được ảnh AI (${r.fallbackReason || "kiểm tra Cấu hình API → Tạo ảnh bìa"}) — đã dùng ảnh minh hoạ thương hiệu.`;
+  }
   return Response.json({
     url,
     aiUsed,
+    provider: r.provider,
+    providerName,
+    model: r.model,
     minioUrl,
-    note: aiUsed
-      ? `Đã tạo ảnh bằng AI (theo prompt)${minioUrl ? ` · MinIO: ${minioUrl}` : ""}`
-      : "AI ảnh chưa bật/không dùng được (kiểm tra Cấu hình API → Tạo ảnh bìa) — đã dùng ảnh minh hoạ thương hiệu.",
+    note,
     fallback: coverFor(title, cat || "", tone || "#0072BC"),
   });
 }
