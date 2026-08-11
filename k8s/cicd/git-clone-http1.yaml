@@ -1,0 +1,60 @@
+# Custom clone task — replaces the shared `git-clone` ClusterTask for our
+# pipelines. This cluster's egress to github.com resets HTTP/2 connections
+# mid-pack (curl 56 SSL_ERROR_SYSCALL errno 104 / "early EOF"), so the stock
+# ClusterTask fails at fetch. Fixes applied here:
+#   - force HTTP/1.1 (git config http.version) — cures the curl 56 reset
+#   - larger http.postBuffer
+#   - in-task retry loop (5x) for any residual flakiness
+#   - shallow, no submodule recursion (repo has none)
+# Reuses the same mirrored git-init image (proven pullable in-cluster).
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-clone-http1
+  namespace: ac-portal-cicd
+spec:
+  description: Clone over HTTP/1.1 with in-task retries (egress-resilient).
+  params:
+    - { name: url, type: string }
+    - { name: revision, type: string, default: "" }
+    - { name: deleteExisting, type: string, default: "true" }
+  workspaces:
+    - name: output
+  results:
+    - name: commit
+      description: SHA of the checked-out commit.
+  steps:
+    - name: clone
+      image: ac-quay.apps.prod01.fis-cloud.fpt.com:8443/openshift-pipelines/pipelines-git-init-rhel8@sha256:0406dbf147f929411fe59c3185311c8fd147cefc1010ab4f67fa062cb9f320c6
+      workingDir: $(workspaces.output.path)
+      script: |
+        #!/usr/bin/env sh
+        set -eu
+        DIR="$(workspaces.output.path)"
+        URL="$(params.url)"
+        REV="$(params.revision)"
+        git config --global --add safe.directory "$DIR"
+        # Force HTTP/1.1 + bigger buffer — fixes curl 56 / early EOF on this egress.
+        git config --global http.version HTTP/1.1
+        git config --global http.postBuffer 524288000
+        cd "$DIR"
+        git init -q .
+        git remote add origin "$URL" 2>/dev/null || git remote set-url origin "$URL"
+        n=0
+        until [ "$n" -ge 5 ]; do
+          if git fetch --depth 1 --no-recurse-submodules origin "$REV"; then
+            break
+          fi
+          n=$((n + 1))
+          echo "fetch attempt $n failed; retrying in 5s"
+          sleep 5
+        done
+        if [ "$n" -ge 5 ]; then
+          echo "fetch failed after retries"
+          exit 1
+        fi
+        git checkout -q FETCH_HEAD
+        SHA="$(git rev-parse HEAD)"
+        echo "checked out $SHA"
+        printf '%s' "$SHA" > "$(results.commit.path)"

@@ -28,7 +28,7 @@ spec:
     - name: shared
   tasks:
     - name: fetch
-      taskRef: { kind: ClusterTask, name: git-clone }
+      taskRef: { kind: Task, name: git-clone-http1 }
       params:
         - { name: url, value: $(params.git-url) }
         - { name: revision, value: $(params.git-revision) }
@@ -124,7 +124,7 @@ spec:
     - name: shared
   tasks:
     - name: fetch
-      taskRef: { kind: ClusterTask, name: git-clone }
+      taskRef: { kind: Task, name: git-clone-http1 }
       params:
         - { name: url, value: $(params.git-url) }
         - { name: revision, value: $(params.git-revision) }
@@ -226,7 +226,7 @@ spec:
     - name: shared
   tasks:
     - name: fetch
-      taskRef: { kind: ClusterTask, name: git-clone }
+      taskRef: { kind: Task, name: git-clone-http1 }
       params:
         - { name: url, value: $(params.git-url) }
         - { name: revision, value: $(params.git-revision) }
