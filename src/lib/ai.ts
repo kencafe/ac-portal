@@ -24,14 +24,33 @@ const DEFAULT_MODEL = "claude-sonnet-5";
 // English image prompt for a clean, appealing editorial cover (no text).
 // `scene` (from the AI, content-aware) or `hint` (excerpt/keywords) makes the
 // image reflect the actual article, not a generic template.
+// Map English tech keywords in the (often Vietnamese) title to a CONCRETE
+// English visual motif. Feeding a Vietnamese title straight to an image model
+// produces irrelevant results (e.g. "Kubernetes" → its Greek "helmsman"/ship's
+// wheel meaning → boats). A curated motif grounds the model on the real topic.
+function visualScene(title: string, cat: string): string {
+  const t = `${title} ${cat}`.toLowerCase();
+  const has = (re: RegExp) => re.test(t);
+  if (has(/kubernetes|k8s|container|docker|openshift|helm|pod\b/)) return "container orchestration — hexagonal container pods on server racks, connected cluster nodes and monitoring dashboards";
+  if (has(/metric|observ|monitor|prometheus|grafana|logging|tracing|telemetry|exporter/)) return "an observability dashboard with line charts, gauges and metric panels on dark screens";
+  if (has(/ci\/cd|cicd|pipeline|devops|deploy|gitops|argo|tekton|jenkins/)) return "a CI/CD pipeline: connected build, test and deploy stages with automation gears and flowing arrows";
+  if (has(/secur|devsecops|vulnerab|owasp|harden|zero.?trust|threat|encrypt/)) return "a cybersecurity concept — a glowing shield and padlock over a secured network of a data center";
+  if (has(/cloud|aws|azure|gcp|infrastructure|terraform|\biac\b/)) return "cloud infrastructure — data-center servers linked to a cloud with network topology lines";
+  if (has(/\bai\b|\bml\b|machine learning|llm|neural|genai|model|inference/)) return "an artificial-intelligence concept — a neural network of glowing nodes and data flows on a circuit board";
+  if (has(/database|postgres|\bsql\b|\bdata\b|etl|lakehouse|warehouse/)) return "data engineering — stacked database cylinders with data pipelines and flowing streams";
+  if (has(/network|mesh|istio|\bdns\b|ingress|routing|load.?balanc/)) return "a network topology of interconnected nodes, routers and traffic flows";
+  if (has(/\bsre\b|reliab|incident|\bslo\b|availab|uptime/)) return "site reliability engineering — uptime dashboards, alerting panels and system-health graphs";
+  return `a clean conceptual technology illustration about ${cat || "cloud and DevOps"}`;
+}
+
 function coverPrompt(title: string, cat: string, scene = "", raw = false): string {
   // Manual/raw prompt from the editor → use it verbatim (they control text,
   // logos, style). Auto covers keep the brand editorial style + no-text rule.
   if (raw && scene.trim()) return scene.trim();
-  const subject = scene.trim()
-    ? scene.trim()
-    : `the topic "${title}"${cat ? ` in the field of ${cat}` : ""}`;
-  return `Professional editorial cover illustration depicting ${subject}. Modern flat vector style, conceptual and specific to the subject, clean composition, deep blue and green brand palette, subtle depth. No text, no words, no letters, no logos, no watermark.`;
+  // scene = the AI's English imagePrompt when present; otherwise derive a
+  // concrete English motif from the topic (never the raw Vietnamese title/prose).
+  const subject = scene.trim() ? scene.trim() : visualScene(title, cat);
+  return `Professional editorial cover illustration depicting ${subject}. Modern flat vector isometric style, conceptual and specific to the subject, clean composition, deep blue and green brand palette, subtle depth. No text, no words, no letters, no logos, no watermark.`;
 }
 
 async function saveCover(slug: string, buf: Buffer, ext: string): Promise<string> {
@@ -537,8 +556,11 @@ export async function ingestText(
   const slug = await availableSlug(slugify(title));
   const url = opts?.url ?? opts?.source ?? "";
   const excerpt = clipExcerpt(blocks.find((b) => b.kind === "p")?.text ?? "");
-  // Content-aware cover: AI imagePrompt if any, else title + excerpt.
-  const scene = imagePrompt || `${title}. ${excerpt}`;
+  // Content-aware cover: use the AI's English visual imagePrompt when present.
+  // Do NOT fall back to the Vietnamese excerpt/prose — feeding article prose to
+  // an image model yields abstract/irrelevant covers. Empty scene lets
+  // coverPrompt build a topic-based English visual prompt from title + category.
+  const scene = (imagePrompt || "").trim();
   const cover = opts?.cover || (await makeCover(slug, title, opts?.cat || "AIOps", "#0072BC", false, scene));
 
   const saved = await upsertPost({
@@ -683,7 +705,7 @@ export async function generateArticle(
   const status: "draft" | "published" = publish ? "published" : "draft";
   const slug = await availableSlug(slugify(title));
   const excerpt = clipExcerpt(blocks.find((b) => b.kind === "p")?.text ?? "");
-  const cover = await makeCover(slug, title, opts?.cat || "SRE", "#0072BC", false, imagePrompt || `${title}. ${excerpt}. ${brief.slice(0, 200)}`);
+  const cover = await makeCover(slug, title, opts?.cat || "SRE", "#0072BC", false, (imagePrompt || "").trim());
 
   const saved = await upsertPost({
     slug,
