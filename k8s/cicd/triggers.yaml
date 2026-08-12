@@ -23,7 +23,14 @@ spec:
         namespace: ac-portal-cicd
       spec:
         pipelineRef: { name: ac-portal-cicd-dev }
-        taskRunTemplate: { serviceAccountName: ns-web-pipeline }
+        taskRunTemplate:
+          serviceAccountName: ns-web-pipeline
+          # Resolve the internal GitLab mirror (vNOC02) — public DNS points at the
+          # cluster router, so pipeline pods need this host alias to reach it.
+          podTemplate:
+            hostAliases:
+              - ip: "10.14.102.185"
+                hostnames: ["gitlab.appcarrier.cloud"]
         params:
           - { name: git-url, value: $(tt.params.git-url) }
           - { name: git-revision, value: $(tt.params.git-revision) }
@@ -50,7 +57,14 @@ spec:
         namespace: ac-portal-cicd
       spec:
         pipelineRef: { name: ac-portal-cicd-staging }
-        taskRunTemplate: { serviceAccountName: ns-web-pipeline }
+        taskRunTemplate:
+          serviceAccountName: ns-web-pipeline
+          # Resolve the internal GitLab mirror (vNOC02) — public DNS points at the
+          # cluster router, so pipeline pods need this host alias to reach it.
+          podTemplate:
+            hostAliases:
+              - ip: "10.14.102.185"
+                hostnames: ["gitlab.appcarrier.cloud"]
         params:
           - { name: git-url, value: $(tt.params.git-url) }
           - { name: git-revision, value: $(tt.params.git-revision) }
@@ -77,7 +91,14 @@ spec:
         namespace: ac-portal-cicd
       spec:
         pipelineRef: { name: ac-portal-cicd-prod }
-        taskRunTemplate: { serviceAccountName: ns-web-pipeline }
+        taskRunTemplate:
+          serviceAccountName: ns-web-pipeline
+          # Resolve the internal GitLab mirror (vNOC02) — public DNS points at the
+          # cluster router, so pipeline pods need this host alias to reach it.
+          podTemplate:
+            hostAliases:
+              - ip: "10.14.102.185"
+                hostnames: ["gitlab.appcarrier.cloud"]
         params:
           - { name: git-url, value: $(tt.params.git-url) }
           - { name: git-revision, value: $(tt.params.git-revision) }
