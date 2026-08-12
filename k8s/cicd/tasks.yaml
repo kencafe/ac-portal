@@ -123,9 +123,12 @@ spec:
           export TRIVY_USERNAME="serviceaccount"
           export TRIVY_PASSWORD="$(cat $TOKEN_FILE)"
         fi
-        trivy image --severity HIGH,CRITICAL --no-progress --exit-code 0 --insecure \
+        # --timeout bounds the run: this cluster's egress can't reach the trivy-db
+        # registry (ghcr), so the DB pull hangs. Cap it so the (advisory) scan
+        # gives up fast instead of stalling the pipeline to its 45m timeout.
+        trivy image --severity HIGH,CRITICAL --no-progress --exit-code 0 --insecure --timeout 3m0s \
           --format json -o reports/trivy-image.json $(params.IMAGE) || echo "image scan skipped"
-        trivy image --severity HIGH,CRITICAL --no-progress --exit-code 0 --insecure $(params.IMAGE) || true
+        trivy image --severity HIGH,CRITICAL --no-progress --exit-code 0 --insecure --timeout 3m0s $(params.IMAGE) || true
 ---
 apiVersion: tekton.dev/v1
 kind: Task

@@ -167,7 +167,9 @@ export async function makeCoverDetailed(slug: string, title: string, cat = "", t
     }
     const out = await pollinationsImage(slug, title, cat, scene, nonce, raw);
     console.log(`[ai] cover via pollinations for ${slug}`);
-    return { url: out, provider: "pollinations", model: model || "flux", aiUsed: true };
+    // pollinationsImage always requests the flux model, so report that (not the
+    // configured aiImageModel, which may belong to a different provider).
+    return { url: out, provider: "pollinations", model: "flux", aiUsed: true };
   } catch (e) {
     fallbackReason = (e as Error).message;
     console.error(`[ai] cover image failed for ${slug} (${provider.id}):`, fallbackReason);
