@@ -8,6 +8,7 @@ import { card, btnPrimary, btnDefault } from "@/lib/ui";
 import CoverArt from "@/components/shared/CoverArt";
 import { rewriteHref, routes } from "@/lib/routes";
 import { LangProvider } from "@/components/shared/LangContext";
+import LangText from "@/components/shared/LangText";
 import BrandStripe from "@/components/shared/BrandStripe";
 import SiteHeader from "@/components/shared/SiteHeader";
 import SiteFooter from "@/components/shared/SiteFooter";
@@ -91,7 +92,9 @@ export default async function ArticlePage({ params, searchParams }: { params: Pr
       {from === "cms" && (
         <div style={{ background: "#E6F1F9", borderBottom: "1px solid #B3D5EA" }}>
           <div style={{ maxWidth: 860, margin: "0 auto", padding: "8px 24px" }}>
-            <a href="/cms" style={{ fontSize: 13.5, fontWeight: 600, color: COLORS.brandBlue, textDecoration: "none" }}>← Quay lại CMS</a>
+            <a href="/cms" style={{ fontSize: 13.5, fontWeight: 600, color: COLORS.brandBlue, textDecoration: "none" }}>
+              <LangText vi={ARTICLE_PAGE.meta.backToCms.vi} en={ARTICLE_PAGE.meta.backToCms.en} />
+            </a>
           </div>
         </div>
       )}
@@ -99,9 +102,13 @@ export default async function ArticlePage({ params, searchParams }: { params: Pr
       <article style={{ maxWidth: 860, margin: "0 auto", padding: "40px 24px 56px" }}>
         {/* Breadcrumb */}
         <nav style={{ fontSize: 13, color: COLORS.ink3, marginBottom: 20, display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Link href={routes.home} style={{ color: COLORS.ink3 }}>{ARTICLE_PAGE.breadcrumb.home}</Link>
+          <Link href={routes.home} style={{ color: COLORS.ink3 }}>
+            <LangText vi={ARTICLE_PAGE.breadcrumb.home} en={ARTICLE_PAGE.breadcrumb.homeEn} />
+          </Link>
           <span>/</span>
-          <Link href={routes.blog} style={{ color: COLORS.ink3 }}>{ARTICLE_PAGE.breadcrumb.blog}</Link>
+          <Link href={routes.blog} style={{ color: COLORS.ink3 }}>
+            <LangText vi={ARTICLE_PAGE.breadcrumb.blog} en={ARTICLE_PAGE.breadcrumb.blogEn} />
+          </Link>
           <span>/</span>
           <span style={{ color: COLORS.ink2 }}>{post.cat}</span>
         </nav>
@@ -109,8 +116,8 @@ export default async function ArticlePage({ params, searchParams }: { params: Pr
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, fontSize: 13, color: COLORS.ink3, flexWrap: "wrap" }}>
           <span style={{ fontWeight: 600, color: post.tone }}>{post.cat}</span>
           <span>·</span>
-          <span>Soạn: {post.date}</span>
-          {post.publishedAt && (<><span>·</span><span>Đăng: {post.publishedAt}</span></>)}
+          <span><LangText vi={ARTICLE_PAGE.meta.authored.vi} en={ARTICLE_PAGE.meta.authored.en} /> {post.date}</span>
+          {post.publishedAt && (<><span>·</span><span><LangText vi={ARTICLE_PAGE.meta.published.vi} en={ARTICLE_PAGE.meta.published.en} /> {post.publishedAt}</span></>)}
           <span>·</span>
           <span>{post.read}</span>
         </div>
@@ -146,8 +153,12 @@ export default async function ArticlePage({ params, searchParams }: { params: Pr
         </div>
 
         <div style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
-          <Link href={routes.blog} style={btnDefault}>{ARTICLE_PAGE.footerButtons.back}</Link>
-          <a href="/#contact" style={btnPrimary}>{ARTICLE_PAGE.footerButtons.contact}</a>
+          <Link href={routes.blog} style={btnDefault}>
+            <LangText vi={ARTICLE_PAGE.footerButtons.back} en={ARTICLE_PAGE.footerButtons.backEn} />
+          </Link>
+          <a href="/#contact" style={btnPrimary}>
+            <LangText vi={ARTICLE_PAGE.footerButtons.contact} en={ARTICLE_PAGE.footerButtons.contactEn} />
+          </a>
         </div>
       </article>
 
@@ -155,8 +166,12 @@ export default async function ArticlePage({ params, searchParams }: { params: Pr
       <section style={{ background: COLORS.surface, borderTop: `1px solid ${COLORS.split}`, padding: "48px 24px" }}>
         <div style={{ maxWidth: CONTENT_MAX, margin: "0 auto" }}>
           <div style={{ marginBottom: 20 }}>
-            <h2 style={{ fontSize: "clamp(20px, 2vw, 26px)", fontWeight: 600, letterSpacing: "-0.015em", margin: 0, color: COLORS.ink }}>{SECTION_HEADERS.related.h2}</h2>
-            <p style={{ fontSize: 13.5, color: COLORS.ink3, margin: "4px 0 0" }}>{SECTION_HEADERS.related.sub}</p>
+            <h2 style={{ fontSize: "clamp(20px, 2vw, 26px)", fontWeight: 600, letterSpacing: "-0.015em", margin: 0, color: COLORS.ink }}>
+              <LangText vi={SECTION_HEADERS.related.h2} en={SECTION_HEADERS.related.h2En} />
+            </h2>
+            <p style={{ fontSize: 13.5, color: COLORS.ink3, margin: "4px 0 0" }}>
+              <LangText vi={SECTION_HEADERS.related.sub} en={SECTION_HEADERS.related.subEn} />
+            </p>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
             {related.map((p) => (

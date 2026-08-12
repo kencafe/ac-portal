@@ -1,10 +1,14 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { FOOTER } from "@/data/landing";
 import { rewriteHref } from "@/lib/routes";
 import { COLORS, CONTENT_MAX } from "@/lib/tokens";
+import { useLang } from "@/components/shared/LangContext";
 
 export default function SiteFooter({ anchorBase = "" }: { anchorBase?: string }) {
+  const en = useLang().lang === "en";
   const resolve = (href: string) => {
     const r = rewriteHref(href);
     return r.startsWith("#") ? `${anchorBase}${r}` : r;
@@ -32,7 +36,7 @@ export default function SiteFooter({ anchorBase = "" }: { anchorBase?: string })
                 </span>
               </span>
             </div>
-            <p style={{ margin: "0 0 14px", fontSize: 13.5, lineHeight: 1.6, maxWidth: 240 }}>{FOOTER.blurb}</p>
+            <p style={{ margin: "0 0 14px", fontSize: 13.5, lineHeight: 1.6, maxWidth: 240 }}>{en ? FOOTER.blurbEn : FOOTER.blurb}</p>
             <div style={{ fontSize: 13.5, lineHeight: 1.9 }}>
               <a href={FOOTER.phone.href} style={{ color: dim }}>{FOOTER.phone.value}</a>
               <br />
@@ -42,12 +46,12 @@ export default function SiteFooter({ anchorBase = "" }: { anchorBase?: string })
 
           {FOOTER.columns.map((col) => (
             <div key={col.head}>
-              <div style={{ color: "#fff", fontWeight: 600, fontSize: 14, marginBottom: 14 }}>{col.head}</div>
+              <div style={{ color: "#fff", fontWeight: 600, fontSize: 14, marginBottom: 14 }}>{en ? col.headEn : col.head}</div>
               <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
                 {col.links.map((link) => (
                   <li key={link.label}>
                     <Link href={resolve(link.href)} style={{ color: dim, fontSize: 13.5 }}>
-                      {link.label}
+                      {en ? link.labelEn : link.label}
                     </Link>
                   </li>
                 ))}

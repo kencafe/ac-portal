@@ -1,10 +1,14 @@
+"use client";
+
 import { MODEL, SECTION_TITLES } from "@/data/landing";
 import { COLORS, RADIUS } from "@/lib/tokens";
 import { card } from "@/lib/ui";
 import Section from "@/components/shared/Section";
 import SectionHeading from "@/components/shared/SectionHeading";
+import { useLang } from "@/components/shared/LangContext";
 
 export default function Model() {
+  const en = useLang().lang === "en";
   return (
     <Section id="model" surface bordered>
       <SectionHeading vi={SECTION_TITLES.model.vi} en={SECTION_TITLES.model.en} mark="green" />
@@ -55,13 +59,13 @@ export default function Model() {
                   color: COLORS.ink3,
                 }}
               >
-                {p.phaseLabel}
+                {en ? p.phaseLabelEn : p.phaseLabel}
               </span>
             </div>
 
             <div style={{ marginTop: 14 }}>
-              <div style={{ fontSize: 19, fontWeight: 600, color: COLORS.ink }}>{p.title}</div>
-              <div style={{ fontSize: 13, color: COLORS.ink3, marginTop: 2 }}>{p.en}</div>
+              <div style={{ fontSize: 19, fontWeight: 600, color: COLORS.ink }}>{en ? p.en : p.title}</div>
+              <div style={{ fontSize: 13, color: COLORS.ink3, marginTop: 2 }}>{en ? p.title : p.en}</div>
             </div>
 
             <div
@@ -74,7 +78,7 @@ export default function Model() {
                 gap: 8,
               }}
             >
-              {p.chips.map((chip) => (
+              {(en ? p.chipsEn : p.chips).map((chip) => (
                 <span
                   key={chip}
                   style={{

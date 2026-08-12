@@ -1,10 +1,14 @@
+"use client";
+
 import { INDUSTRIES, SECTION_TITLES } from "@/data/landing";
 import { ACCENTS, Accent, COLORS, RADIUS } from "@/lib/tokens";
 import Section from "@/components/shared/Section";
 import SectionHeading from "@/components/shared/SectionHeading";
 import HoverCard from "@/components/shared/HoverCard";
+import { useLang } from "@/components/shared/LangContext";
 
 export default function Industries() {
+  const en = useLang().lang === "en";
   return (
     <Section id="industries">
       <SectionHeading vi={SECTION_TITLES.industries.vi} en={SECTION_TITLES.industries.en} mark="blue" />
@@ -29,8 +33,8 @@ export default function Industries() {
               hoverStyle={{ borderColor: a.color }}
             >
               <span style={{ display: "block", width: 30, height: 3, borderRadius: 2, background: a.color, marginBottom: 14 }} />
-              <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>{ind.vi}</div>
-              <div style={{ fontSize: 12.5, color: COLORS.ink3, marginTop: 3 }}>{ind.en}</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>{en ? ind.en : ind.vi}</div>
+              <div style={{ fontSize: 12.5, color: COLORS.ink3, marginTop: 3 }}>{en ? ind.vi : ind.en}</div>
             </HoverCard>
           );
         })}

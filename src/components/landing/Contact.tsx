@@ -6,6 +6,7 @@ import { COLORS, RADIUS } from "@/lib/tokens";
 import { card } from "@/lib/ui";
 import Section from "@/components/shared/Section";
 import SectionHeading from "@/components/shared/SectionHeading";
+import { useLang } from "@/components/shared/LangContext";
 
 const inputStyle: CSSProperties = {
   width: "100%",
@@ -20,6 +21,7 @@ const inputStyle: CSSProperties = {
 };
 
 export default function Contact() {
+  const en = useLang().lang === "en";
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,11 +32,11 @@ export default function Contact() {
     const email = String(data.get("Email") ?? "").trim();
     const need = String(data.get("Nhu cầu") ?? "").trim();
     if (!name || !need) {
-      setError("Vui lòng nhập họ tên và nhu cầu.");
+      setError(en ? CONTACT.form.errors.required.en : CONTACT.form.errors.required.vi);
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("Email chưa hợp lệ.");
+      setError(en ? CONTACT.form.errors.email.en : CONTACT.form.errors.email.vi);
       return;
     }
     setError(null);
@@ -43,9 +45,9 @@ export default function Contact() {
   }
 
   const rows = [
-    { label: CONTACT.phone.label, value: CONTACT.phone.value, href: CONTACT.phone.href },
-    { label: CONTACT.email.label, value: CONTACT.email.value, href: CONTACT.email.href },
-    { label: CONTACT.office.label, value: CONTACT.office.value },
+    { label: en ? CONTACT.phone.labelEn : CONTACT.phone.label, value: CONTACT.phone.value, href: CONTACT.phone.href },
+    { label: en ? CONTACT.email.labelEn : CONTACT.email.label, value: CONTACT.email.value, href: CONTACT.email.href },
+    { label: en ? CONTACT.office.labelEn : CONTACT.office.label, value: CONTACT.office.value },
   ];
 
   return (
@@ -55,7 +57,7 @@ export default function Contact() {
         {/* Descriptions */}
         <div style={{ ...card, overflow: "hidden" }}>
           <div style={{ padding: "16px 20px", borderBottom: `1px solid ${COLORS.split}`, fontWeight: 600, color: COLORS.ink }}>
-            {CONTACT.panelTitle}
+            {en ? CONTACT.panelTitleEn : CONTACT.panelTitle}
           </div>
           {rows.map((r, i) => (
             <div
@@ -87,18 +89,18 @@ export default function Contact() {
           {CONTACT.form.fields.map((f) =>
             f.type === "textarea" ? (
               <label key={f.label} style={{ display: "block" }}>
-                <span style={{ display: "block", fontSize: 13, color: COLORS.ink2, marginBottom: 6 }}>{f.label}</span>
+                <span style={{ display: "block", fontSize: 13, color: COLORS.ink2, marginBottom: 6 }}>{en ? f.labelEn : f.label}</span>
                 <textarea
                   name={f.label}
                   rows={f.rows ?? 3}
-                  placeholder={f.placeholder}
+                  placeholder={en ? f.placeholderEn : f.placeholder}
                   style={{ ...inputStyle, height: "auto", padding: "10px 12px", resize: "vertical", lineHeight: 1.6 }}
                 />
               </label>
             ) : (
               <label key={f.label} style={{ display: "block" }}>
-                <span style={{ display: "block", fontSize: 13, color: COLORS.ink2, marginBottom: 6 }}>{f.label}</span>
-                <input name={f.label} type={f.type} placeholder={f.placeholder} style={inputStyle} />
+                <span style={{ display: "block", fontSize: 13, color: COLORS.ink2, marginBottom: 6 }}>{en ? f.labelEn : f.label}</span>
+                <input name={f.label} type={f.type} placeholder={en ? f.placeholderEn : f.placeholder} style={inputStyle} />
               </label>
             ),
           )}
@@ -122,7 +124,9 @@ export default function Contact() {
               transition: "background .2s",
             }}
           >
-            {sent ? CONTACT.form.submit.sent : CONTACT.form.submit.default}
+            {sent
+              ? (en ? CONTACT.form.submit.sentEn : CONTACT.form.submit.sent)
+              : (en ? CONTACT.form.submit.defaultEn : CONTACT.form.submit.default)}
           </button>
         </form>
       </div>

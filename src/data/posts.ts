@@ -296,6 +296,14 @@ export const CATS: string[] = [
   'AI Infrastructure',
 ];
 
+// "Tất cả" is used as the filter sentinel; only its display label is localized.
+export const ALL_CATS_LABEL = { vi: 'Tất cả', en: 'All' };
+
+/** Localized display label for a category chip (values stay stable for filtering). */
+export function catLabel(cat: string, lang: 'vi' | 'en'): string {
+  return cat === 'Tất cả' ? (lang === 'en' ? ALL_CATS_LABEL.en : ALL_CATS_LABEL.vi) : cat;
+}
+
 // ---------------------------------------------------------------------------
 // Blog list-page hero strings (verbatim)
 // ---------------------------------------------------------------------------
@@ -309,6 +317,13 @@ export const LIST_HERO = {
   searchPlaceholder: 'Tìm bài viết…',
   // countLabel is computed at runtime: `${filtered.length} bài viết`
   countLabelSuffix: 'bài viết',
+  // EN Phase 2 — English variants (tag & sub are already English).
+  h1En: 'Field notes from across the fleet',
+  subEn: 'Ghi chép từ các vị trí chiến đấu trong hạm đội',
+  leadEn:
+    "Operational lessons in Cloud, AI and security infrastructure from the FPT-IS Next Gen Service team — written by every battle station in the crew.",
+  searchPlaceholderEn: 'Search posts…',
+  countLabelSuffixEn: 'posts',
 };
 
 // Header (sticky nav) strings
@@ -330,15 +345,18 @@ export const HEADER = {
 // ---------------------------------------------------------------------------
 
 export const SECTION_HEADERS = {
-  featured: { h2: 'Bài nổi bật', sub: 'Featured' },
+  featured: { h2: 'Bài nổi bật', sub: 'Featured', h2En: 'Featured', subEn: 'Bài nổi bật' },
   // list heading is computed: "Tất cả bài viết" when cat === "Tất cả", else the category name
   allArticlesDefaultHeading: 'Tất cả bài viết',
+  allArticlesDefaultHeadingEn: 'All articles',
   allArticlesSub: 'All articles',
-  related: { h2: 'Bài liên quan', sub: 'Related' },
+  allArticlesSubEn: 'Tất cả bài viết',
+  related: { h2: 'Bài liên quan', sub: 'Related', h2En: 'Related', subEn: 'Bài liên quan' },
 };
 
 // Card CTA label
 export const READ_MORE_LABEL = 'Đọc bài →';
+export const READ_MORE_LABEL_EN = 'Read post →';
 
 // ---------------------------------------------------------------------------
 // Search / empty-state strings (verbatim)
@@ -348,6 +366,9 @@ export const EMPTY_STATE = {
   title: 'Không có bài viết khớp với bộ lọc',
   desc: 'Thử từ khoá khác hoặc chọn lại chuyên mục.',
   resetButton: 'Xoá bộ lọc',
+  titleEn: 'No posts match your filter',
+  descEn: 'Try a different keyword or pick another category.',
+  resetButtonEn: 'Clear filter',
 };
 
 // ---------------------------------------------------------------------------
@@ -360,6 +381,11 @@ export const SUBSCRIBE_PANEL = {
   emailPlaceholder: '[name@company.com]',
   buttonLabel: 'Đăng ký',          // default state
   buttonLabelSubscribed: 'Đã đăng ký', // after subscribe
+  titleEn: 'Get new posts by email',
+  subEn: 'Once a month, technical content only. No service ads.',
+  emailPlaceholderEn: '[name@company.com]',
+  buttonLabelEn: 'Subscribe',
+  buttonLabelSubscribedEn: 'Subscribed',
 };
 
 // ---------------------------------------------------------------------------
@@ -369,13 +395,22 @@ export const SUBSCRIBE_PANEL = {
 export const ARTICLE_PAGE = {
   breadcrumb: {
     home: 'Trang chính',
+    homeEn: 'Home',
     homeHref: 'FPTIS NS Landing v3 Ant.dc.html',
     blog: 'Blog',
+    blogEn: 'Blog',
     // third crumb = article.cat
+  },
+  meta: {
+    authored: { vi: 'Soạn:', en: 'Drafted:' },
+    published: { vi: 'Đăng:', en: 'Published:' },
+    backToCms: { vi: '← Quay lại CMS', en: '← Back to CMS' },
   },
   footerButtons: {
     back: '← Tất cả bài viết',
+    backEn: '← All posts',
     contact: 'Liên hệ đội kỹ thuật',
+    contactEn: 'Contact the engineering team',
     contactHref: 'FPTIS NS Landing v3 Ant.dc.html#contact',
   },
 };

@@ -2,12 +2,13 @@
 
 import { CSSProperties, useMemo, useState } from "react";
 import Link from "next/link";
-import { CATS, LIST_HERO, SECTION_HEADERS, EMPTY_STATE, SUBSCRIBE_PANEL, READ_MORE_LABEL, Post } from "@/data/posts";
+import { CATS, LIST_HERO, SECTION_HEADERS, EMPTY_STATE, SUBSCRIBE_PANEL, catLabel, Post } from "@/data/posts";
 import { COLORS, CONTENT_MAX, GRAD, RADIUS } from "@/lib/tokens";
 import { card } from "@/lib/ui";
 import CoverArt from "@/components/shared/CoverArt";
 import { routes } from "@/lib/routes";
 import Icon from "@/components/shared/Icon";
+import { useLang } from "@/components/shared/LangContext";
 
 function Avatar({ initials, tone }: { initials: string; tone: string }) {
   return (
@@ -66,6 +67,7 @@ function PostCard({ post }: { post: Post }) {
 }
 
 export default function BlogList({ posts }: { posts: Post[] }) {
+  const en = useLang().lang === "en";
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState("Tất cả");
   const [subscribed, setSubscribed] = useState(false);
@@ -95,10 +97,10 @@ export default function BlogList({ posts }: { posts: Post[] }) {
             {LIST_HERO.tag}
           </span>
           <h1 style={{ fontSize: "clamp(28px, 3.4vw, 42px)", fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1.16, margin: "18px 0 0", color: COLORS.ink }}>
-            {LIST_HERO.h1}
+            {en ? LIST_HERO.h1En : LIST_HERO.h1}
           </h1>
-          <p style={{ fontSize: "clamp(15px, 1.5vw, 19px)", color: COLORS.ink3, margin: "8px 0 0" }}>{LIST_HERO.sub}</p>
-          <p style={{ fontSize: 16, lineHeight: 1.72, color: COLORS.ink2, maxWidth: 720, margin: "18px 0 0" }}>{LIST_HERO.lead}</p>
+          <p style={{ fontSize: "clamp(15px, 1.5vw, 19px)", color: COLORS.ink3, margin: "8px 0 0" }}>{en ? LIST_HERO.subEn : LIST_HERO.sub}</p>
+          <p style={{ fontSize: 16, lineHeight: 1.72, color: COLORS.ink2, maxWidth: 720, margin: "18px 0 0" }}>{en ? LIST_HERO.leadEn : LIST_HERO.lead}</p>
 
           {/* Search */}
           <div style={{ position: "relative", maxWidth: 420, marginTop: 24 }}>
@@ -108,12 +110,12 @@ export default function BlogList({ posts }: { posts: Post[] }) {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={LIST_HERO.searchPlaceholder}
+              placeholder={en ? LIST_HERO.searchPlaceholderEn : LIST_HERO.searchPlaceholder}
               style={{ width: "100%", height: 40, padding: "0 12px 0 36px", borderRadius: RADIUS.button, border: `1px solid ${COLORS.border}`, fontSize: 14, background: "#fff", outline: "none" }}
             />
           </div>
           <div style={{ fontSize: 13, color: COLORS.ink3, marginTop: 10 }}>
-            {filtered.length} {LIST_HERO.countLabelSuffix}
+            {filtered.length} {en ? LIST_HERO.countLabelSuffixEn : LIST_HERO.countLabelSuffix}
           </div>
 
           {/* Category chips */}
@@ -138,7 +140,7 @@ export default function BlogList({ posts }: { posts: Post[] }) {
                     transition: "all .2s",
                   }}
                 >
-                  {c}
+                  {catLabel(c, en ? "en" : "vi")}
                 </button>
               );
             })}
@@ -150,7 +152,7 @@ export default function BlogList({ posts }: { posts: Post[] }) {
         {/* Featured */}
         {showFeatured && featured && (
           <div style={{ marginBottom: 40 }}>
-            <SecHead h2={SECTION_HEADERS.featured.h2} sub={SECTION_HEADERS.featured.sub} />
+            <SecHead h2={en ? SECTION_HEADERS.featured.h2En : SECTION_HEADERS.featured.h2} sub={en ? SECTION_HEADERS.featured.subEn : SECTION_HEADERS.featured.sub} />
             <Link href={routes.blogPost(featured.slug)} style={{ ...card, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", overflow: "hidden", color: COLORS.ink }}>
               <CoverArt coverUrl={featured.coverUrl} title={featured.title} cat={featured.cat} tone={featured.tone} height="100%" minHeight={260} />
               <div style={{ padding: 28, display: "flex", flexDirection: "column" }}>
@@ -171,8 +173,8 @@ export default function BlogList({ posts }: { posts: Post[] }) {
         )}
 
         <SecHead
-          h2={cat === "Tất cả" ? SECTION_HEADERS.allArticlesDefaultHeading : cat}
-          sub={SECTION_HEADERS.allArticlesSub}
+          h2={cat === "Tất cả" ? (en ? SECTION_HEADERS.allArticlesDefaultHeadingEn : SECTION_HEADERS.allArticlesDefaultHeading) : cat}
+          sub={en ? SECTION_HEADERS.allArticlesSubEn : SECTION_HEADERS.allArticlesSub}
         />
 
         {listed.length > 0 ? (
@@ -183,8 +185,8 @@ export default function BlogList({ posts }: { posts: Post[] }) {
           </div>
         ) : (
           <div style={{ border: `1px dashed ${COLORS.border}`, borderRadius: RADIUS.card, padding: "48px 24px", textAlign: "center" }}>
-            <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.ink }}>{EMPTY_STATE.title}</div>
-            <p style={{ fontSize: 14, color: COLORS.ink2, margin: "8px 0 16px" }}>{EMPTY_STATE.desc}</p>
+            <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.ink }}>{en ? EMPTY_STATE.titleEn : EMPTY_STATE.title}</div>
+            <p style={{ fontSize: 14, color: COLORS.ink2, margin: "8px 0 16px" }}>{en ? EMPTY_STATE.descEn : EMPTY_STATE.desc}</p>
             <button
               type="button"
               onClick={() => {
@@ -193,15 +195,15 @@ export default function BlogList({ posts }: { posts: Post[] }) {
               }}
               style={{ height: 36, padding: "0 16px", borderRadius: RADIUS.button, border: `1px solid ${COLORS.border}`, background: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 500 }}
             >
-              {EMPTY_STATE.resetButton}
+              {en ? EMPTY_STATE.resetButtonEn : EMPTY_STATE.resetButton}
             </button>
           </div>
         )}
 
         {/* Subscribe panel */}
         <div style={{ background: GRAD.statsPanel, borderRadius: RADIUS.panel, padding: "32px 28px", marginTop: 48, color: "#fff" }}>
-          <div style={{ fontSize: 20, fontWeight: 600 }}>{SUBSCRIBE_PANEL.title}</div>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.72)", margin: "8px 0 18px" }}>{SUBSCRIBE_PANEL.sub}</p>
+          <div style={{ fontSize: 20, fontWeight: 600 }}>{en ? SUBSCRIBE_PANEL.titleEn : SUBSCRIBE_PANEL.title}</div>
+          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.72)", margin: "8px 0 18px" }}>{en ? SUBSCRIBE_PANEL.subEn : SUBSCRIBE_PANEL.sub}</p>
           <form
             onSubmit={async (e) => {
               e.preventDefault();
@@ -210,8 +212,8 @@ export default function BlogList({ posts }: { posts: Post[] }) {
               try {
                 const res = await fetch("/api/v1/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
                 if (res.ok) setSubscribed(true);
-                else { const d = await res.json().catch(() => ({})); setSubErr(d.error || "Đăng ký thất bại"); }
-              } catch { setSubErr("Lỗi kết nối, thử lại sau."); }
+                else { const d = await res.json().catch(() => ({})); setSubErr(d.error || (en ? "Subscription failed" : "Đăng ký thất bại")); }
+              } catch { setSubErr(en ? "Connection error, please try again later." : "Lỗi kết nối, thử lại sau."); }
             }}
             style={{ display: "flex", gap: 10, flexWrap: "wrap" }}
           >
@@ -220,7 +222,7 @@ export default function BlogList({ posts }: { posts: Post[] }) {
               required
               value={subEmail}
               onChange={(e) => { setSubEmail(e.target.value); setSubErr(""); }}
-              placeholder={SUBSCRIBE_PANEL.emailPlaceholder}
+              placeholder={en ? SUBSCRIBE_PANEL.emailPlaceholderEn : SUBSCRIBE_PANEL.emailPlaceholder}
               style={{ flex: "1 1 240px", height: 46, padding: "0 14px", borderRadius: RADIUS.button, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)", color: "#fff", fontSize: 14, outline: "none" }}
             />
             <button
@@ -228,7 +230,9 @@ export default function BlogList({ posts }: { posts: Post[] }) {
               disabled={subscribed}
               style={{ height: 46, padding: "0 22px", borderRadius: RADIUS.button, border: "none", cursor: subscribed ? "default" : "pointer", fontSize: 14, fontWeight: 600, color: "#fff", background: subscribed ? COLORS.brandGreen : COLORS.brandOrange, transition: "background .2s" }}
             >
-              {subscribed ? SUBSCRIBE_PANEL.buttonLabelSubscribed : SUBSCRIBE_PANEL.buttonLabel}
+              {subscribed
+                ? (en ? SUBSCRIBE_PANEL.buttonLabelSubscribedEn : SUBSCRIBE_PANEL.buttonLabelSubscribed)
+                : (en ? SUBSCRIBE_PANEL.buttonLabelEn : SUBSCRIBE_PANEL.buttonLabel)}
             </button>
           </form>
           {subErr && <p style={{ fontSize: 13, color: "#FFD2C7", marginTop: 10 }}>{subErr}</p>}

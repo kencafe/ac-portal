@@ -712,3 +712,473 @@ export const FOOTER = {
   copyright: "© [2026] FPT-IS Next Gen Service. Keangnam Landmark 72, E10, Nam Từ Liêm, Hà Nội.",
   backLink: { label: "← Về trang chính", href: "FPTIS NS Landing v3 Ant.dc.html" },
 };
+
+// ===========================================================================
+// EN PHASE 2 — English overlay for the /dich-vu/[slug] service detail pages.
+// Consumed via useLang()/pick() in the ServiceDetailView client component.
+// Each SERVICES_EN[slug] mirrors the shape of SERVICES[slug] field-by-field:
+//   specs[i]      ↔ SERVICES[slug].specs[i]      (same order/length)
+//   phaseItems[i] ↔ SERVICES[slug].phases[i].items (4 phase groups)
+//   stack is optional — falls back to the VN stack (tech names are identical).
+// ===========================================================================
+export interface ServiceEN {
+  /** English service name (falls back to the VN `name` when omitted) */
+  enName?: string;
+  /** English group / plate tag label */
+  group: string;
+  /** English positioning / hero paragraph */
+  positioning: string;
+  /** English "Service description" rows (parallel to specs) */
+  specs: Spec[];
+  /** English phase bullets — 4 groups parallel to phases[i].items */
+  phaseItems: string[][];
+  /** English deliverables */
+  deliverables: string[];
+  /** English outcomes */
+  outcomes: string[];
+  /** Optional English stack (defaults to the VN stack) */
+  stack?: string[];
+}
+
+export const SERVICES_EN: Record<string, ServiceEN> = {
+  devops: {
+    group: "Harness Engineering — release platform",
+    positioning:
+      "Build and operate the release pipeline: CI/CD, GitOps, Infrastructure as Code and feature flags. The goal is for every change to move from commit to production safely, repeatably and reversibly.",
+    specs: [
+      { k: "Service code", v: "NS-DEV" },
+      { k: "Service group", v: "Harness Engineering — release platform" },
+      { k: "Scope", v: "CI/CD pipelines, IaC, in-pipeline security (SAST/DAST/SCA), artifact management, release governance" },
+      { k: "Who it's for", v: "Product engineering teams and IT units shipping many applications in parallel" },
+      { k: "Engagement model", v: "Implementation project · sprint-based collaboration · managed pipeline" },
+      { k: "Commitments", v: "Contractual SLA · pipeline availability · build recovery time" },
+    ],
+    phaseItems: [
+      ["DevOps maturity assessment", "Repo & branch strategy review", "Standardize the release process", "Design the target pipeline"],
+      ["Build the CI/CD pipeline", "IaC for environments", "Artifact registry & scanning", "SAST/DAST/SCA in the pipeline", "Feature flags & blue-green"],
+      ["Operate the pipeline", "Secret & access management", "Track DORA metrics", "Support the dev team"],
+      ["Reduce build time", "Test automation", "Progressive delivery", "Standardize reusable templates"],
+    ],
+    deliverables: [
+      "Pipeline architecture and release-process documentation",
+      "A working CI/CD pipeline running in the client environment",
+      "A versioned, reviewed IaC repository",
+      "A reusable template set for subsequent applications",
+      "Periodic DORA metrics reports",
+    ],
+    outcomes: [
+      "Shorten the time from commit to production",
+      "Reduce the release failure rate",
+      "Repeatable releases that don't depend on individuals",
+    ],
+  },
+
+  sre: {
+    group: "Reliability & operations",
+    positioning:
+      "Turn reliability into a governable metric: SLO/SLI, error budgets, full observability and a blameless postmortem culture. Operate on data rather than intuition.",
+    specs: [
+      { k: "Service code", v: "NS-SRE" },
+      { k: "Service group", v: "Reliability & operations" },
+      { k: "Scope", v: "SLO/SLI, error budget, observability, on-call, incident management" },
+      { k: "Who it's for", v: "Systems with high-availability requirements: transactions, public-service portals, digital platforms" },
+      { k: "Engagement model", v: "Embedded SRE · SRE as a service · 24/7 on-call rotation" },
+      { k: "Commitments", v: "24/7 SLA · response and remediation time by incident severity" },
+    ],
+    phaseItems: [
+      ["Identify critical user journeys", "Set SLO/SLI and error budgets", "Assess observability gaps", "Design the on-call model"],
+      ["Deploy metrics, logs and traces", "Build SLO-based dashboards and alerts", "Write runbooks", "Establish the incident process"],
+      ["24/7 on-call rotation", "Incident handling and coordination", "Blameless postmortems", "Error-budget reporting"],
+      ["Reduce toil through automation", "Tune alert thresholds", "Incident & chaos drills", "Data-driven architecture improvements"],
+    ],
+    deliverables: [
+      "An SLO/SLI set for the main business journeys",
+      "An observability system and operations dashboards",
+      "Runbooks and an incident-management process",
+      "Periodic error-budget, MTTR and postmortem reports",
+    ],
+    outcomes: [
+      "Fewer recurring incidents and shorter remediation time",
+      "See problems before users report them",
+      "Balance release speed with stability",
+    ],
+  },
+
+  aiops: {
+    group: "Intelligent operations — new service",
+    positioning:
+      "A command deck that reads its own signals. We build the operational-data platform, put anomaly-detection models into the alerting path, then operate alongside the SRE crew — we don't hand over a dashboard and walk away.",
+    specs: [
+      { k: "Service code", v: "NS-AIO" },
+      { k: "Service group", v: "Intelligent operations — new service" },
+      { k: "Scope", v: "Operational-data platform, anomaly detection, alert correlation, auto-remediation" },
+      { k: "Who it's for", v: "Organizations with many systems and many alerts that are hard to prioritize" },
+      { k: "Engagement model", v: "Platform implementation · operated with the 24/7 SRE crew" },
+      { k: "Commitments", v: "24/7 SLA · alert-noise and MTTR reduction targets per contract" },
+    ],
+    phaseItems: [
+      ["Inventory signal sources", "Assess operational-data quality", "Choose priority use cases", "Design the AIOps architecture"],
+      ["Build log/metric/trace pipelines", "Standardize the event store", "Deploy anomaly-detection models", "Wire into the on-call process"],
+      ["Correlate and prioritize alerts", "Root-cause analysis", "Self-running runbooks", "SRE crew operating with the platform"],
+      ["Retrain for seasonal load", "Expand auto-remediation", "Reduce noisy alerts", "Report effectiveness against SLOs"],
+    ],
+    deliverables: [
+      "A centralized operational-data platform",
+      "Anomaly-detection models in production",
+      "Automated runbooks for familiar incident classes",
+      "Alert-noise and MTTR reduction reports",
+    ],
+    outcomes: [
+      "Reduce alert noise by [X]% — figure to be filled in",
+      "Shorten MTTR by [X]% — figure to be filled in",
+      "Let the operations crew focus on work that matters",
+    ],
+  },
+
+  platform: {
+    group: "Cloud platform",
+    positioning:
+      "The hull of the whole system: a standardized landing zone, networking, identity and cost governance. The platform is built right once so every application on top runs by the same rules.",
+    specs: [
+      { k: "Service code", v: "NS-PLT" },
+      { k: "Service group", v: "Cloud platform" },
+      { k: "Scope", v: "Landing zone, networking, identity, tagging, guardrails, FinOps" },
+      { k: "Who it's for", v: "Organizations starting or scaling across multiple accounts/clouds" },
+      { k: "Engagement model", v: "Platform-build project · monthly platform governance" },
+      { k: "Commitments", v: "Contractual SLA · periodic cost and compliance reporting" },
+    ],
+    phaseItems: [
+      ["Assess the current cloud estate", "Design the landing zone", "Account & access model", "TCO estimate"],
+      ["Build the landing zone", "Configure networking & connectivity", "Guardrails and policy", "Tagging & billing standards"],
+      ["Govern the platform", "Track compliance", "Manage limits and quotas", "Support application teams"],
+      ["FinOps cost optimization", "Rightsizing & reserved capacity", "Clean up unused resources", "Cost-efficiency reporting"],
+    ],
+    deliverables: [
+      "Landing-zone design documentation",
+      "A landing zone deployed as IaC",
+      "Policy, guardrail and tagging standards",
+      "Periodic FinOps reports",
+    ],
+    outcomes: [
+      "A consistent platform that scales under control",
+      "Transparent cloud cost by consuming unit",
+      "Faster time-to-live for new applications",
+    ],
+  },
+
+  security: {
+    group: "Security & compliance",
+    positioning:
+      "A layered defensive perimeter around the fleet: Zero Trust, identity governance, workload protection, continuous monitoring and compliance. Detect from afar, block at multiple tiers, recover by rehearsed playbooks.",
+    specs: [
+      { k: "Service code", v: "NS-SEC" },
+      { k: "Service group", v: "Security & compliance" },
+      { k: "Scope", v: "Zero Trust, IAM, workload protection, encryption, monitoring, compliance" },
+      { k: "Who it's for", v: "Banking, public sector and enterprises with compliance requirements" },
+      { k: "Engagement model", v: "Security-hardening project · 24/7 monitoring · periodic assessment" },
+      { k: "Commitments", v: "24/7 SLA · incident response time by severity" },
+    ],
+    phaseItems: [
+      ["Risk & attack-surface assessment", "Compliance review", "Design the Zero Trust architecture", "Remediation roadmap"],
+      ["Deploy IAM & MFA", "Network segmentation and policy", "Workload protection & encryption", "Secrets management"],
+      ["24/7 security monitoring", "Incident investigation and response", "Vulnerability & patch management", "Recovery drills"],
+      ["Narrow permissions to least privilege", "Automate response", "Periodic penetration testing", "Improve against the compliance framework"],
+    ],
+    deliverables: [
+      "A risk-assessment and compliance-gap report",
+      "Zero Trust architecture and policy",
+      "A running security-monitoring system",
+      "Incident-response playbooks and drill records",
+    ],
+    outcomes: [
+      "Reduced attack surface and excess privilege",
+      "Faster incident detection and response",
+      "Meets audit and compliance requirements",
+    ],
+  },
+
+  cloudai: {
+    group: "Data & AI platform",
+    positioning:
+      "The fuel depot for the AI squadron: a cloud and data platform ready for AI/ML workloads — from ingestion and governance to model serving at production scale.",
+    specs: [
+      { k: "Service code", v: "NS-AIC" },
+      { k: "Service group", v: "Data & AI platform" },
+      { k: "Scope", v: "Data platform, feature store, data governance, training and serving environments" },
+      { k: "Who it's for", v: "Organizations moving AI/ML into production" },
+      { k: "Engagement model", v: "Platform project · partnering with the data-science team" },
+      { k: "Commitments", v: "Contractual SLA · data-pipeline performance commitments" },
+    ],
+    phaseItems: [
+      ["Survey data sources", "Assess AI readiness", "Design the data architecture", "Select the platform and estimate cost"],
+      ["Build the data lake / lakehouse", "Ingestion & processing pipelines", "Feature store", "Training environment"],
+      ["Operate the data pipelines", "Data-quality governance", "Access control & data lineage", "Track processing cost"],
+      ["Optimize query performance", "Tiered storage-cost optimization", "Scale to model demand", "Standardize data reuse"],
+    ],
+    deliverables: [
+      "A data architecture for AI workloads",
+      "A data lake/lakehouse and operational pipelines",
+      "Data governance and access-control rules",
+      "Model training and serving environments",
+    ],
+    outcomes: [
+      "Clean, model-ready data",
+      "Shorter time from idea to a model running for real",
+      "Controllable data cost",
+    ],
+  },
+
+  aiinfra: {
+    group: "AI infrastructure",
+    positioning:
+      "The engine shop for the heavy fighters: GPU/accelerator infrastructure, training clusters, MLOps and LLM serving at production scale — enough power and enough stability.",
+    specs: [
+      { k: "Service code", v: "NS-GPU" },
+      { k: "Service group", v: "AI infrastructure" },
+      { k: "Scope", v: "GPU cluster, scheduler, MLOps, model serving, inference optimization" },
+      { k: "Who it's for", v: "Organizations training or serving large models, including LLMs" },
+      { k: "Engagement model", v: "Infrastructure-build project · monthly cluster operations" },
+      { k: "Commitments", v: "Contractual SLA · cluster availability and throughput commitments" },
+    ],
+    phaseItems: [
+      ["Define workloads and compute needs", "Design the GPU cluster", "Compare on-prem / cloud options", "TCO estimate"],
+      ["Build the cluster & scheduler", "Configure high-speed networking and storage", "Deploy the MLOps pipeline", "Build the model-serving layer"],
+      ["Operate the cluster 24/7", "Manage GPU quotas by team", "Track performance and temperature", "Maintenance and driver updates"],
+      ["Optimize GPU utilization", "Quantization & inference optimization", "Autoscaling by load", "Reduce cost per request"],
+    ],
+    deliverables: [
+      "GPU cluster design and deployment",
+      "An MLOps pipeline from training to model release",
+      "A monitored model-serving layer",
+      "GPU-utilization performance reports",
+    ],
+    outcomes: [
+      "Better GPU utilization, less waiting",
+      "Models into production via a standard process",
+      "Lower inference cost per request",
+    ],
+  },
+
+  migration: {
+    group: "Migration & modernization",
+    positioning:
+      "Move the whole fleet to a new carrier without interrupting the mission: assess, classify, migrate applications and data, and modernize in controlled waves.",
+    specs: [
+      { k: "Service code", v: "NS-MIG" },
+      { k: "Service group", v: "Migration & modernization" },
+      { k: "Scope", v: "Assessment, target design, application/data migration, cutover, modernization" },
+      { k: "Who it's for", v: "Organizations moving from on-premise to cloud or between clouds" },
+      { k: "Engagement model", v: "Wave-based project · post-migration support" },
+      { k: "Commitments", v: "Committed downtime window and rollback plan for each wave" },
+    ],
+    phaseItems: [
+      ["Application & dependency inventory", "6R classification", "Target-architecture design", "Wave plan and TCO"],
+      ["Build the target environment", "Migrate data & applications", "Performance and business testing", "Cutover and go-live"],
+      ["Post-migration monitoring", "Handle leftover items", "Operations handover", "Decommission the legacy system"],
+      ["Gradual modernization to cloud-native", "Post-migration cost optimization", "Architecture standardization", "Performance improvement"],
+    ],
+    deliverables: [
+      "An inventory and 6R classification report",
+      "Target architecture and a wave-based migration plan",
+      "Systems running in the new environment",
+      "Cutover records and operations-handover documentation",
+    ],
+    outcomes: [
+      "Wave-based migration that limits disruption risk",
+      "Lower cost of maintaining legacy systems",
+      "Systems ready for the next modernization step",
+    ],
+  },
+
+  cloudapp: {
+    group: "Cloud-native applications",
+    positioning:
+      "The shipyard for building and upgrading aircraft: developing and refactoring applications to cloud-native architecture, containers/Kubernetes and microservices that can be operated long-term.",
+    specs: [
+      { k: "Service code", v: "NS-APP" },
+      { k: "Service group", v: "Cloud-native applications" },
+      { k: "Scope", v: "Microservice architecture, containerization, APIs, legacy-application refactoring" },
+      { k: "Who it's for", v: "Organizations with monoliths that need to scale, or building new products" },
+      { k: "Engagement model", v: "Development project · augmented development team" },
+      { k: "Commitments", v: "Contractual SLA · quality commitment and post-handover warranty" },
+    ],
+    phaseItems: [
+      ["Assess the current application", "Design the microservice architecture", "Define business boundaries", "Service-decomposition roadmap"],
+      ["Containerize the application", "Deploy on Kubernetes/OpenShift", "Build API gateway & service mesh", "Integrate CI/CD"],
+      ["Operate the application", "Track performance and errors", "Version management", "User support"],
+      ["Optimize container resources", "Autoscaling by load", "Refactor bottlenecks", "Standardize shared libraries"],
+    ],
+    deliverables: [
+      "Cloud-native application architecture documentation",
+      "A containerized application running on K8s/OpenShift",
+      "An API set and integration documentation",
+      "Operations and handover documentation",
+    ],
+    outcomes: [
+      "Applications scale with load instead of hardware upgrades",
+      "Incremental releases with lower risk",
+      "Infrastructure cost matched to real demand",
+    ],
+  },
+
+  outsourcing: {
+    enName: "Engineer Outsourcing",
+    group: "Talent & Delivery",
+    positioning:
+      "We provide engineers by role — Cloud Engineer, DevOps Engineer, Platform Engineer, Security Engineer — as an outsourcing model, augmenting the client's team by project or long-term. Engineers are selected, trained to internal standards, and work directly within the client's own processes.",
+    specs: [
+      { k: "Service code", v: "NS-EOS" },
+      { k: "Service group", v: "Talent & Delivery — technical capacity augmentation" },
+      { k: "Roles provided", v: "Cloud Engineer · DevOps Engineer · Platform Engineer · Security Engineer (Junior → Expert)" },
+      { k: "Scope", v: "Supplying Cloud/DevOps/Platform/Security engineers from Junior to Expert level" },
+      { k: "Who it's for", v: "Businesses lacking deep specialists, needing to scale a team quickly, or needing experts for a specific phase" },
+      { k: "Engagement model", v: "Body-shopping · outsourced team · managed team (with team lead) · onsite/hybrid/remote" },
+      { k: "Commitments", v: "Staff-replacement SLA · NDA & confidentiality · periodic competency assessment" },
+    ],
+    phaseItems: [
+      ["Survey needs & roles to hire", "Agree on level, skills and budget", "Standardize the JD and evaluation criteria", "Onboarding plan"],
+      ["Select & interview candidates", "Client final interview", "Onboard into the client's processes", "Sign NDA & grant access"],
+      ["Engineers work within the client's team", "Team lead monitors quality", "Periodic progress reports", "Support & replacement when needed"],
+      ["Competency assessment & feedback", "Skill-upgrade training", "Adjust team size to demand", "Knowledge transfer"],
+    ],
+    deliverables: [
+      "Candidate CVs matching the required level",
+      "Engineers onboarded into the client's processes on schedule",
+      "Periodic progress reports & timesheets",
+      "A staff-replacement SLA commitment during turnover",
+      "Knowledge-transfer documentation at engagement end",
+    ],
+    outcomes: [
+      "Scale the technical team fast without recruitment overhead",
+      "Access experts matched to each project phase",
+      "Flexible cost by demand, lower staffing risk",
+    ],
+  },
+
+  attt: {
+    enName: "Vietnam IT-Security Compliance",
+    group: "Compliance & Assurance",
+    positioning:
+      "Advisory and implementation for compliance with Vietnam's information-security laws: the Cybersecurity Law, the Law on Network Information Security, Decree 85/2016 on securing information systems by classification level, and personal-data protection regulations (Decree 13/2023). We accompany you from level classification and level-proposal dossiers through to protection deployment and ongoing compliance.",
+    specs: [
+      { k: "Service code", v: "NS-ATT" },
+      { k: "Service group", v: "Compliance & Assurance — IT-security legal compliance" },
+      { k: "Scope", v: "Classification & determination of information-system security level (levels 1–5), level-proposal dossiers, protection plans, compliance with the Cybersecurity Law / Law on Network Information Security / Decree 85 / Decree 13" },
+      { k: "Who it's for", v: "State agencies, businesses operating critical information systems, and organizations processing personal data" },
+      { k: "Engagement model", v: "Compliance advisory · level-dossier preparation · technical implementation · periodic assessment" },
+      { k: "Commitments", v: "Dossiers in the prescribed forms · coordination on appraisal with authorities · periodic review" },
+    ],
+    phaseItems: [
+      ["Survey the information system", "Classify & determine the security level (levels 1–5)", "Review gaps against the regulations", "Advise on the compliance roadmap"],
+      ["Prepare the level-proposal dossier per Decree 85", "Design the protection plan by level", "Deploy technical & management measures", "Coordinate appraisal and level approval"],
+      ["Operate the protection plan", "Information-security monitoring (SOC/SIEM)", "Incident response per the regulations", "Maintain compliance records"],
+      ["Periodic level re-assessment", "Update to new legal documents", "Incident-response drills", "Optimize compliance cost"],
+    ],
+    deliverables: [
+      "An information-system classification & security-level determination report",
+      "A level-proposal dossier per the Decree 85/2016 forms",
+      "An information-security protection plan by level",
+      "An IS-security policy/regulation set compliant with the Cybersecurity Law & the Law on Network Information Security",
+      "A personal-data protection compliance report (Decree 13/2023)",
+    ],
+    stack: ["ISO 27001", "Decree 85/2016", "Cybersecurity Law", "Network Information Security Law", "Decree 13/2023", "SIEM", "SOC", "IAM", "DLP", "Firewall"],
+    outcomes: [
+      "Systems classified & level-approved per regulation",
+      "Reduced legal and cybersecurity risk",
+      "Ready for appraisal by state authorities",
+    ],
+  },
+
+  managed: {
+    enName: "Comprehensive Cloud Managed Service",
+    group: "Managed Operations",
+    positioning:
+      "Comprehensive 24/7 operation of the client's cloud infrastructure with a single point of accountability: monitoring, incident handling, security patching, backup & disaster recovery, change management, cost optimization and compliance. The client focuses on the product while the managed-service team runs the platform to a committed SLA.",
+    specs: [
+      { k: "Service code", v: "NS-MSP" },
+      { k: "Service group", v: "Managed Operations — platform operations to SLA" },
+      { k: "Scope", v: "24/7 monitoring, incident & change management (ITSM), patching & updates, backup/DR, security operations, FinOps, multi-cloud (AWS/Azure/GCP) and on-prem/K8s" },
+      { k: "Who it's for", v: "Businesses wanting to outsource all infrastructure operations, with systems requiring high availability and compliance" },
+      { k: "Engagement model", v: "Managed service by package · co-managed · full-package to SLA · onsite/remote" },
+      { k: "Commitments", v: "24/7 SLA · committed uptime · contractual RTO/RPO · periodic operations & cost reports" },
+    ],
+    phaseItems: [
+      ["Assess infrastructure state & risk", "Define the service catalog & SLA", "Inventory assets, access and compliance", "Build runbooks & service catalog"],
+      ["Onboard systems into management", "Set up monitoring/alerting & tooling", "Establish backup/DR & security baseline", "Integrate ITSM and change/incident processes"],
+      ["24/7 operations & incident on-call", "Patching, updates & change management", "Periodic backup and recovery testing", "SLA, uptime & FinOps reporting"],
+      ["Cost and performance optimization", "Automate operations, reduce toil", "Continuous architecture & security improvement", "SLA review and upgrade roadmap"],
+    ],
+    deliverables: [
+      "A clear service catalog and SLA commitments",
+      "A 24/7 monitoring system, dashboards & SLA-based alerts",
+      "Operations runbooks and ITSM processes (incident/change/problem)",
+      "A recovery-tested backup/DR plan",
+      "Periodic operations, uptime and cost-optimization reports",
+    ],
+    outcomes: [
+      "Reduced operational burden on the internal team",
+      "A committed SLA with a single point of accountability",
+      "Optimized cloud cost and continuous compliance",
+    ],
+  },
+
+  incident: {
+    enName: "Cloud Incident Response",
+    group: "Emergency & Assurance",
+    positioning:
+      "Emergency incident response for systems on the cloud: 24/7 intake, fast response, war-room setup, containment and service recovery, then root-cause investigation. We handle both operational incidents (downtime, overload, release failures) and security incidents (attacks, intrusions, leaks, ransomware). Available on a response retainer or as an emergency call-out per case.",
+    specs: [
+      { k: "Service code", v: "NS-IRC" },
+      { k: "Service group", v: "Emergency & Assurance — response & recovery" },
+      { k: "Scope", v: "24/7 intake & incident triage, war-room, containment/prevention/recovery, root-cause investigation; both operational and security incidents (DDoS, intrusion, ransomware), basic forensics" },
+      { k: "Who it's for", v: "Critical cloud systems needing a fast-response commitment; organizations without a dedicated IR team" },
+      { k: "Engagement model", v: "Retainer (response subscription) · per-case emergency (call-out) · joint on-call with the client's team" },
+      { k: "Commitments", v: "24/7 hotline · response time by incident severity · target RTO · post-incident report" },
+    ],
+    phaseItems: [
+      ["Risk & incident-scenario assessment", "Set up intake channels & triage", "Build the IR playbook & war-room model", "Agree on response SLA & emergency contacts"],
+      ["Integrate monitoring/alerting & escalation", "Prepare forensics & recovery tools", "Rehearse scenarios (tabletop/drill)", "Set up the war-room channel & on-call"],
+      ["24/7 intake & response", "Contain, prevent & recover services", "Coordinate the war-room, continuous updates", "Collect evidence, logs & timeline"],
+      ["Root-cause analysis (RCA)", "Blameless postmortem & recommendations", "Update the playbook, prevent recurrence", "Periodic review & drills"],
+    ],
+    deliverables: [
+      "An IR playbook and incident-severity matrix",
+      "A 24/7 hotline/intake channel with a committed response SLA",
+      "A response report & timeline for each incident",
+      "Root-cause analysis (RCA) + postmortem + remediation recommendations",
+      "Periodic incident-response drill reports",
+    ],
+    outcomes: [
+      "Shorter MTTR during major incidents",
+      "Reduced damage and service-disruption time",
+      "Ready to respond to both operational and security incidents",
+    ],
+  },
+};
+
+/**
+ * English chrome for the service detail page (breadcrumb, hero buttons, phase
+ * word, block headings, CTA panel). Consumed via useLang() in ServiceDetailView.
+ */
+export const DETAIL_UI = {
+  breadcrumbHome: { vi: "Trang chính", en: "Home" },
+  breadcrumbServices: { vi: "Dịch vụ", en: "Services" },
+  heroPrimary: { vi: "Đặt buổi tư vấn", en: "Book a consultation" },
+  heroSecondary: { vi: "Xem hạng mục công việc", en: "View the work breakdown" },
+  phaseWord: { vi: "Giai đoạn", en: "Phase" },
+  blockHeadings: {
+    deliverables: { vi: "Sản phẩm bàn giao", en: "Deliverables" },
+    stack: { vi: "Công nghệ & nền tảng", en: "Stack" },
+    outcomes: { vi: "Kết quả kỳ vọng", en: "Outcomes" },
+  },
+  cta: {
+    title: { vi: "Cần lộ trình cụ thể cho {{ name }}?", en: "Need a concrete roadmap for {{ name }}?" },
+    sub: {
+      vi: "Đội ngũ FPT-IS Next Gen Service sẽ khảo sát hiện trạng và đề xuất phương án trong [X] ngày làm việc.",
+      en: "The FPT-IS Next Gen Service team will assess your current state and propose a plan within [X] business days.",
+    },
+    phoneKey: { vi: "Điện thoại", en: "Phone" },
+    emailKey: { vi: "Email", en: "Email" },
+    button: { vi: "Gửi yêu cầu tư vấn", en: "Send a consultation request" },
+  },
+} as const;

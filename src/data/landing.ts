@@ -177,6 +177,13 @@ export const ABOUT = {
       { text: "vành đai phòng thủ", color: "#57A336" }, // green
     ],
     by: "Mô hình vận hành AppCarrier",
+    textEn: "The platform is the aircraft carrier. Apps and microservices are the squadrons. Security is the defensive perimeter. A single command center.",
+    keywordsEn: [
+      { text: "aircraft carrier", color: "#F37021" }, // orange
+      { text: "squadrons", color: "#0072BC" }, // blue
+      { text: "defensive perimeter", color: "#57A336" }, // green
+    ],
+    byEn: "The AppCarrier operating model",
   },
   // 8 value cards (title / en desc / lucide icon / accent — as authored, in order)
   valueCards: [
@@ -192,6 +199,7 @@ export const ABOUT = {
   // "Nền tảng vận hành" platform tag strip (label + tags, with tag accent)
   platformStrip: {
     label: "Nền tảng vận hành",
+    labelEn: "Operating platforms",
     tags: [
       { text: "AWS", accent: "blue" },
       { text: "Microsoft Azure", accent: "blue" },
@@ -246,14 +254,18 @@ export const SERVICES_META = [
 export const MODEL = {
   title: { vi: "Mô hình dịch vụ toàn trình", en: "Consult → Deploy → Operate → Optimize" },
   phases: [
-    { num: 1, phaseLabel: "Giai đoạn 01", title: "Tư vấn", en: "Consult", color: "#F37021",
-      chips: ["Đánh giá hiện trạng", "Kiến trúc mục tiêu", "Lộ trình", "TCO / ROI", "Chọn nền tảng"] },
-    { num: 2, phaseLabel: "Giai đoạn 02", title: "Triển khai", en: "Deploy", color: "#0072BC",
-      chips: ["Landing zone", "Migrate", "CI/CD", "Nền tảng AIOps", "Go-live"] },
-    { num: 3, phaseLabel: "Giai đoạn 03", title: "Vận hành", en: "Operate", color: "#38A3D8",
-      chips: ["Managed 24/7", "AIOps monitoring", "On-call SRE", "Patching", "DR / Backup"] },
-    { num: 4, phaseLabel: "Giai đoạn 04", title: "Tối ưu", en: "Optimize", color: "#57A336",
-      chips: ["FinOps", "Tuning hiệu năng", "Tự động hoá nâng cao", "Cải tiến liên tục"] },
+    { num: 1, phaseLabel: "Giai đoạn 01", phaseLabelEn: "Phase 01", title: "Tư vấn", en: "Consult", color: "#F37021",
+      chips: ["Đánh giá hiện trạng", "Kiến trúc mục tiêu", "Lộ trình", "TCO / ROI", "Chọn nền tảng"],
+      chipsEn: ["Current-state assessment", "Target architecture", "Roadmap", "TCO / ROI", "Platform selection"] },
+    { num: 2, phaseLabel: "Giai đoạn 02", phaseLabelEn: "Phase 02", title: "Triển khai", en: "Deploy", color: "#0072BC",
+      chips: ["Landing zone", "Migrate", "CI/CD", "Nền tảng AIOps", "Go-live"],
+      chipsEn: ["Landing zone", "Migrate", "CI/CD", "AIOps platform", "Go-live"] },
+    { num: 3, phaseLabel: "Giai đoạn 03", phaseLabelEn: "Phase 03", title: "Vận hành", en: "Operate", color: "#38A3D8",
+      chips: ["Managed 24/7", "AIOps monitoring", "On-call SRE", "Patching", "DR / Backup"],
+      chipsEn: ["Managed 24/7", "AIOps monitoring", "On-call SRE", "Patching", "DR / Backup"] },
+    { num: 4, phaseLabel: "Giai đoạn 04", phaseLabelEn: "Phase 04", title: "Tối ưu", en: "Optimize", color: "#57A336",
+      chips: ["FinOps", "Tuning hiệu năng", "Tự động hoá nâng cao", "Cải tiến liên tục"],
+      chipsEn: ["FinOps", "Performance tuning", "Advanced automation", "Continuous improvement"] },
   ],
 } as const;
 // NOTE: phaseLabel is authored as "Giai đoạn 0X"; displayed UPPERCASE via CSS
@@ -282,56 +294,59 @@ export const INDUSTRIES = [
 export const PARTNERS_LEAD =
   "Chúng tôi triển khai và vận hành trên nền tảng của các hãng công nghệ hàng đầu, với đội ngũ kỹ sư được chứng nhận trực tiếp bởi hãng.";
 
+export const PARTNERS_LEAD_EN =
+  "We implement and operate on the platforms of leading technology vendors, with engineers certified directly by those vendors.";
+
 export const PARTNERS = [
-  { id: "partner-redhat", name: "Red Hat OpenShift", desc: "Nền tảng container doanh nghiệp",
+  { id: "partner-redhat", name: "Red Hat OpenShift", desc: "Nền tảng container doanh nghiệp", descEn: "Enterprise container platform",
     logo: "https://cdn.simpleicons.org/redhatopenshift", placeholderHint: "Red Hat OpenShift" },
-  { id: "partner-vmware", name: "VMware", desc: "Ảo hoá & private cloud",
+  { id: "partner-vmware", name: "VMware", desc: "Ảo hoá & private cloud", descEn: "Virtualization & private cloud",
     logo: "https://cdn.simpleicons.org/vmware", placeholderHint: "VMware" },
-  { id: "partner-tanzu", name: "VMware Tanzu", desc: "Quản trị Kubernetes đa cụm",
+  { id: "partner-tanzu", name: "VMware Tanzu", desc: "Quản trị Kubernetes đa cụm", descEn: "Multi-cluster Kubernetes management",
     logo: "assets/logo-tanzu.png", placeholderHint: "VMware Tanzu — kéo logo vào" },
-  { id: "partner-hashicorp", name: "HashiCorp", desc: "Terraform · Vault · Consul",
+  { id: "partner-hashicorp", name: "HashiCorp", desc: "Terraform · Vault · Consul", descEn: "Terraform · Vault · Consul",
     logo: "https://cdn.simpleicons.org/hashicorp", placeholderHint: "HashiCorp" },
-  { id: "partner-nvidia", name: "NVIDIA", desc: "GPU & AI Enterprise",
+  { id: "partner-nvidia", name: "NVIDIA", desc: "GPU & AI Enterprise", descEn: "GPU & AI Enterprise",
     logo: "https://cdn.simpleicons.org/nvidia", placeholderHint: "NVIDIA" },
-  { id: "partner-aws", name: "AWS", desc: "Public cloud",
+  { id: "partner-aws", name: "AWS", desc: "Public cloud", descEn: "Public cloud",
     logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/amazonwebservices/amazonwebservices-original-wordmark.svg", placeholderHint: "AWS" },
-  { id: "partner-azure", name: "Microsoft Azure", desc: "Public cloud & Entra ID",
+  { id: "partner-azure", name: "Microsoft Azure", desc: "Public cloud & Entra ID", descEn: "Public cloud & Entra ID",
     logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/azure/azure-original.svg", placeholderHint: "Microsoft Azure" },
-  { id: "partner-gcp", name: "Google Cloud", desc: "Public cloud & data",
+  { id: "partner-gcp", name: "Google Cloud", desc: "Public cloud & data", descEn: "Public cloud & data",
     logo: "https://cdn.simpleicons.org/googlecloud", placeholderHint: "Google Cloud" },
-  { id: "partner-fptsc", name: "FPT Smart Cloud", desc: "Cloud nội địa",
+  { id: "partner-fptsc", name: "FPT Smart Cloud", desc: "Cloud nội địa", descEn: "Domestic cloud",
     logo: "assets/logo-fptsc.png", placeholderHint: "FPT Smart Cloud — kéo logo vào" },
-  { id: "partner-elastic", name: "Elastic", desc: "Observability & search",
+  { id: "partner-elastic", name: "Elastic", desc: "Observability & search", descEn: "Observability & search",
     logo: "https://cdn.simpleicons.org/elastic", placeholderHint: "Elastic" },
-  { id: "partner-veeam", name: "Veeam", desc: "Backup & DR",
+  { id: "partner-veeam", name: "Veeam", desc: "Backup & DR", descEn: "Backup & DR",
     logo: "https://cdn.simpleicons.org/veeam/00B336", placeholderHint: "Veeam — kéo logo vào" },
-  { id: "partner-cncf", name: "CNCF / Kubernetes", desc: "Hệ sinh thái cloud-native",
+  { id: "partner-cncf", name: "CNCF / Kubernetes", desc: "Hệ sinh thái cloud-native", descEn: "Cloud-native ecosystem",
     logo: "https://cdn.simpleicons.org/kubernetes", placeholderHint: "CNCF / Kubernetes" },
-  { id: "partner-cisco", name: "Cisco", desc: "Mạng & hạ tầng doanh nghiệp",
+  { id: "partner-cisco", name: "Cisco", desc: "Mạng & hạ tầng doanh nghiệp", descEn: "Enterprise networking & infrastructure",
     logo: "https://cdn.simpleicons.org/cisco", placeholderHint: "Cisco" },
-  { id: "partner-fortinet", name: "Fortinet", desc: "Network & cloud security",
+  { id: "partner-fortinet", name: "Fortinet", desc: "Network & cloud security", descEn: "Network & cloud security",
     logo: "https://cdn.simpleicons.org/fortinet", placeholderHint: "Fortinet" },
-  { id: "partner-paloalto", name: "Palo Alto Networks", desc: "Zero Trust & NGFW",
+  { id: "partner-paloalto", name: "Palo Alto Networks", desc: "Zero Trust & NGFW", descEn: "Zero Trust & NGFW",
     logo: "https://cdn.simpleicons.org/paloaltonetworks", placeholderHint: "Palo Alto Networks" },
-  { id: "partner-cloudflare", name: "Cloudflare", desc: "CDN · WAF · Zero Trust",
+  { id: "partner-cloudflare", name: "Cloudflare", desc: "CDN · WAF · Zero Trust", descEn: "CDN · WAF · Zero Trust",
     logo: "https://cdn.simpleicons.org/cloudflare", placeholderHint: "Cloudflare" },
-  { id: "partner-sap", name: "SAP", desc: "Nền tảng ứng dụng doanh nghiệp",
+  { id: "partner-sap", name: "SAP", desc: "Nền tảng ứng dụng doanh nghiệp", descEn: "Enterprise application platform",
     logo: "https://cdn.simpleicons.org/sap", placeholderHint: "SAP" },
-  { id: "partner-databricks", name: "Databricks", desc: "Lakehouse & AI/ML",
+  { id: "partner-databricks", name: "Databricks", desc: "Lakehouse & AI/ML", descEn: "Lakehouse & AI/ML",
     logo: "https://cdn.simpleicons.org/databricks", placeholderHint: "Databricks" },
-  { id: "partner-snowflake", name: "Snowflake", desc: "Data cloud & analytics",
+  { id: "partner-snowflake", name: "Snowflake", desc: "Data cloud & analytics", descEn: "Data cloud & analytics",
     logo: "https://cdn.simpleicons.org/snowflake", placeholderHint: "Snowflake" },
-  { id: "partner-datadog", name: "Datadog", desc: "Observability & monitoring",
+  { id: "partner-datadog", name: "Datadog", desc: "Observability & monitoring", descEn: "Observability & monitoring",
     logo: "https://cdn.simpleicons.org/datadog", placeholderHint: "Datadog" },
-  { id: "partner-grafana", name: "Grafana", desc: "Metrics · logs · dashboards",
+  { id: "partner-grafana", name: "Grafana", desc: "Metrics · logs · dashboards", descEn: "Metrics · logs · dashboards",
     logo: "https://cdn.simpleicons.org/grafana", placeholderHint: "Grafana" },
-  { id: "partner-splunk", name: "Splunk", desc: "SIEM & log analytics",
+  { id: "partner-splunk", name: "Splunk", desc: "SIEM & log analytics", descEn: "SIEM & log analytics",
     logo: "https://cdn.simpleicons.org/splunk", placeholderHint: "Splunk" },
-  { id: "partner-gitlab", name: "GitLab", desc: "DevSecOps platform",
+  { id: "partner-gitlab", name: "GitLab", desc: "DevSecOps platform", descEn: "DevSecOps platform",
     logo: "https://cdn.simpleicons.org/gitlab", placeholderHint: "GitLab" },
-  { id: "partner-nutanix", name: "Nutanix", desc: "Hyperconverged & hybrid cloud",
+  { id: "partner-nutanix", name: "Nutanix", desc: "Hyperconverged & hybrid cloud", descEn: "Hyperconverged & hybrid cloud",
     logo: "https://cdn.simpleicons.org/nutanix", placeholderHint: "Nutanix" },
-  { id: "partner-suse", name: "SUSE", desc: "Enterprise Linux & Rancher",
+  { id: "partner-suse", name: "SUSE", desc: "Enterprise Linux & Rancher", descEn: "Enterprise Linux & Rancher",
     logo: "https://cdn.simpleicons.org/suse", placeholderHint: "SUSE" },
 ] as const;
 
@@ -359,10 +374,13 @@ export const BLOG_TEASERS = [
 export const CASES = [
   {
     tag: "CHÍNH PHỦ & KHU VỰC CÔNG",
+    tagEn: "GOVERNMENT & PUBLIC SECTOR",
     tagAccent: "blue",
     gridBg: "#EAF3FA", // logoWallGov
     title: "Hạ tầng cloud & bảo mật cho cơ quan nhà nước",
+    titleEn: "Cloud & security infrastructure for state agencies",
     desc: "Triển khai nền tảng, di trú hệ thống nghiệp vụ và vận hành 24/7 cho khối bộ ngành.",
+    descEn: "Platform deployment, business-system migration and 24/7 operations for ministries and agencies.",
     linkLabel: "Xem chi tiết →",
     logos: [
       { id: "logo-btp", src: "assets/logo-btp.png", placeholderHint: "Bộ Tư pháp — kéo logo vào" },
@@ -375,10 +393,13 @@ export const CASES = [
   },
   {
     tag: "NGÂN HÀNG – TÀI CHÍNH (BFSI)",
+    tagEn: "BANKING & FINANCE (BFSI)",
     tagAccent: "green",
     gridBg: "#EFF7EA", // logoWallBfsi
     title: "Nền tảng chịu tải cao, tuân thủ và luôn sẵn sàng",
+    titleEn: "A high-load, compliant and always-available platform",
     desc: "Kiến trúc đa vùng, DR/backup, giám sát bảo mật và SRE cho hệ thống giao dịch.",
+    descEn: "Multi-region architecture, DR/backup, security monitoring and SRE for transaction systems.",
     linkLabel: "Xem chi tiết →",
     logos: [
       { id: "logo-bidv", src: "assets/logo-bidv.png", placeholderHint: "BIDV — kéo logo vào" },
@@ -391,10 +412,13 @@ export const CASES = [
   },
   {
     tag: "DOANH NGHIỆP · NỀN TẢNG SỐ",
+    tagEn: "ENTERPRISE · DIGITAL PLATFORMS",
     tagAccent: "orange",
     gridBg: "#FEF2EA", // logoWallBiz
     title: "Hạ tầng cho các nền tảng giao dịch số",
+    titleEn: "Infrastructure for digital transaction platforms",
     desc: "Cloud-native, container/K8s, tự động hoá phát hành cho các dịch vụ quy mô lớn.",
+    descEn: "Cloud-native, containers/K8s and release automation for large-scale services.",
     linkLabel: "Xem chi tiết →",
     logos: [
       { id: "logo-econtract", src: "assets/logo-econtract.png", placeholderHint: "eContract — kéo logo vào" },
@@ -413,17 +437,22 @@ export const CONTACT = {
     en: "Ready to transform with FPT-IS Next Gen Service?",
   },
   panelTitle: "Thông tin liên hệ / Contact",
-  phone: { label: "Điện thoại", value: "+84 973 391 388", href: "tel:+84973391388" },
-  email: { label: "Email", value: "dungpv30@fpt.com.vn", href: "mailto:dungpv30@fpt.com.vn" },
-  office: { label: "Văn phòng", value: "FPT IS — Keangnam Landmark 72, E10, Nam Từ Liêm, Hà Nội" },
+  panelTitleEn: "Contact information",
+  phone: { label: "Điện thoại", labelEn: "Phone", value: "+84 973 391 388", href: "tel:+84973391388" },
+  email: { label: "Email", labelEn: "Email", value: "dungpv30@fpt.com.vn", href: "mailto:dungpv30@fpt.com.vn" },
+  office: { label: "Văn phòng", labelEn: "Office", value: "FPT IS — Keangnam Landmark 72, E10, Nam Từ Liêm, Hà Nội" },
   form: {
     fields: [
-      { label: "Họ và tên", type: "text", placeholder: "[Nguyễn Văn A]" },
-      { label: "Email", type: "email", placeholder: "[name@company.com]" },
-      { label: "Công ty", type: "text", placeholder: "[Tên công ty]" },
-      { label: "Nhu cầu", type: "textarea", rows: 3, placeholder: "[Mô tả ngắn nhu cầu Cloud / AI của bạn]" },
+      { label: "Họ và tên", labelEn: "Full name", type: "text", placeholder: "[Nguyễn Văn A]", placeholderEn: "[John Smith]" },
+      { label: "Email", labelEn: "Email", type: "email", placeholder: "[name@company.com]", placeholderEn: "[name@company.com]" },
+      { label: "Công ty", labelEn: "Company", type: "text", placeholder: "[Tên công ty]", placeholderEn: "[Company name]" },
+      { label: "Nhu cầu", labelEn: "Your needs", type: "textarea", rows: 3, placeholder: "[Mô tả ngắn nhu cầu Cloud / AI của bạn]", placeholderEn: "[Briefly describe your Cloud / AI needs]" },
     ],
-    submit: { default: "Gửi yêu cầu tư vấn", sent: "Đã gửi — cảm ơn bạn!" },
+    submit: { default: "Gửi yêu cầu tư vấn", sent: "Đã gửi — cảm ơn bạn!", defaultEn: "Send a consultation request", sentEn: "Sent — thank you!" },
+    errors: {
+      required: { vi: "Vui lòng nhập họ tên và nhu cầu.", en: "Please enter your name and needs." },
+      email: { vi: "Email chưa hợp lệ.", en: "That email is not valid." },
+    },
   },
 } as const;
 
@@ -433,44 +462,49 @@ export const CONTACT = {
 export const FOOTER = {
   brand: { line1: "FPT-IS", line2: "NEXT GEN SERVICE", logo: "assets/ns-logo.png" },
   blurb: "Dịch vụ hạ tầng Cloud & AI toàn trình cho doanh nghiệp.",
+  blurbEn: "Full-lifecycle Cloud & AI infrastructure services for enterprises.",
   phone: { value: "+84 973 391 388", href: "tel:+84973391388" },
   email: { value: "dungpv30@fpt.com.vn", href: "mailto:dungpv30@fpt.com.vn" },
   columns: [
     {
       head: "Dịch vụ",
+      headEn: "Services",
       links: [
-        { label: "DevOps / DevSecOps & SRE", href: "#services" },
-        { label: "AIOps", href: "#services" },
-        { label: "Cloud Platform", href: "#services" },
-        { label: "Cloud Security", href: "#services" },
+        { label: "DevOps / DevSecOps & SRE", labelEn: "DevOps / DevSecOps & SRE", href: "#services" },
+        { label: "AIOps", labelEn: "AIOps", href: "#services" },
+        { label: "Cloud Platform", labelEn: "Cloud Platform", href: "#services" },
+        { label: "Cloud Security", labelEn: "Cloud Security", href: "#services" },
       ],
     },
     {
       head: "Mô hình",
+      headEn: "Model",
       links: [
-        { label: "Tư vấn", href: "#model" },
-        { label: "Triển khai", href: "#model" },
-        { label: "Vận hành", href: "#model" },
-        { label: "Tối ưu", href: "#model" },
+        { label: "Tư vấn", labelEn: "Consult", href: "#model" },
+        { label: "Triển khai", labelEn: "Deploy", href: "#model" },
+        { label: "Vận hành", labelEn: "Operate", href: "#model" },
+        { label: "Tối ưu", labelEn: "Optimize", href: "#model" },
       ],
     },
     {
       head: "Ngành",
+      headEn: "Industries",
       links: [
-        { label: "Ngân hàng – Tài chính", href: "#industries" },
-        { label: "Chính phủ", href: "#industries" },
-        { label: "Sản xuất", href: "#industries" },
-        { label: "Bán lẻ", href: "#industries" },
+        { label: "Ngân hàng – Tài chính", labelEn: "Banking & finance", href: "#industries" },
+        { label: "Chính phủ", labelEn: "Government", href: "#industries" },
+        { label: "Sản xuất", labelEn: "Manufacturing", href: "#industries" },
+        { label: "Bán lẻ", labelEn: "Retail", href: "#industries" },
       ],
     },
     {
       head: "Về chúng tôi",
+      headEn: "About us",
       links: [
-        { label: "Giới thiệu", href: "#about" },
-        { label: "Đối tác công nghệ", href: "#partners" },
-        { label: "Khách hàng", href: "#cases" },
-        { label: "Blog", href: "FPTIS NS Blog.dc.html" },
-        { label: "Liên hệ", href: "#contact" },
+        { label: "Giới thiệu", labelEn: "About", href: "#about" },
+        { label: "Đối tác công nghệ", labelEn: "Technology partners", href: "#partners" },
+        { label: "Khách hàng", labelEn: "Clients", href: "#cases" },
+        { label: "Blog", labelEn: "Blog", href: "FPTIS NS Blog.dc.html" },
+        { label: "Liên hệ", labelEn: "Contact", href: "#contact" },
       ],
     },
   ],
@@ -521,6 +555,12 @@ export const UI_STRINGS = {
   caseCardLink: "Xem chi tiết →",
   blogCardLink: "Đọc bài →",
   blogSeeAll: "Xem tất cả bài viết →",
+  serviceCardLinkEn: "Learn more →",
+  caseCardLinkEn: "View details →",
+  blogCardLinkEn: "Read post →",
+  blogSeeAllEn: "View all posts →",
+  blogEmpty: "Chưa có bài viết nào được xuất bản.",
+  blogEmptyEn: "No posts have been published yet.",
   seeAllHref: "FPTIS NS Blog.dc.html",
   serviceDetailHrefBase: "FPTIS NS Service Detail.dc.html#", // + slug
   blogHrefBase: "FPTIS NS Blog.dc.html#", // + slug

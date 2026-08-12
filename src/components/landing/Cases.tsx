@@ -1,9 +1,12 @@
-import { CASES, SECTION_TITLES } from "@/data/landing";
+"use client";
+
+import { CASES, SECTION_TITLES, UI_STRINGS } from "@/data/landing";
 import { Accent, COLORS, RADIUS } from "@/lib/tokens";
 import { tag } from "@/lib/ui";
 import Section from "@/components/shared/Section";
 import SectionHeading from "@/components/shared/SectionHeading";
 import CaseLogo from "@/components/landing/CaseLogo";
+import { useLang } from "@/components/shared/LangContext";
 
 // Human-readable customer name from the placeholderHint ("Techcombank — kéo
 // logo vào" → "Techcombank"), used as the text fallback when a logo is missing.
@@ -12,6 +15,7 @@ function logoName(hint?: string): string {
 }
 
 export default function Cases() {
+  const en = useLang().lang === "en";
   return (
     <Section id="cases">
       <SectionHeading vi={SECTION_TITLES.cases.vi} en={SECTION_TITLES.cases.en} mark="orange" />
@@ -31,14 +35,14 @@ export default function Cases() {
             {/* Content first */}
             <div style={{ padding: "22px 22px 20px" }}>
               <span style={{ ...tag(c.tagAccent as Accent), fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                {c.tag}
+                {en ? c.tagEn : c.tag}
               </span>
               <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.ink, margin: "14px 0 8px", lineHeight: 1.4 }}>
-                {c.title}
+                {en ? c.titleEn : c.title}
               </div>
-              <p style={{ fontSize: 14, lineHeight: 1.6, color: COLORS.ink2, margin: "0 0 14px" }}>{c.desc}</p>
+              <p style={{ fontSize: 14, lineHeight: 1.6, color: COLORS.ink2, margin: "0 0 14px" }}>{en ? c.descEn : c.desc}</p>
               <a href="#contact" className="ns-arrow" style={{ fontSize: 13.5, fontWeight: 600, color: COLORS.brandBlue }}>
-                {c.linkLabel}
+                {en ? UI_STRINGS.caseCardLinkEn : c.linkLabel}
               </a>
             </div>
 
