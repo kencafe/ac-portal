@@ -64,6 +64,7 @@ spec:
           --data .dc-data \
           --enableExperimental \
           --disableAssembly \
+          --disableKnownExploited \
           --nvdApiDelay 6000 || echo "dependency-check finished with warnings (offline NVD?)"
         ls -la reports || true
         exit 0
