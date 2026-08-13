@@ -19,7 +19,7 @@ export const COLORS = {
   split: "rgba(5,5,5,0.06)",
   ink: "rgba(0,0,0,0.88)",
   ink2: "rgba(0,0,0,0.65)",
-  ink3: "rgba(0,0,0,0.45)",
+  ink3: "rgba(0,0,0,0.55)",
 } as const;
 
 // Accent colour + tinted surfaces (tag, code plate, icon box).

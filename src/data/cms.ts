@@ -137,7 +137,7 @@ export const SEED: SeedPost[] = [
     title: 'Error budget: cách chúng tôi cân tốc độ phát hành và độ ổn định',
     cat: 'SRE',
     status: 'Đã xuất bản',
-    date: '[Ngày đăng]',
+    date: '05/08/2026',
     author: 'Đội SRE — FPT-IS Next Gen Service',
     excerpt:
       'Một hệ thống “không bao giờ được lỗi” thường là hệ thống chậm đổi mới nhất.',
@@ -156,7 +156,7 @@ export const SEED: SeedPost[] = [
     title: 'Giảm nhiễu cảnh báo trước khi nghĩ đến machine learning',
     cat: 'AIOps',
     status: 'Đã xuất bản',
-    date: '[Ngày đăng]',
+    date: '22/07/2026',
     author: 'Đội AIOps — FPT-IS Next Gen Service',
     excerpt:
       'Mô hình phát hiện bất thường không cứu được một hệ thống cảnh báo đã hỏng từ gốc.',
@@ -173,7 +173,7 @@ export const SEED: SeedPost[] = [
     title: 'Di trú theo đợt: chia nhỏ để không đánh cược cả hệ thống',
     cat: 'Migration',
     status: 'Đã xuất bản',
-    date: '[Ngày đăng]',
+    date: '10/07/2026',
     author: 'Đội Migration — FPT-IS Next Gen Service',
     excerpt:
       'Kinh nghiệm phân loại 6R và thiết kế cửa sổ cutover cho hệ thống nghiệp vụ lớn.',
@@ -190,7 +190,7 @@ export const SEED: SeedPost[] = [
     title: 'Landing zone: những quyết định khó sửa nếu làm sai từ đầu',
     cat: 'Cloud Platform',
     status: 'Chờ duyệt',
-    date: '[Ngày đăng]',
+    date: '24/06/2026',
     author: 'Đội Cloud Platform — FPT-IS Next Gen Service',
     excerpt:
       'Mô hình tài khoản, phân vùng mạng và chuẩn tagging rất khó thay đổi về sau.',
@@ -202,7 +202,7 @@ export const SEED: SeedPost[] = [
     title: 'GPU đắt, nhưng GPU chờ việc còn đắt hơn',
     cat: 'AI Infrastructure',
     status: 'Bản nháp',
-    date: '[Ngày đăng]',
+    date: '09/06/2026',
     author: 'Đội AI Infrastructure — FPT-IS Next Gen Service',
     excerpt:
       'Chỉ số cần theo dõi không phải số GPU, mà là tỷ lệ sử dụng thực tế.',
@@ -220,7 +220,7 @@ export const SEED: SeedPost[] = [
       'Zero Trust trong thực tế: bắt đầu từ danh tính, không từ thiết bị mạng',
     cat: 'Security',
     status: 'Bản nháp',
-    date: '[Ngày đăng]',
+    date: '21/05/2026',
     author: 'Đội Cloud Security — FPT-IS Next Gen Service',
     excerpt: 'Phần lớn công việc nằm ở quản trị danh tính và thu hẹp quyền.',
     tags: ['Zero Trust', 'IAM'],
@@ -281,7 +281,7 @@ export const NEW_DRAFT_DEFAULTS = {
   title: '',
   cat: 'SRE', // CATS[0]
   status: 'Bản nháp' as PostStatus,
-  date: '[Ngày đăng]',
+  date: '',
   author: '',
   excerpt: '',
   tags: [] as string[],

@@ -28,7 +28,7 @@
  *    strings below (that is the rendered text).
  *
  * 4. PLACEHOLDERS present in the source (left verbatim, DO NOT fill):
- *      - Blog dates:            "[Ngày đăng]"  (all 3 blog teasers)
+ *      - Blog dates:            real dd/mm/yyyy dates (all 3 blog teasers)
  *      - Footer copyright year: "[2026]"
  *      - Contact form inputs:
  *          Họ và tên  placeholder -> "[Nguyễn Văn A]"
@@ -353,16 +353,16 @@ export const PARTNERS = [
 /* ==================================================================
  * 9. BLOG_TEASERS — 3 cards on the landing page
  *    All link to: FPTIS NS Blog.dc.html#<slug>
- *    Date is a placeholder: "[Ngày đăng]"
+ *    Date: real publish dates (dd/mm/yyyy), matching src/data/posts.ts
  * ================================================================== */
 export const BLOG_TEASERS = [
-  { slug: "error-budget", category: "SRE", accent: "blue", date: "[Ngày đăng]",
+  { slug: "error-budget", category: "SRE", accent: "blue", date: "05/08/2026",
     title: "Error budget: cách chúng tôi cân tốc độ phát hành và độ ổn định",
     excerpt: 'Vì sao một hệ thống "không bao giờ được lỗi" thường là hệ thống chậm đổi mới nhất.' },
-  { slug: "alert-noise", category: "AIOPS", accent: "orange", date: "[Ngày đăng]",
+  { slug: "alert-noise", category: "AIOPS", accent: "orange", date: "22/07/2026",
     title: "Giảm nhiễu cảnh báo trước khi nghĩ đến machine learning",
     excerpt: "Ba việc phải làm với dữ liệu vận hành trước khi đưa mô hình phát hiện bất thường vào sản xuất." },
-  { slug: "migration-waves", category: "MIGRATION", accent: "green", date: "[Ngày đăng]",
+  { slug: "migration-waves", category: "MIGRATION", accent: "green", date: "10/07/2026",
     title: "Di trú theo đợt: chia nhỏ để không đánh cược cả hệ thống",
     excerpt: "Kinh nghiệm phân loại 6R và thiết kế cửa sổ cutover cho hệ thống nghiệp vụ lớn." },
 ] as const;

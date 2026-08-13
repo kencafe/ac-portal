@@ -19,7 +19,7 @@
 
   --color-ink: rgba(0, 0, 0, 0.88);
   --color-ink-2: rgba(0, 0, 0, 0.65);
-  --color-ink-3: rgba(0, 0, 0, 0.45);
+  --color-ink-3: rgba(0, 0, 0, 0.55);
   --color-hair: #d9d9d9;
 
   --radius-card: 8px;
@@ -67,6 +67,15 @@ select {
 input::placeholder,
 textarea::placeholder {
   color: rgba(0, 0, 0, 0.25);
+}
+
+/* ── Keyboard focus ring (WCAG 2.4.7) ─────────────────────────────── */
+/* Visible 2px brand-blue ring for keyboard users; ≥3:1 contrast on light
+   surfaces. Pointer/mouse focus is unaffected (:focus-visible only). */
+:focus-visible {
+  outline: 2px solid #0072bc;
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 /* Apply pretty wrapping to multi-line prose per the design spec */

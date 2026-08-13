@@ -110,8 +110,9 @@ export default function BlogList({ posts }: { posts: Post[] }) {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              aria-label={en ? "Search posts" : "Tìm bài viết"}
               placeholder={en ? LIST_HERO.searchPlaceholderEn : LIST_HERO.searchPlaceholder}
-              style={{ width: "100%", height: 40, padding: "0 12px 0 36px", borderRadius: RADIUS.button, border: `1px solid ${COLORS.border}`, fontSize: 14, background: "#fff", outline: "none" }}
+              style={{ width: "100%", height: 40, padding: "0 12px 0 36px", borderRadius: RADIUS.button, border: `1px solid ${COLORS.border}`, fontSize: 14, background: "#fff" }}
             />
           </div>
           <div style={{ fontSize: 13, color: COLORS.ink3, marginTop: 10 }}>
@@ -222,8 +223,9 @@ export default function BlogList({ posts }: { posts: Post[] }) {
               required
               value={subEmail}
               onChange={(e) => { setSubEmail(e.target.value); setSubErr(""); }}
+              aria-label={en ? "Email address to subscribe" : "Email đăng ký nhận bài"}
               placeholder={en ? SUBSCRIBE_PANEL.emailPlaceholderEn : SUBSCRIBE_PANEL.emailPlaceholder}
-              style={{ flex: "1 1 240px", height: 46, padding: "0 14px", borderRadius: RADIUS.button, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)", color: "#fff", fontSize: 14, outline: "none" }}
+              style={{ flex: "1 1 240px", height: 46, padding: "0 14px", borderRadius: RADIUS.button, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)", color: "#fff", fontSize: 14 }}
             />
             <button
               type="submit"

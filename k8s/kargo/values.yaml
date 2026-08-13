@@ -18,10 +18,17 @@ image:
 
 api:
   enabled: true
-  # UI/API served over plain HTTP; TLS terminates at the OpenShift edge Route.
   host: kargo.appcarrier.cloud
+  # Backend TLS MUST stay enabled on OpenShift. With tls.enabled=false the server
+  # listens h2c (HTTP/2 cleartext); the kubelet HTTP/1.1 /healthz probe then gets
+  # "connection reset" (startup probe fails → restart loop) and the HAProxy router
+  # cannot talk to an h2c backend either. With TLS on (cert-manager self-signed),
+  # the server serves HTTP/1.1+HTTP/2 over TLS; the probe uses HTTPS and the UI
+  # Route uses reencrypt (edge = golden wildcard cert, backend = this cert).
   tls:
-    enabled: false
+    enabled: true
+    selfSignedCert: true
+    secretName: kargo-api-cert
   service:
     type: ClusterIP
   ingress:
