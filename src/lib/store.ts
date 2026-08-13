@@ -2,13 +2,15 @@
 // published in the CMS shows up automatically on the homepage and /blog.
 //
 // Backend: a JSON file under DATA_DIR (mount a PVC there in-cluster for
-// persistence; falls back to <cwd>/.data locally). Seeded once from the static
-// design content so nothing is lost. Swap for Postgres (CNPG `ns-blog-db`) by
-// reimplementing readAll/writeAll against `DATABASE_URL`.
+// persistence; falls back to <cwd>/.data locally). Starts EMPTY — content is
+// authored through the CMS, so the public homepage and /blog show an
+// empty-state until a post is published (AC-007: no demo/seed content leaks to
+// a real deployment). Swap for Postgres (CNPG `ns-blog-db`) by reimplementing
+// readAll/writeAll against `DATABASE_URL`.
 
 import { promises as fs } from "fs";
 import path from "path";
-import { POSTS, type Post, type Block } from "@/data/posts";
+import { type Post, type Block } from "@/data/posts";
 
 export type Status = "draft" | "review" | "published";
 // `notified` guards the on-publish mailer so subscribers aren't emailed twice
@@ -30,19 +32,15 @@ export function fmtDateVN(d = new Date()): string {
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
 const FILE = path.join(DATA_DIR, "posts.json");
 
-function seed(): StoredPost[] {
-  // All design sample posts start published.
-  return POSTS.map((p) => ({ ...p, status: "published" as Status }));
-}
-
 async function readAll(): Promise<StoredPost[]> {
   try {
     const raw = await fs.readFile(FILE, "utf8");
     return JSON.parse(raw) as StoredPost[];
   } catch {
-    const seeded = seed();
-    await writeAll(seeded).catch(() => {});
-    return seeded;
+    // No store yet → empty. Posts are created via the CMS; the homepage and
+    // /blog render an empty-state until something is published. We deliberately
+    // do NOT seed demo content here (AC-007).
+    return [];
   }
 }
 
