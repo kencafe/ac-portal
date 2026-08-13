@@ -10,7 +10,14 @@ USER 0
 WORKDIR /app
 RUN chown -R 1001:0 /app && chmod -R g=u /app
 COPY package.json package-lock.json* ./
-RUN npm ci --legacy-peer-deps
+# Route npm through the org Nexus proxy (xplat-npm-proxy -> registry.npmjs.org)
+# when NPM_REGISTRY is passed (BuildConfig buildArg): faster, cached, egress-
+# resilient. Empty (local dev) keeps the public registry. npm's
+# replace-registry-host rewrites the lockfile's npmjs URLs to this registry, so
+# `npm ci` is fully served from Nexus.
+ARG NPM_REGISTRY=
+RUN if [ -n "$NPM_REGISTRY" ]; then echo "registry=$NPM_REGISTRY" > .npmrc && echo "npm registry -> $NPM_REGISTRY"; fi \
+ && npm ci --legacy-peer-deps
 
 # ---- builder ----
 FROM base AS builder

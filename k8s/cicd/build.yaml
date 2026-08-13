@@ -28,6 +28,11 @@ spec:
     type: Docker
     dockerStrategy:
       dockerfilePath: Dockerfile
+      # Pull npm deps from the org Nexus proxy (cache of registry.npmjs.org) to
+      # speed up + stabilise `npm ci` (INFRA: Nexus npm cache).
+      buildArgs:
+        - name: NPM_REGISTRY
+          value: http://nexus-repository-manager.ac-mbf-ops.svc:8081/repository/xplat-npm-proxy/
   output:
     to:
       kind: ImageStreamTag
