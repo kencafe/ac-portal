@@ -15,7 +15,19 @@ import { type Post, type Block } from "@/data/posts";
 export type Status = "draft" | "review" | "published";
 // `notified` guards the on-publish mailer so subscribers aren't emailed twice
 // if a post is unpublished and re-published.
-export type StoredPost = Post & { status: Status; notified?: boolean; featuredAt?: string; publishedAt?: string };
+export type StoredPost = Post & {
+  status: Status;
+  notified?: boolean;
+  featuredAt?: string;
+  publishedAt?: string;
+  // Lazily-populated English translation (AC-010b): filled on first EN view of a
+  // post and cached here so subsequent views don't call the LLM again. Cleared
+  // whenever the post is edited (upsertPost) so translations never go stale.
+  titleEn?: string;
+  excerptEn?: string;
+  blocksEn?: Block[];
+  translatedAt?: string;
+};
 
 // Formatted VN timestamp "HH:mm · DD/MM/YYYY" (pod TZ = Asia/Ho_Chi_Minh).
 export function fmtVN(d = new Date()): string {
@@ -121,6 +133,14 @@ export async function upsertPost(input: Partial<StoredPost> & { slug: string }):
           status: "draft",
         };
   const merged: StoredPost = { ...base, ...input, slug: input.slug };
+  // Editing a post invalidates any cached EN translation (AC-010b): drop it so
+  // the next EN view re-translates the current content.
+  if (idx >= 0 && !("blocksEn" in input)) {
+    delete merged.titleEn;
+    delete merged.excerptEn;
+    delete merged.blocksEn;
+    delete merged.translatedAt;
+  }
   // Never let the "[Ngày đăng]" placeholder (or an empty date) persist: derive
   // the display date from publishedAt when available, otherwise from "now".
   if (!merged.date || merged.date === "[Ngày đăng]") {
@@ -140,6 +160,19 @@ export async function setStatus(slug: string, status: Status): Promise<StoredPos
   if (idx < 0) return undefined;
   const publishedAt = status === "published" && !all[idx].publishedAt ? fmtVN() : all[idx].publishedAt;
   all[idx] = { ...all[idx], status, publishedAt };
+  await writeAll(all);
+  return all[idx];
+}
+
+// Cache an English translation on a post (AC-010b).
+export async function setTranslation(
+  slug: string,
+  t: { titleEn: string; excerptEn: string; blocksEn: Block[] },
+): Promise<StoredPost | undefined> {
+  const all = await readAll();
+  const idx = all.findIndex((p) => p.slug === slug);
+  if (idx < 0) return undefined;
+  all[idx] = { ...all[idx], titleEn: t.titleEn, excerptEn: t.excerptEn, blocksEn: t.blocksEn, translatedAt: fmtVN() };
   await writeAll(all);
   return all[idx];
 }

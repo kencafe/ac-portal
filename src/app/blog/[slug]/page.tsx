@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { HEADER, ARTICLE_PAGE, SECTION_HEADERS, Post, Block } from "@/data/posts";
+import { HEADER, ARTICLE_PAGE, SECTION_HEADERS, Post } from "@/data/posts";
 import { getPost, listPublished } from "@/lib/store";
 import { COLORS, CONTENT_MAX, RADIUS } from "@/lib/tokens";
 import { card, btnPrimary, btnDefault } from "@/lib/ui";
 import CoverArt from "@/components/shared/CoverArt";
+import ArticleBodyI18n from "@/components/blog/ArticleBodyI18n";
 import { rewriteHref, routes } from "@/lib/routes";
 import { LangProvider } from "@/components/shared/LangContext";
 import LangText from "@/components/shared/LangText";
@@ -25,38 +26,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 const nav = HEADER.navItems.map((n) => ({ label: n.label, href: rewriteHref(n.href) }));
 const cta = { label: HEADER.ctaLabel, href: rewriteHref(HEADER.ctaHref) };
 
-function BlockView({ block }: { block: Block }) {
-  switch (block.kind) {
-    case "h":
-      return <h2 style={{ fontSize: "clamp(19px, 1.9vw, 24px)", fontWeight: 600, letterSpacing: "-0.01em", color: COLORS.ink, margin: "34px 0 12px" }}>{block.text}</h2>;
-    case "p":
-      return <p style={{ fontSize: 16.5, lineHeight: 1.8, color: "rgba(0,0,0,0.78)", margin: "0 0 18px" }}>{block.text}</p>;
-    case "quote":
-      return (
-        <blockquote style={{ borderLeft: `3px solid ${COLORS.brandBlue}`, background: "#fff", borderRadius: "0 8px 8px 0", padding: "16px 22px", margin: "0 0 22px", fontSize: 17, fontWeight: 500, lineHeight: 1.6, color: COLORS.ink, boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}>
-          {block.text}
-        </blockquote>
-      );
-    case "img":
-      return block.text ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={block.text} alt="" style={{ display: "block", width: "100%", borderRadius: 10, margin: "8px 0 22px" }} loading="lazy" />
-      ) : null;
-    case "list":
-      return (
-        <ul style={{ listStyle: "none", margin: "0 0 22px", padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-          {(block.items ?? []).map((it, i) => (
-            <li key={i} style={{ display: "flex", gap: 12, fontSize: 16.5, lineHeight: 1.75, color: "rgba(0,0,0,0.78)" }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS.brandBlue, marginTop: 11, flexShrink: 0 }} />
-              <span>{it}</span>
-            </li>
-          ))}
-        </ul>
-      );
-    default:
-      return null;
-  }
-}
+// Body blocks are rendered by <ArticleBodyI18n> (client component) so the reader
+// can switch the body to on-demand English (AC-010b).
 
 function Avatar({ initials, tone, size }: { initials: string; tone: string; size: number }) {
   return (
@@ -138,9 +109,7 @@ export default async function ArticlePage({ params, searchParams }: { params: Pr
         </div>
 
         <div>
-          {post.blocks.map((b, i) => (
-            <BlockView key={i} block={b} />
-          ))}
+          <ArticleBodyI18n slug={post.slug} viBlocks={post.blocks} />
         </div>
 
         {/* Tags */}
