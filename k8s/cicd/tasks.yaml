@@ -72,7 +72,7 @@ spec:
         /usr/share/dependency-check/bin/dependency-check.sh \
           --scan . \
           --project "ac-portal" \
-          --format JSON --format HTML \
+          --format XML --format HTML \
           --out reports \
           --data /nvd-cache \
           --enableExperimental \
@@ -247,7 +247,7 @@ spec:
             -F "engagement_name=$(params.ENGAGEMENT)" -F "active=true" -F "verified=false" \
             "$DD_URL/api/v2/import-scan/" -o /dev/null -w "DD import [$typ] HTTP %{http_code}\n" || true
         }
-        imp "Dependency Check Scan" reports/dependency-check-report.json
+        imp "Dependency Check Scan" reports/dependency-check-report.xml
         imp "SARIF"                 reports/semgrep.sarif
         imp "Trivy Scan"            reports/trivy-image.json
         imp "Gitleaks Scan"         reports/gitleaks.json
