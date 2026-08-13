@@ -693,14 +693,17 @@ export default function CmsApp() {
     if (!res || !res.ok) alert(res?.status === 403 ? "Chỉ Publisher/Quản trị mới ghim được lên trang chủ." : "Cập nhật thất bại.");
     refreshPosts();
   }
-  async function deletePost(slug: string, title: string) {
-    if (!window.confirm(`Xoá vĩnh viễn bài "${title}"? Hành động này không hoàn tác được.`)) return;
+  async function deletePost(slug: string, title: string): Promise<boolean> {
+    if (!window.confirm(`Xoá vĩnh viễn bài "${title}"? Hành động này không hoàn tác được.`)) return false;
     setPosts((ps) => ps.filter((p) => p.slug !== slug)); // optimistic
     const res = await fetch(`/api/v1/posts/${slug}`, { method: "DELETE" }).catch(() => null);
     if (!res || !res.ok) {
       alert(res?.status === 403 ? "Chỉ Quản trị mới được xoá bài." : "Xoá thất bại.");
+      refreshPosts();
+      return false;
     }
     refreshPosts();
+    return true;
   }
   function editPost(p: SeedPost) {
     setDraft({ ...p });
@@ -1538,6 +1541,17 @@ export default function CmsApp() {
                 <button type="button" onClick={saveDraft} style={{ ...btnBlue, flex: 1 }}>{saved ? EDITOR_UI.saveButtonDone : EDITOR_UI.saveButton}</button>
                 <button type="button" onClick={() => setView("posts")} style={btnSm}>{EDITOR_UI.cancelButton}</button>
               </div>
+              {/* Delete this post from the editor (AC-013) — admin only, and only
+                  once the post actually exists in the list (not a brand-new draft). */}
+              {(me?.isAdmin ?? true) && posts.some((p) => p.slug === draft.slug) && (
+                <button
+                  type="button"
+                  onClick={async () => { if (await deletePost(draft.slug, draft.title || draft.slug)) setView("posts"); }}
+                  style={{ ...btnSm, width: "100%", marginTop: 10, color: "#C0392B", borderColor: "#E7B4AC" }}
+                >
+                  🗑 Xoá bài viết
+                </button>
+              )}
             </div>
           </div>
 
