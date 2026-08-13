@@ -48,6 +48,13 @@ spec:
       onError: continue
       image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/dependency-check:latest
       workingDir: $(workspaces.source.path)
+      # NVD API v2 is heavily rate-limited without a key, which is why the CVE
+      # feed download used to stall (INFRA-001). Provide a free NVD API key in
+      # secret ns-web-nvd/apikey and the scan pulls the full feed quickly. The
+      # secret is optional so the pipeline still runs (slow/partial) without it.
+      env:
+        - name: NVD_API_KEY
+          valueFrom: { secretKeyRef: { name: ns-web-nvd, key: apikey, optional: true } }
       computeResources:
         requests: { memory: 1Gi, cpu: 500m }
         limits: { memory: 4Gi, cpu: "2" }
@@ -55,7 +62,8 @@ spec:
         #!/bin/sh
         mkdir -p reports .dc-data
         echo "== OWASP Dependency-Check (SCA) =="
-        # NVD update needs egress; if unavailable the scan still runs (advisory).
+        NVD_ARG=""
+        if [ -n "$NVD_API_KEY" ]; then NVD_ARG="--nvdApiKey $NVD_API_KEY"; echo "NVD API key present"; else echo "no NVD API key (ns-web-nvd/apikey) — feed will be slow/partial"; fi
         /usr/share/dependency-check/bin/dependency-check.sh \
           --scan . \
           --project "ac-portal" \
@@ -65,6 +73,7 @@ spec:
           --enableExperimental \
           --disableAssembly \
           --disableKnownExploited \
+          $NVD_ARG \
           --nvdApiDelay 6000 || echo "dependency-check finished with warnings (offline NVD?)"
         ls -la reports || true
         exit 0
@@ -90,9 +99,10 @@ spec:
         #!/bin/sh
         mkdir -p reports
         echo "== Semgrep SAST =="
-        # NOTE: --config auto fetches rules from the Semgrep registry (needs egress);
-        # offline it produces no findings. --error removed (it is a flag, not key=val).
-        semgrep scan --config auto --metrics off \
+        # `--config auto` needs a Semgrep login token + metrics; use fixed curated
+        # registry rulesets instead (INFRA-001). These are fetched once over the
+        # egress=fast node and produce a real SARIF that DefectDojo can import.
+        semgrep scan --config p/ci --config p/secrets --config p/javascript --metrics off \
           --sarif -o reports/semgrep.sarif . || echo "semgrep skipped (offline rules/egress)"
 ---
 apiVersion: tekton.dev/v1
