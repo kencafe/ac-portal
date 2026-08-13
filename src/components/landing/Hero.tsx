@@ -76,6 +76,10 @@ export default function Hero() {
               <a href="#services" style={btnDefault}>
                 {btnSecondaryLabel}
               </a>
+              {/* Sale kit (company profile / design) PDF download for customers. */}
+              <a href="/downloads/AC-Portal-SaleKit.pdf" download style={btnDefault}>
+                {en ? "⬇ Download sale kit (PDF)" : "⬇ Tải bộ giới thiệu (PDF)"}
+              </a>
             </div>
           </div>
 
