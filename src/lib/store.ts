@@ -21,6 +21,12 @@ export function fmtVN(d = new Date()): string {
   return `${p(d.getHours())}:${p(d.getMinutes())} · ${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
+// Date-only VN format "DD/MM/YYYY" — matches the `date` field on design posts.
+export function fmtDateVN(d = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), ".data");
 const FILE = path.join(DATA_DIR, "posts.json");
 
@@ -109,7 +115,7 @@ export async function upsertPost(input: Partial<StoredPost> & { slug: string }):
           author: "",
           role: "",
           initials: "NS",
-          date: "[Ngày đăng]",
+          date: fmtDateVN(),
           read: "1 phút đọc",
           tags: [],
           coverUrl: `assets/cover-${input.slug}.png`,
@@ -117,6 +123,11 @@ export async function upsertPost(input: Partial<StoredPost> & { slug: string }):
           status: "draft",
         };
   const merged: StoredPost = { ...base, ...input, slug: input.slug };
+  // Never let the "[Ngày đăng]" placeholder (or an empty date) persist: derive
+  // the display date from publishedAt when available, otherwise from "now".
+  if (!merged.date || merged.date === "[Ngày đăng]") {
+    merged.date = merged.publishedAt ? merged.publishedAt.split(" · ").pop() ?? fmtDateVN() : fmtDateVN();
+  }
   // Stamp publish time the first time a post becomes published.
   if (merged.status === "published" && !merged.publishedAt) merged.publishedAt = fmtVN();
   if (idx >= 0) all[idx] = merged;

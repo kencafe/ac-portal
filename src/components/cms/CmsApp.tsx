@@ -111,7 +111,7 @@ function storeToCms(p: any): SeedPost {
     title: p.title ?? p.slug,
     cat: p.cat ?? "SRE",
     status: ST2CMS[p.status] ?? "Bản nháp",
-    date: p.date ?? "[Ngày đăng]",
+    date: p.date ?? "",
     author: p.author ?? "",
     excerpt: p.excerpt ?? "",
     tags: p.tags ?? [],
