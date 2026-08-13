@@ -15,10 +15,8 @@ spec:
     type: Docker
     dockerStrategy:
       dockerfilePath: Dockerfile
-      # npm deps via the org Nexus proxy (cache of registry.npmjs.org).
-      buildArgs:
-        - name: NPM_REGISTRY
-          value: http://nexus-repository-manager.ac-mbf-ops.svc:8081/repository/xplat-npm-proxy/
+      # npm via Nexus proxy removed — direct npm is faster on egress=fast nodes
+      # (Nexus cold-egress to npmjs timed out). Pre-warm the cache before re-enabling.
   output:
     to:
       kind: ImageStreamTag

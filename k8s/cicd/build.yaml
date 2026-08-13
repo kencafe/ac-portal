@@ -28,11 +28,11 @@ spec:
     type: Docker
     dockerStrategy:
       dockerfilePath: Dockerfile
-      # Pull npm deps from the org Nexus proxy (cache of registry.npmjs.org) to
-      # speed up + stabilise `npm ci` (INFRA: Nexus npm cache).
-      buildArgs:
-        - name: NPM_REGISTRY
-          value: http://nexus-repository-manager.ac-mbf-ops.svc:8081/repository/xplat-npm-proxy/
+      # NOTE: npm via the org Nexus proxy was tested and REMOVED — on these
+      # egress=fast build nodes, direct npm ci is ~2-3 min, whereas the shared
+      # Nexus's own (cold) egress to npmjs timed out on large tarballs. Re-enable
+      # by setting the NPM_REGISTRY build-arg only after pre-warming the Nexus
+      # npm cache (see INFRA notes). Left off so builds stay fast + reliable.
   output:
     to:
       kind: ImageStreamTag
