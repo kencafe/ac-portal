@@ -1,0 +1,15 @@
+# Persistent NVD (National Vulnerability Database) cache for OWASP Dependency-Check.
+# The full CVE feed is large and slow to fetch; caching it here means the SCA task
+# downloads it once and only does incremental updates on later pipeline runs
+# (INFRA-001). RWX so concurrent pipeline runs can mount it.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dependency-check-data
+  namespace: ac-portal-cicd
+spec:
+  accessModes: ["ReadWriteMany"]
+  resources:
+    requests:
+      storage: 6Gi
+  storageClassName: ac-bronze-share

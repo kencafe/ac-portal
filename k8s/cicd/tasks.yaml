@@ -48,6 +48,9 @@ spec:
       onError: continue
       image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/dependency-check:latest
       workingDir: $(workspaces.source.path)
+      volumeMounts:
+        - name: nvd-cache
+          mountPath: /nvd-cache
       # NVD API v2 is heavily rate-limited without a key, which is why the CVE
       # feed download used to stall (INFRA-001). Provide a free NVD API key in
       # secret ns-web-nvd/apikey and the scan pulls the full feed quickly. The
@@ -62,21 +65,26 @@ spec:
         #!/bin/sh
         mkdir -p reports .dc-data
         echo "== OWASP Dependency-Check (SCA) =="
-        NVD_ARG=""
-        if [ -n "$NVD_API_KEY" ]; then NVD_ARG="--nvdApiKey $NVD_API_KEY"; echo "NVD API key present"; else echo "no NVD API key (ns-web-nvd/apikey) — feed will be slow/partial"; fi
+        # Persistent NVD cache (/nvd-cache PVC): the CVE DB is downloaded once and
+        # reused across runs (incremental update after). With a key we poll fast
+        # (700ms); without one, back off to 6s for the anonymous rate limit.
+        if [ -n "$NVD_API_KEY" ]; then NVD_ARG="--nvdApiKey $NVD_API_KEY --nvdApiDelay 700"; echo "NVD API key present (fast, cached)"; else NVD_ARG="--nvdApiDelay 6000"; echo "no NVD API key (ns-web-nvd/apikey) — feed will be slow/partial"; fi
         /usr/share/dependency-check/bin/dependency-check.sh \
           --scan . \
           --project "ac-portal" \
           --format JSON --format HTML \
           --out reports \
-          --data .dc-data \
+          --data /nvd-cache \
           --enableExperimental \
           --disableAssembly \
           --disableKnownExploited \
-          $NVD_ARG \
-          --nvdApiDelay 6000 || echo "dependency-check finished with warnings (offline NVD?)"
+          $NVD_ARG || echo "dependency-check finished with warnings (offline NVD?)"
         ls -la reports || true
         exit 0
+  volumes:
+    - name: nvd-cache
+      persistentVolumeClaim:
+        claimName: dependency-check-data
 ---
 apiVersion: tekton.dev/v1
 kind: Task
