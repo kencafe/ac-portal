@@ -209,6 +209,13 @@ export default function CmsApp() {
   const [coverMsg, setCoverMsg] = useState("");
   // AC-006: dimensions + file size of the current cover image ("1200×630 px · 245 KB").
   const [coverInfo, setCoverInfo] = useState("");
+
+  // Content-block editing (AC-012): which block is "active" (last focused) so a
+  // new block inserts right after it instead of only at the end; plus drag state
+  // for reordering blocks via the ⠿ handle.
+  const [activeBlock, setActiveBlock] = useState<number | null>(null);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
   // Byte size of the last uploaded/pasted cover File; null for remote/AI images (no File on hand).
   const coverSizeRef = useRef<number | null>(null);
   const coverFileRef = useRef<HTMLInputElement | null>(null);
@@ -704,6 +711,22 @@ export default function CmsApp() {
   }
   function setBlockVal(i: number, val: string) {
     const nb = [...draft.blocks]; nb[i] = [nb[i][0], val]; setDraft({ ...draft, blocks: nb as [BlockKind, string][] });
+  }
+  // Insert a new block right after the active (last-focused) block, or at the end
+  // when nothing is focused — so authors add an image/quote/etc. exactly where
+  // they want (AC-012). The new block becomes active.
+  function addBlockAt(kind: BlockKind) {
+    const at = activeBlock == null ? draft.blocks.length : Math.min(activeBlock + 1, draft.blocks.length);
+    const nb = [...draft.blocks]; nb.splice(at, 0, [kind, ""]);
+    setDraft({ ...draft, blocks: nb as [BlockKind, string][] });
+    setActiveBlock(at);
+  }
+  // Reorder blocks by dragging the ⠿ handle (AC-012).
+  function moveBlock(from: number, to: number) {
+    if (from === to || from < 0 || to < 0) return;
+    const nb = [...draft.blocks]; const [m] = nb.splice(from, 1); nb.splice(to, 0, m);
+    setDraft({ ...draft, blocks: nb as [BlockKind, string][] });
+    setActiveBlock(to);
   }
   function blockImgFile(i: number) {
     blockImgIdxRef.current = i;
@@ -1419,17 +1442,35 @@ export default function CmsApp() {
           <div style={panelPad}>
             <input ref={blockImgFileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onBlockImgFile(f); }} />
             <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12, color: COLORS.ink }}>{EDITOR_UI.fields.blocksLabel}</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
               {KINDS.map((k) => (
-                <button key={k.k} type="button" onClick={() => setDraft({ ...draft, blocks: [...draft.blocks, [k.k, ""]] })} style={btnSm}>{EDITOR_UI.blockAddPrefix}{k.label}</button>
+                <button key={k.k} type="button" onClick={() => addBlockAt(k.k)} style={btnSm}>{EDITOR_UI.blockAddPrefix}{k.label}</button>
               ))}
+            </div>
+            <div style={{ fontSize: 12, color: COLORS.ink3, marginBottom: 14 }}>
+              {activeBlock == null
+                ? "→ Khối mới thêm vào cuối. Bấm vào một khối để chèn ngay sau nó · kéo ⠿ để đổi vị trí."
+                : `→ Khối mới sẽ chèn ngay sau khối #${activeBlock + 1} · kéo ⠿ để đổi vị trí.`}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {draft.blocks.map((b, i) => {
                 const kind = KINDS.find((k) => k.k === b[0]);
                 return (
-                  <div key={i} style={{ display: "flex", gap: 10, background: "#FBFCFD", border: `1px solid ${COLORS.split}`, borderRadius: 8, padding: 12 }}>
-                    <span style={{ color: COLORS.ink3, cursor: "grab", userSelect: "none" }}>⠿</span>
+                  <div
+                    key={i}
+                    onClick={() => setActiveBlock(i)}
+                    onDragOver={(e) => { if (dragIndex !== null) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (dropIndex !== i) setDropIndex(i); } }}
+                    onDragLeave={() => { if (dropIndex === i) setDropIndex(null); }}
+                    onDrop={(e) => { if (dragIndex !== null) { e.preventDefault(); moveBlock(dragIndex, i); } setDragIndex(null); setDropIndex(null); }}
+                    style={{ display: "flex", gap: 10, background: dragIndex === i ? "#EEF4F9" : "#FBFCFD", border: `1px solid ${dropIndex === i && dragIndex !== i ? COLORS.brandBlue : activeBlock === i ? "#B3D5EA" : COLORS.split}`, borderRadius: 8, padding: 12, opacity: dragIndex === i ? 0.6 : 1 }}
+                  >
+                    <span
+                      draggable
+                      onDragStart={(e) => { setDragIndex(i); e.dataTransfer.effectAllowed = "move"; try { e.dataTransfer.setData("text/plain", String(i)); } catch { /* some browsers require setData */ } }}
+                      onDragEnd={() => { setDragIndex(null); setDropIndex(null); }}
+                      title="Kéo để đổi vị trí khối"
+                      style={{ color: COLORS.ink3, cursor: "grab", userSelect: "none" }}
+                    >⠿</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: COLORS.ink3, marginBottom: 6 }}>{kind?.label}</div>
                       {b[0] === "img" ? (
@@ -1441,6 +1482,7 @@ export default function CmsApp() {
                           <input
                             value={b[1]}
                             onChange={(e) => setBlockVal(i, e.target.value)}
+                            onFocus={() => setActiveBlock(i)}
                             data-blockimg={i}
                             onPaste={(e) => {
                               for (const it of Array.from(e.clipboardData?.items || [])) {
@@ -1460,6 +1502,7 @@ export default function CmsApp() {
                         <textarea
                           value={b[1]}
                           onChange={(e) => setBlockVal(i, e.target.value)}
+                          onFocus={() => setActiveBlock(i)}
                           placeholder={kind?.hint}
                           rows={kind?.rows ?? 2}
                           style={{ ...input, height: "auto", padding: "8px 10px", lineHeight: 1.6 }}
