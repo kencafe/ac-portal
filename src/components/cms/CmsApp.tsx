@@ -147,6 +147,12 @@ async function apiSave(draft: SeedPost) {
   return res.ok;
 }
 
+// AC-006: human-readable file size — KB when < 1 MB, else MB with 1 decimal.
+function fmtBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function CmsApp() {
   const [view, setView] = useState<View>("posts");
   const [posts, setPosts] = useState<SeedPost[]>(SEED);
@@ -201,6 +207,10 @@ export default function CmsApp() {
   const [coverAiPrompt, setCoverAiPrompt] = useState(""); // prompt for AI cover generation (empty = auto from title)
   const [coverMinioUrl, setCoverMinioUrl] = useState(""); // direct MinIO link of the last AI-generated image
   const [coverMsg, setCoverMsg] = useState("");
+  // AC-006: dimensions + file size of the current cover image ("1200×630 px · 245 KB").
+  const [coverInfo, setCoverInfo] = useState("");
+  // Byte size of the last uploaded/pasted cover File; null for remote/AI images (no File on hand).
+  const coverSizeRef = useRef<number | null>(null);
   const coverFileRef = useRef<HTMLInputElement | null>(null);
   // In-content image blocks
   const [blockImgBusy, setBlockImgBusy] = useState<number | null>(null);
@@ -294,6 +304,25 @@ export default function CmsApp() {
     return () => document.removeEventListener("paste", onPaste);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, coverBusy]);
+
+  // AC-006: derive the cover image's real dimensions (naturalWidth×naturalHeight)
+  // whenever the cover changes, and combine with the last known File size (upload/
+  // paste). Remote/AI images have no File → only W×H px is shown. Hidden when empty.
+  useEffect(() => {
+    const url = draft.coverUrl;
+    if (!url) { coverSizeRef.current = null; setCoverInfo(""); return; }
+    const size = coverSizeRef.current;
+    let cancelled = false;
+    const img = new window.Image();
+    img.onload = () => {
+      if (cancelled) return;
+      const dims = `${img.naturalWidth}×${img.naturalHeight} px`;
+      setCoverInfo(size != null ? `${dims} · ${fmtBytes(size)}` : dims);
+    };
+    img.onerror = () => { if (!cancelled) setCoverInfo(""); };
+    img.src = url;
+    return () => { cancelled = true; };
+  }, [draft.coverUrl]);
 
   function signOut() {
     window.location.href = me?.signOutUrl || "/oauth/sign_out?rd=%2F";
@@ -717,7 +746,7 @@ export default function CmsApp() {
       const fd = new FormData(); fd.append("file", file); fd.append("slug", draft.slug || "cover");
       const res = await fetch("/api/v1/cover/upload", { method: "POST", body: fd });
       const d = await res.json();
-      if (res.ok) { setDraft((dr) => ({ ...dr, coverUrl: d.url })); setCoverMsg("✅ Đã tải ảnh bìa"); }
+      if (res.ok) { coverSizeRef.current = file.size; setDraft((dr) => ({ ...dr, coverUrl: d.url })); setCoverMsg("✅ Đã tải ảnh bìa"); }
       else setCoverMsg(`❌ ${d.error || res.status}`);
     } catch (e) { setCoverMsg(`❌ ${(e as Error).message}`); }
     if (coverFileRef.current) coverFileRef.current.value = "";
@@ -728,7 +757,7 @@ export default function CmsApp() {
     try {
       const res = await fetch("/api/v1/cover/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: draft.slug, title: draft.title, cat: draft.cat, tone: TONE[draft.cat] ?? "#0072BC", scene: coverAiPrompt.trim() }) });
       const d = await res.json();
-      if (res.ok) { setDraft((dr) => ({ ...dr, coverUrl: d.url })); setCoverMsg((d.aiUsed ? "✅ " : "⚠️ ") + (d.note || "")); setCoverMinioUrl(d.minioUrl || ""); }
+      if (res.ok) { coverSizeRef.current = null; setDraft((dr) => ({ ...dr, coverUrl: d.url })); setCoverMsg((d.aiUsed ? "✅ " : "⚠️ ") + (d.note || "")); setCoverMinioUrl(d.minioUrl || ""); }
       else setCoverMsg(`❌ ${d.error || res.status}`);
     } catch (e) { setCoverMsg(`❌ ${(e as Error).message}`); }
     setCoverBusy(false);
@@ -1475,8 +1504,13 @@ export default function CmsApp() {
               <div style={{ borderRadius: RADIUS.card, overflow: "hidden", marginBottom: 12 }}>
                 <CoverArt coverUrl={draft.coverUrl} title={draft.title || "(chưa có tiêu đề)"} cat={draft.cat} tone={TONE[draft.cat] ?? "#0072BC"} height={150} />
               </div>
+              {coverInfo && (
+                <div style={{ fontSize: 12, color: COLORS.ink2, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span aria-hidden>🖼️</span><span style={{ fontFamily: "monospace" }}>{coverInfo}</span>
+                </div>
+              )}
               <label style={label}>Dán link ảnh</label>
-              <input style={{ ...input, marginBottom: 10 }} placeholder="https://…/anh.jpg" value={draft.coverUrl?.startsWith("http") ? draft.coverUrl : ""} onChange={(e) => setDraft({ ...draft, coverUrl: e.target.value })} disabled={coverBusy} />
+              <input style={{ ...input, marginBottom: 10 }} placeholder="https://…/anh.jpg" value={draft.coverUrl?.startsWith("http") ? draft.coverUrl : ""} onChange={(e) => { coverSizeRef.current = null; setDraft({ ...draft, coverUrl: e.target.value }); }} disabled={coverBusy} />
               <input ref={coverFileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadCover(f); }} />
               <div
                 tabIndex={0}
