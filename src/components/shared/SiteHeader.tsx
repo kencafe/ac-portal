@@ -6,7 +6,7 @@ import { useLang } from "./LangContext";
 import { COLORS, SHADOW, CONTENT_MAX } from "@/lib/tokens";
 import { btnPrimarySm } from "@/lib/ui";
 
-export type NavItem = { label: string; href: string };
+export type NavItem = { label: string; labelEn?: string; href: string };
 
 /**
  * Sticky site header (below the 3px brand stripe). VN/EN segmented toggle is
@@ -97,7 +97,7 @@ export default function SiteHeader({
         >
           {nav.map((item) => (
             <Link key={item.label} href={resolve(item.href)} className="ns-nav-link">
-              {item.label}
+              {lang === "en" ? item.labelEn ?? item.label : item.label}
             </Link>
           ))}
         </nav>
@@ -131,7 +131,7 @@ export default function SiteHeader({
             })}
           </div>
           <Link href={resolve(cta.href)} style={btnPrimarySm}>
-            {cta.label}
+            {lang === "en" ? cta.labelEn ?? cta.label : cta.label}
           </Link>
         </div>
       </div>

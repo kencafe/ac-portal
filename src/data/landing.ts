@@ -536,17 +536,17 @@ export const SECTION_TITLES = {
 export const HEADER = {
   brand: { line1: "FPT-IS", line2: "NEXT GEN SERVICE", logo: "assets/ns-logo.png", href: "#top" },
   nav: [
-    { label: "Giới thiệu", href: "#about" },
-    { label: "Dịch vụ", href: "#services" },
-    { label: "Mô hình", href: "#model" },
-    { label: "Ngành", href: "#industries" },
-    { label: "Đối tác", href: "#partners" },
-    { label: "Khách hàng", href: "#cases" },
-    { label: "Blog", href: "FPTIS NS Blog.dc.html" },
-    { label: "Liên hệ", href: "#contact" },
+    { label: "Giới thiệu", labelEn: "About", href: "#about" },
+    { label: "Dịch vụ", labelEn: "Services", href: "#services" },
+    { label: "Mô hình", labelEn: "Approach", href: "#model" },
+    { label: "Ngành", labelEn: "Industries", href: "#industries" },
+    { label: "Đối tác", labelEn: "Partners", href: "#partners" },
+    { label: "Khách hàng", labelEn: "Customers", href: "#cases" },
+    { label: "Blog", labelEn: "Blog", href: "FPTIS NS Blog.dc.html" },
+    { label: "Liên hệ", labelEn: "Contact", href: "#contact" },
   ],
   langToggle: { vi: "VN", en: "EN", default: "vi" },
-  ctaButton: { label: "Liên hệ tư vấn", href: "#contact" },
+  ctaButton: { label: "Liên hệ tư vấn", labelEn: "Get in touch", href: "#contact" },
 } as const;
 
 /** Repeated CTA / link strings used across cards. */
