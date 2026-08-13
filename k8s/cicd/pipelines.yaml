@@ -19,7 +19,7 @@ metadata:
 spec:
   description: DevSecOps CI/CD pinned to the dev environment (build once + promote by tag).
   params:
-    - { name: git-url, type: string, default: "https://github.com/kencafe/ac-portal.git" }
+    - { name: git-url, type: string, default: "https://gitlab.appcarrier.cloud/acadmin/ac-portal.git" }
     - { name: git-revision, type: string, default: dev }
     - { name: env, type: string, default: dev }
     - { name: target-namespace, type: string, default: ac-portal-dev }
@@ -115,7 +115,7 @@ metadata:
 spec:
   description: DevSecOps CI/CD pinned to the staging environment (build once + promote by tag, DAST on).
   params:
-    - { name: git-url, type: string, default: "https://github.com/kencafe/ac-portal.git" }
+    - { name: git-url, type: string, default: "https://gitlab.appcarrier.cloud/acadmin/ac-portal.git" }
     - { name: git-revision, type: string, default: staging }
     - { name: env, type: string, default: staging }
     - { name: target-namespace, type: string, default: ac-portal-staging }
@@ -217,7 +217,7 @@ metadata:
 spec:
   description: DevSecOps CI/CD pinned to the PROD environment. Deliberate promotion only — never auto-run.
   params:
-    - { name: git-url, type: string, default: "https://github.com/kencafe/ac-portal.git" }
+    - { name: git-url, type: string, default: "https://gitlab.appcarrier.cloud/acadmin/ac-portal.git" }
     - { name: git-revision, type: string, default: main }
     - { name: env, type: string, default: prod }
     - { name: target-namespace, type: string, default: ac-portal-prod }
