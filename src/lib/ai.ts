@@ -132,11 +132,26 @@ function hashCode(s: string): number {
   return h;
 }
 
-// Excerpt: truncate at a word boundary (never mid-word) and add an ellipsis.
-function clipExcerpt(text: string, max = 180): string {
+// Excerpt: end the summary cleanly (AC-011). Within the window prefer the LAST
+// sentence-ending punctuation (. ! ? … ; :) so the excerpt closes on a complete
+// clause and keeps that punctuation. If no sentence end is found, fall back to a
+// word-boundary cut + ellipsis (never mid-word). Short text is returned as-is.
+function clipExcerpt(text: string, max = 220): string {
   const t = (text || "").replace(/\s+/g, " ").trim();
   if (t.length <= max) return t;
   const cut = t.slice(0, max);
+
+  // Sentence end = terminator followed by whitespace or end of window (so we
+  // never break on a decimal point / abbreviation like "3.5" or "e.g.").
+  const sentenceEnd = /[.!?…;:](?=\s|$)/g;
+  let lastEnd = -1;
+  for (let m = sentenceEnd.exec(cut); m; m = sentenceEnd.exec(cut)) lastEnd = m.index;
+  // Accept the sentence boundary as long as it yields a non-trivial excerpt
+  // (~80 chars), so a clean clause is preferred over a longer mid-sentence cut.
+  const minLen = Math.min(80, max);
+  if (lastEnd + 1 >= minLen) return cut.slice(0, lastEnd + 1).trim();
+
+  // Fallback: word boundary + ellipsis.
   const lastSpace = cut.lastIndexOf(" ");
   const base = lastSpace > max * 0.5 ? cut.slice(0, lastSpace) : cut;
   return base.replace(/[\s.,;:!?…-]+$/, "") + "…";
