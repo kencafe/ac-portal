@@ -1480,7 +1480,7 @@ export default function CmsApp() {
                         <div>
                           {b[1] && (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={b[1].startsWith("http") || b[1].startsWith("/") ? b[1] : `/${b[1]}`} alt="" style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 8, marginBottom: 8 }} />
+                            <img src={b[1].startsWith("http") || b[1].startsWith("/") ? b[1] : `/${b[1]}`} alt="" style={{ width: "100%", maxHeight: 260, objectFit: "contain", background: "#F1F4F7", borderRadius: 8, marginBottom: 8 }} />
                           )}
                           <input
                             value={b[1]}
