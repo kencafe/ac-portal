@@ -5,10 +5,22 @@ resources:
   - ../../base
 patches:
   - path: route-patch.yaml
-  - path: route-cms-patch.yaml
   - path: route-blog-patch.yaml
   - path: deployment-patch.yaml
   - path: configmap-patch.yaml
+  - path: ai-cron-suspend-patch.yaml
+  # PROD is public-only for now: remove the CMS route entirely (its target is
+  # the oauth2-proxy sidecar on 8080, which is dropped above). Re-add with the
+  # sidecar once Keycloak prod is provisioned.
+  - patch: |
+      $patch: delete
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        name: ac-portal-cms
+    target:
+      kind: Route
+      name: ac-portal-cms
 labels:
   - pairs:
       environment: prod

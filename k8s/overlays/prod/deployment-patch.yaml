@@ -11,3 +11,10 @@ spec:
           env:
             - name: MINIO_PUBLIC_BASE
               value: https://minio.appcarrier.cloud
+        # PROD ships PUBLIC (marketing site + blog) without the CMS auth gate:
+        # Keycloak prod is not provisioned yet, so the oauth2-proxy sidecar has
+        # no kc-cms-oidc / ns-web-oauth2 secrets and would CreateContainerConfig
+        # -Error. Drop it here; re-add once Keycloak prod exists. The CMS route
+        # is removed on prod (kustomization) so nothing reaches the app on 8080.
+        - name: oauth2-proxy
+          $patch: delete

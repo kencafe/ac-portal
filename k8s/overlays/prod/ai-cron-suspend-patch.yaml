@@ -1,0 +1,9 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ac-portal-ai-ingest
+spec:
+  # AI auto-ingest is deferred on PROD until the image provider is funded
+  # (P2 pending). The job needs ns-web-ai (cron-token) which prod does not have,
+  # so it would CreateContainerConfigError every run. Suspend until AI is ready.
+  suspend: true
