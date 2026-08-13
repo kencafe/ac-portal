@@ -58,19 +58,29 @@ export const CAN_DELETE: Role[] = ["Quản trị"];
 
 export async function getIdentity(): Promise<Identity> {
   const h = await headers();
+  // SECURITY (SEC-001): the X-Forwarded-* identity headers are only meaningful
+  // when the request actually passed through the oauth2-proxy sidecar, which
+  // sets them from a verified Keycloak token. On any route that reaches the app
+  // container directly (the public marketing/blog host on :3000), a client can
+  // FORGE these headers and grant itself blog-admin. We therefore trust them
+  // ONLY when the deployment explicitly opts in via TRUST_FORWARDED_AUTH=1 —
+  // set on envs that are fronted by the proxy (dev/staging). Public prod, which
+  // has no proxy, leaves it unset so forged headers are ignored (→ unauth).
+  const trustForwarded = process.env.TRUST_FORWARDED_AUTH === "1";
   // oauth2-proxy sets X-Forwarded-User to the OIDC `sub` (an opaque UUID for
   // Keycloak), while the human-readable login name arrives in
   // X-Forwarded-Preferred-Username (from the token's `preferred_username`
   // claim). Prefer the username for display; fall back to the sub, then email.
-  const user =
-    h.get("x-forwarded-preferred-username") ||
-    h.get("x-forwarded-user") ||
-    h.get("x-forwarded-email") ||
-    "";
-  const email = h.get("x-forwarded-email") || "";
-  const groups = (h.get("x-forwarded-groups") || "")
-    .split(/[,\s]+/)
-    .filter(Boolean);
+  const user = trustForwarded
+    ? h.get("x-forwarded-preferred-username") ||
+      h.get("x-forwarded-user") ||
+      h.get("x-forwarded-email") ||
+      ""
+    : "";
+  const email = trustForwarded ? h.get("x-forwarded-email") || "" : "";
+  const groups = trustForwarded
+    ? (h.get("x-forwarded-groups") || "").split(/[,\s]+/).filter(Boolean)
+    : [];
 
   // No proxy headers. Two very different cases:
   //  - Local dev (no oauth2-proxy in front): grant admin for convenience.

@@ -4,3 +4,6 @@ metadata:
   name: ac-portal-config
 data:
   SITE_URL: "https://staging.appcarrier.cloud"
+  # staging is fronted by the oauth2-proxy CMS route → trust its X-Forwarded-*
+  # auth headers. NEVER set this on a public env without a proxy (SEC-001).
+  TRUST_FORWARDED_AUTH: "1"
