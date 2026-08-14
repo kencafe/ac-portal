@@ -738,6 +738,7 @@ export const TOPBAR = {
     api: 'Cấu hình API',
     admin: 'Quản trị hệ thống',
     aistudio: 'AI tự động',
+    followers: 'Người theo dõi',
   },
   saveHint: 'Đã lưu bản mới nhất', // shown when state.saved
   newPostButton: '+ Bài viết mới',
