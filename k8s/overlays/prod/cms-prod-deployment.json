@@ -1,0 +1,303 @@
+{
+  "apiVersion": "apps/v1",
+  "kind": "Deployment",
+  "metadata": {
+    "name": "ac-portal-cms",
+    "namespace": "ac-portal-prod",
+    "labels": {
+      "app": "ac-portal",
+      "component": "cms"
+    },
+    "annotations": {
+      "alpha.image.policy.openshift.io/resolve-names": "*"
+    }
+  },
+  "spec": {
+    "progressDeadlineSeconds": 600,
+    "replicas": 1,
+    "revisionHistoryLimit": 10,
+    "selector": {
+      "matchLabels": {
+        "app": "ac-portal",
+        "component": "cms"
+      }
+    },
+    "strategy": {
+      "rollingUpdate": {
+        "maxSurge": "25%",
+        "maxUnavailable": "25%"
+      },
+      "type": "RollingUpdate"
+    },
+    "template": {
+      "metadata": {
+        "labels": {
+          "app": "ac-portal",
+          "component": "cms"
+        },
+        "annotations": {
+          "alpha.image.policy.openshift.io/resolve-names": "*"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "env": [
+              {
+                "name": "DATA_DIR",
+                "value": "/app/.data"
+              },
+              {
+                "name": "TZ",
+                "value": "Asia/Ho_Chi_Minh"
+              },
+              {
+                "name": "AI_CRON_TOKEN",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "cron-token",
+                    "name": "ns-web-ai",
+                    "optional": true
+                  }
+                }
+              },
+              {
+                "name": "MINIO_ENDPOINT",
+                "value": "minio"
+              },
+              {
+                "name": "MINIO_PORT",
+                "value": "9000"
+              },
+              {
+                "name": "MINIO_USE_SSL",
+                "value": "false"
+              },
+              {
+                "name": "MINIO_BUCKET",
+                "value": "covers"
+              },
+              {
+                "name": "MINIO_ACCESS_KEY",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "root-user",
+                    "name": "minio-creds",
+                    "optional": true
+                  }
+                }
+              },
+              {
+                "name": "MINIO_SECRET_KEY",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "root-password",
+                    "name": "minio-creds",
+                    "optional": true
+                  }
+                }
+              },
+              {
+                "name": "TRUST_FORWARDED_AUTH",
+                "value": "1"
+              },
+              {
+                "name": "MINIO_PUBLIC_BASE",
+                "value": "https://minio.appcarrier.cloud"
+              }
+            ],
+            "envFrom": [
+              {
+                "configMapRef": {
+                  "name": "ac-portal-config"
+                }
+              },
+              {
+                "secretRef": {
+                  "name": "ns-web-secrets",
+                  "optional": true
+                }
+              }
+            ],
+            "image": "image-registry.openshift-image-registry.svc:5000/ac-portal-prod/ac-portal:latest",
+            "imagePullPolicy": "Always",
+            "livenessProbe": {
+              "failureThreshold": 3,
+              "httpGet": {
+                "path": "/",
+                "port": 3000,
+                "scheme": "HTTP"
+              },
+              "initialDelaySeconds": 20,
+              "periodSeconds": 15,
+              "successThreshold": 1,
+              "timeoutSeconds": 5
+            },
+            "name": "ac-portal",
+            "ports": [
+              {
+                "containerPort": 3000,
+                "protocol": "TCP"
+              }
+            ],
+            "readinessProbe": {
+              "failureThreshold": 3,
+              "httpGet": {
+                "path": "/",
+                "port": 3000,
+                "scheme": "HTTP"
+              },
+              "initialDelaySeconds": 5,
+              "periodSeconds": 10,
+              "successThreshold": 1,
+              "timeoutSeconds": 3
+            },
+            "resources": {
+              "limits": {
+                "cpu": "500m",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "150m",
+                "memory": "256Mi"
+              }
+            },
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "capabilities": {
+                "drop": [
+                  "ALL"
+                ]
+              },
+              "runAsNonRoot": true,
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "terminationMessagePath": "/dev/termination-log",
+            "terminationMessagePolicy": "File",
+            "volumeMounts": [
+              {
+                "mountPath": "/app/.data",
+                "name": "content-store"
+              }
+            ]
+          },
+          {
+            "args": [
+              "--http-address=0.0.0.0:8080",
+              "--upstream=http://127.0.0.1:3000",
+              "--provider=oidc",
+              "--oidc-issuer-url=https://sso.appcarrier.cloud/realms/ac-portal",
+              "--scope=openid ac-portal-groups",
+              "--oidc-groups-claim=groups",
+              "--allowed-group=blog-author",
+              "--allowed-group=blog-translator",
+              "--allowed-group=blog-editor",
+              "--allowed-group=blog-publisher",
+              "--allowed-group=blog-admin",
+              "--email-domain=*",
+              "--skip-provider-button=true",
+              "--whitelist-domain=sso.appcarrier.cloud",
+              "--pass-access-token=true",
+              "--set-xauthrequest=true",
+              "--pass-user-headers=true",
+              "--cookie-secure=true",
+              "--reverse-proxy=true"
+            ],
+            "env": [
+              {
+                "name": "OAUTH2_PROXY_CLIENT_ID",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "client-id",
+                    "name": "kc-cms-oidc"
+                  }
+                }
+              },
+              {
+                "name": "OAUTH2_PROXY_CLIENT_SECRET",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "client-secret",
+                    "name": "kc-cms-oidc"
+                  }
+                }
+              },
+              {
+                "name": "OAUTH2_PROXY_COOKIE_SECRET",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "cookie-secret",
+                    "name": "ns-web-oauth2"
+                  }
+                }
+              },
+              {
+                "name": "OAUTH2_PROXY_REDIRECT_URL",
+                "value": "https://cms.appcarrier.cloud/oauth2/callback"
+              }
+            ],
+            "image": "image-registry.openshift-image-registry.svc:5000/ac-portal-dev/oauth2-proxy:v7",
+            "imagePullPolicy": "IfNotPresent",
+            "name": "oauth2-proxy",
+            "ports": [
+              {
+                "containerPort": 8080,
+                "name": "http",
+                "protocol": "TCP"
+              }
+            ],
+            "resources": {
+              "limits": {
+                "cpu": "200m",
+                "memory": "128Mi"
+              },
+              "requests": {
+                "cpu": "50m",
+                "memory": "64Mi"
+              }
+            },
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "capabilities": {
+                "drop": [
+                  "ALL"
+                ]
+              },
+              "runAsNonRoot": true,
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "terminationMessagePath": "/dev/termination-log",
+            "terminationMessagePolicy": "File"
+          }
+        ],
+        "dnsPolicy": "ClusterFirst",
+        "hostAliases": [
+          {
+            "hostnames": [
+              "sso.appcarrier.cloud"
+            ],
+            "ip": "103.9.0.232"
+          }
+        ],
+        "restartPolicy": "Always",
+        "schedulerName": "default-scheduler",
+        "securityContext": {},
+        "serviceAccount": "ns-web-cms",
+        "serviceAccountName": "ns-web-cms",
+        "terminationGracePeriodSeconds": 30,
+        "volumes": [
+          {
+            "name": "content-store",
+            "persistentVolumeClaim": {
+              "claimName": "ns-web-data"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

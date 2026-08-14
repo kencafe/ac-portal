@@ -1,0 +1,23 @@
+# Dedicated CMS on PROD (safe architecture): a separate deployment ac-portal-cms
+# (component=cms, TRUST_FORWARDED_AUTH=1, app + oauth2-proxy sidecar) reachable
+# ONLY via cms.appcarrier.cloud → oauth2-proxy(8080). The public ac-portal
+# deployment (apex/blog) stays TRUST=0 with no sidecar, so forged X-Forwarded-*
+# headers on the public host are ignored (header-forgery stays closed).
+# Deployment manifest: cms-prod-deployment.json. Secrets kc-cms-oidc (client
+# ac-portal-cms-prod) + ns-web-oauth2 are created out-of-band. Shares PVC
+# ns-web-data (RWX) with the public app so content is consistent.
+apiVersion: v1
+kind: Service
+metadata: { name: ac-portal-cms, namespace: ac-portal-prod, labels: { app: ac-portal, component: cms } }
+spec:
+  selector: { app: ac-portal, component: cms }
+  ports: [ { name: http, port: 8080, targetPort: 8080 } ]
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata: { name: ac-portal-cms, namespace: ac-portal-prod, labels: { app: ac-portal, component: cms } }
+spec:
+  host: cms.appcarrier.cloud
+  to: { kind: Service, name: ac-portal-cms }
+  port: { targetPort: http }
+  tls: { termination: edge, insecureEdgeTerminationPolicy: Redirect }
