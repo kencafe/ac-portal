@@ -15,3 +15,11 @@ Apply: `oc apply -f k8s/observability/grafana-phase1.yaml` (after the secrets ex
 
 ## Phase 2 — Logs (Loki + Alloy) — TODO
 ## Phase 3 — Traces (Tempo + OTel, app `instrumentation.ts`) — TODO
+
+## Phase 2 — Logs (Loki + Alloy) — DONE 2026-08-14
+- **Loki** SingleBinary, filesystem storage (PVC loki-data 10Gi), retention 14d — `loki.yaml`. Service `loki.observability:3100`.
+- **Alloy** (Deployment, NOT DaemonSet — reads pod logs via the K8s API, so **no privileged SCC/hostPath needed**) — `alloy.yaml`. ClusterRole `alloy-logs-reader` (read pods/pods-log/namespaces/nodes). Scoped to ac-portal-* + observability namespaces via `discovery.kubernetes { namespaces {...} }`.
+- **Grafana** Loki datasource (uid `loki`) added to secret `grafana-datasource` — health OK.
+- Streams labeled by `instance` (=namespace/pod:container) + `job`. (Optional refinement: a loki.process stage to split into namespace/pod/container labels.)
+
+## Phase 3 — Traces (Tempo + OTel, app instrumentation.ts) — TODO

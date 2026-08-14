@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: alloy, namespace: observability }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: { name: alloy-logs-reader }
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "namespaces", "nodes", "nodes/proxy", "services", "endpoints"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: { name: alloy-logs-reader }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: alloy-logs-reader }
+subjects: [ { kind: ServiceAccount, name: alloy, namespace: observability } ]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: alloy-config, namespace: observability }
+data:
+  config.alloy: |
+    // Scope discovery to the app namespaces at the API level; feed targets
+    // straight to loki.source.kubernetes so it keeps the __meta labels it needs.
+    discovery.kubernetes "pods" {
+      role = "pod"
+      namespaces {
+        names = ["ac-portal-dev", "ac-portal-staging", "ac-portal-prod", "observability"]
+      }
+    }
+
+    // loki.source.kubernetes auto-adds namespace/pod/container labels.
+    loki.source.kubernetes "pods" {
+      targets    = discovery.kubernetes.pods.targets
+      forward_to = [loki.write.default.receiver]
+    }
+
+    loki.write "default" {
+      endpoint {
+        url = "http://loki.observability.svc:3100/loki/api/v1/push"
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: alloy, namespace: observability, labels: { app: alloy } }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: alloy } }
+  template:
+    metadata: { labels: { app: alloy } }
+    spec:
+      serviceAccountName: alloy
+      containers:
+        - name: alloy
+          image: registry.apps.xplat.fis.com.vn/grafana/alloy:v1.5.1
+          args:
+            - run
+            - /etc/alloy/config.alloy
+            - --storage.path=/tmp/alloy
+            - --server.http.listen-addr=0.0.0.0:12345
+          ports: [ { containerPort: 12345, name: http } ]
+          volumeMounts:
+            - { name: config, mountPath: /etc/alloy }
+            - { name: tmp, mountPath: /tmp/alloy }
+          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 300m, memory: 384Mi } }
+          securityContext: { allowPrivilegeEscalation: false, runAsNonRoot: true, capabilities: { drop: ["ALL"] }, seccompProfile: { type: RuntimeDefault } }
+      volumes:
+        - { name: config, configMap: { name: alloy-config } }
+        - { name: tmp, emptyDir: {} }
