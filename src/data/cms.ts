@@ -21,6 +21,7 @@ export interface SeedPost {
   slug: string;
   title: string;
   cat: string;
+  lang?: 'vi' | 'en';      // language page this post is published to
   status: PostStatus;
   date: string;
   author: string;
@@ -280,6 +281,7 @@ export const NEW_DRAFT_DEFAULTS = {
   slug: '',
   title: '',
   cat: 'SRE', // CATS[0]
+  lang: 'vi' as 'vi' | 'en', // which language page the post is published to
   status: 'Bản nháp' as PostStatus,
   date: '',
   author: '',

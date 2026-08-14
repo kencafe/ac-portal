@@ -12,6 +12,12 @@ import { useLang } from "@/components/shared/LangContext";
 
 export default function BlogTeasersView({ posts }: { posts: Post[] }) {
   const en = useLang().lang === "en";
+  // Show only posts published to the active language page (VN vs EN), featured
+  // first, capped at 3.
+  const shown = posts
+    .filter((p) => (p.lang ?? "vi") === (en ? "en" : "vi"))
+    .sort((a, b) => Number(!!b.featured) - Number(!!a.featured))
+    .slice(0, 3);
 
   return (
     <Section id="blog">
@@ -25,11 +31,11 @@ export default function BlogTeasersView({ posts }: { posts: Post[] }) {
           </a>
         }
       />
-      {posts.length === 0 ? (
+      {shown.length === 0 ? (
         <p style={{ color: COLORS.ink3 }}>{en ? UI_STRINGS.blogEmptyEn : UI_STRINGS.blogEmpty}</p>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
-          {posts.map((post, i) => {
+          {shown.map((post, i) => {
             const accent = accentAt(i);
             const tone = post.tone || ACCENTS[accent].color;
             return (

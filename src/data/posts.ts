@@ -19,6 +19,7 @@ export interface Post {
   cat: string;                // category name
   tone: string;               // category tone color hex from source
   featured?: boolean;
+  lang?: "vi" | "en";         // which language page this post is published to (default "vi")
   title: string;
   excerpt: string;            // also used as the article standfirst
   author: string;

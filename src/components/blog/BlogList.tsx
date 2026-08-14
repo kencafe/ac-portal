@@ -80,9 +80,10 @@ export default function BlogList({ posts }: { posts: Post[] }) {
   const filtered = useMemo(
     () =>
       posts
+        .filter((p) => (p.lang ?? "vi") === (en ? "en" : "vi"))
         .filter((p) => cat === "Tất cả" || p.cat === cat)
         .filter((p) => !q || (p.title + " " + p.excerpt + " " + (p.tags ?? []).join(" ")).toLowerCase().includes(q)),
-    [posts, cat, q],
+    [posts, cat, q, en],
   );
 
   const showFeatured = cat === "Tất cả" && !q;

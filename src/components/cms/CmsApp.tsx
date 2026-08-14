@@ -116,6 +116,7 @@ function storeToCms(p: any): SeedPost {
     excerpt: p.excerpt ?? "",
     tags: p.tags ?? [],
     featured: !!p.featured,
+    lang: (p.lang as "vi" | "en") ?? "vi",
     coverUrl: p.coverUrl ?? "",
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     blocks: (p.blocks ?? []).map((bl: any) =>
@@ -138,6 +139,7 @@ async function apiSave(draft: SeedPost) {
     read: `${Math.max(1, Math.round((draft.blocks.reduce((n, b) => n + (b[1]?.length ?? 0), 0)) / 900))} phút đọc`,
     excerpt: draft.excerpt,
     tags: draft.tags,
+    lang: draft.lang ?? "vi",
     // Preserve the chosen cover (paste/upload/AI); empty → server renders the
     // generated illustration via /api/cover.
     coverUrl: draft.coverUrl || `/api/cover?title=${encodeURIComponent(draft.title || "")}&cat=${encodeURIComponent(draft.cat || "")}&tone=${encodeURIComponent((TONE[draft.cat] ?? "#0072BC").replace("#", ""))}`,
@@ -1409,6 +1411,7 @@ export default function CmsApp() {
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: 6 }}>
                         {p.featured && <span title="Đang hiển thị trên trang chủ" style={{ fontSize: 11, fontWeight: 700, color: "#B7791F", background: "#FEF3C7", padding: "1px 7px", borderRadius: 4, whiteSpace: "nowrap" }}>★ Trang chủ</span>}
+                        <span title="Ngôn ngữ trang" style={{ fontSize: 10.5, fontWeight: 700, color: (p.lang ?? "vi") === "en" ? "#1D4ED8" : "#047857", background: (p.lang ?? "vi") === "en" ? "#DBEAFE" : "#D1FAE5", padding: "1px 6px", borderRadius: 4, whiteSpace: "nowrap" }}>{(p.lang ?? "vi") === "en" ? "EN" : "VN"}</span>
                         <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{p.title}</span>
                       </div>
                       <div style={{ fontSize: 12, color: COLORS.ink3 }}>/blog/{p.slug}</div>
@@ -1603,6 +1606,13 @@ export default function CmsApp() {
                   <button key={s} type="button" onClick={() => setDraft({ ...draft, status: s })} style={{ ...btnSm, height: 28, background: draft.status === s ? "#E6F1F9" : "#fff", color: draft.status === s ? COLORS.brandBlue : COLORS.ink2 }}>{s}</button>
                 ))}
               </div>
+              <label style={label}>Ngôn ngữ trang</label>
+              <div style={{ display: "flex", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
+                {([["vi", "🇻🇳 Tiếng Việt"], ["en", "🇬🇧 English"]] as const).map(([lc, lb]) => (
+                  <button key={lc} type="button" onClick={() => setDraft({ ...draft, lang: lc })} style={{ ...btnSm, height: 28, background: (draft.lang ?? "vi") === lc ? "#E6F1F9" : "#fff", color: (draft.lang ?? "vi") === lc ? COLORS.brandBlue : COLORS.ink2 }}>{lb}</button>
+                ))}
+              </div>
+              <div style={{ fontSize: 11.5, color: COLORS.ink3, marginBottom: 14 }}>Bài chỉ hiển thị ở trang đúng ngôn ngữ: VN → trang tiếng Việt, EN → trang tiếng Anh.</div>
               <label style={label}>{EDITOR_UI.dateFieldLabel}</label>
               <input value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} placeholder={EDITOR_UI.datePlaceholder} style={{ ...input, marginBottom: 14 }} />
               <label style={label}>{EDITOR_UI.authorFieldLabel}</label>
