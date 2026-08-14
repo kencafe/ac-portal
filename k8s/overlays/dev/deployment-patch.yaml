@@ -12,3 +12,9 @@ spec:
             # Browser-reachable MinIO base for this env (shows where AI images are stored).
             - name: MINIO_PUBLIC_BASE
               value: https://minio-dev.appcarrier.cloud
+        # Independent CMS auth: dev uses its own Keycloak client (ac-portal-cms-dev
+        # via kc-cms-oidc) + its own callback host.
+        - name: oauth2-proxy
+          env:
+            - name: OAUTH2_PROXY_REDIRECT_URL
+              value: https://cms-dev.appcarrier.cloud/oauth2/callback
