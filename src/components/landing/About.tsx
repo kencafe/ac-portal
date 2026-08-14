@@ -82,7 +82,7 @@ export default function About() {
             <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em", margin: "12px 0 6px", color: COLORS.ink }}>
               {en ? c.en : c.title}
             </div>
-            <div style={{ fontSize: 14, lineHeight: 1.65, color: COLORS.ink2 }}>{en ? c.title : c.en}</div>
+            {!en && <div style={{ fontSize: 14, lineHeight: 1.65, color: COLORS.ink2 }}>{c.en}</div>}
           </div>
         ))}
       </div>

@@ -10,7 +10,7 @@ export default function Hero() {
   const { lang } = useLang();
   const en = lang === "en";
   const h1 = en ? HERO.h1En : HERO.h1;
-  const h1sub = en ? HERO.h1 : HERO.h1sub;
+  const h1sub = en ? "" : HERO.h1sub;
   const lead = en ? HERO.leadEn : HERO.lead;
   const btnPrimaryLabel = en ? HERO.buttons.primaryEn : HERO.buttons.primary;
   const btnSecondaryLabel = en ? HERO.buttons.secondaryEn : HERO.buttons.secondary;
@@ -56,16 +56,18 @@ export default function Hero() {
             >
               {h1}
             </h1>
-            <p
-              style={{
-                fontSize: "clamp(15px, 1.5vw, 19px)",
-                fontWeight: 400,
-                color: COLORS.ink3,
-                margin: "10px 0 0",
-              }}
-            >
-              {h1sub}
-            </p>
+            {h1sub && (
+              <p
+                style={{
+                  fontSize: "clamp(15px, 1.5vw, 19px)",
+                  fontWeight: 400,
+                  color: COLORS.ink3,
+                  margin: "10px 0 0",
+                }}
+              >
+                {h1sub}
+              </p>
+            )}
             <p style={{ fontSize: 16, lineHeight: 1.72, color: COLORS.ink2, maxWidth: 660, margin: "20px 0 0" }}>
               {lead}
             </p>
@@ -160,8 +162,8 @@ export default function Hero() {
                 {s.value}
                 <span>{s.suffix}</span>
               </div>
-              <div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", marginTop: 6 }}>{s.label}</div>
-              <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{s.en}</div>
+              <div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", marginTop: 6 }}>{en ? s.en : s.label}</div>
+              {!en && <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{s.en}</div>}
             </div>
           ))}
         </div>

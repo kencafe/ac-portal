@@ -10,10 +10,12 @@ import { routes } from "@/lib/routes";
 type Meta = {
   num: number;
   name: string;
+  nameEn?: string;
   en: string;
   slug: string;
   accent: string;
   desc: string;
+  descEn: string;
   ribbon?: string;
 };
 
@@ -66,7 +68,7 @@ export default function ServiceCard({ meta }: { meta: Meta }) {
             borderBottomLeftRadius: 8,
           }}
         >
-          {meta.ribbon}
+          {lang === "en" && meta.ribbon ? "NEW" : meta.ribbon}
         </span>
       )}
 
@@ -76,14 +78,14 @@ export default function ServiceCard({ meta }: { meta: Meta }) {
 
       <div style={{ marginTop: 16 }}>
         <div style={{ fontSize: nameSize, fontWeight: 600, letterSpacing: "-0.01em", color: COLORS.ink, lineHeight: 1.3 }}>
-          {meta.name}
+          {lang === "en" ? meta.nameEn ?? meta.name : meta.name}
         </div>
         <div style={{ fontSize: enSize, color: COLORS.ink3, marginTop: 2 }}>{meta.en}</div>
       </div>
 
-      <p style={{ fontSize: 14, lineHeight: 1.65, color: COLORS.ink2, margin: "12px 0 16px" }}>{meta.desc}</p>
+      <p style={{ fontSize: 14, lineHeight: 1.65, color: COLORS.ink2, margin: "12px 0 16px" }}>{lang === "en" ? meta.descEn : meta.desc}</p>
 
-      <span style={{ fontSize: 13.5, fontWeight: 600, color: a.color }}>Xem thêm →</span>
+      <span style={{ fontSize: 13.5, fontWeight: 600, color: a.color }}>{lang === "en" ? "Learn more →" : "Xem thêm →"}</span>
     </HoverCard>
   );
 }

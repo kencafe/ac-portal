@@ -34,7 +34,7 @@ export default function Industries() {
             >
               <span style={{ display: "block", width: 30, height: 3, borderRadius: 2, background: a.color, marginBottom: 14 }} />
               <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>{en ? ind.en : ind.vi}</div>
-              <div style={{ fontSize: 12.5, color: COLORS.ink3, marginTop: 3 }}>{en ? ind.vi : ind.en}</div>
+              {!en && <div style={{ fontSize: 12.5, color: COLORS.ink3, marginTop: 3 }}>{ind.en}</div>}
             </HoverCard>
           );
         })}

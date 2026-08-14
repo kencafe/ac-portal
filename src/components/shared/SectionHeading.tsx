@@ -21,7 +21,9 @@ export default function SectionHeading({
 }) {
   const { lang } = useLang();
   const primary = lang === "en" ? en || vi : vi;
-  const sub = lang === "en" ? vi : en;
+  // In EN mode show the English heading only (no Vietnamese sub-line); in VN mode
+  // keep the English sub-line as the bilingual accent.
+  const sub = lang === "en" ? "" : en;
   return (
     <div style={{ marginBottom: 28 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
@@ -39,7 +41,7 @@ export default function SectionHeading({
         </div>
         {right && <div style={{ marginLeft: "auto" }}>{right}</div>}
       </div>
-      <p style={h2Sub}>{sub}</p>
+      {sub && <p style={h2Sub}>{sub}</p>}
     </div>
   );
 }

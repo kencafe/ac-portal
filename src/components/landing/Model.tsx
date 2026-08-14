@@ -65,7 +65,7 @@ export default function Model() {
 
             <div style={{ marginTop: 14 }}>
               <div style={{ fontSize: 19, fontWeight: 600, color: COLORS.ink }}>{en ? p.en : p.title}</div>
-              <div style={{ fontSize: 13, color: COLORS.ink3, marginTop: 2 }}>{en ? p.title : p.en}</div>
+              {!en && <div style={{ fontSize: 13, color: COLORS.ink3, marginTop: 2 }}>{p.en}</div>}
             </div>
 
             <div
