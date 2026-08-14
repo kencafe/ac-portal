@@ -184,7 +184,7 @@ spec:
   steps:
     - name: zap-baseline
       onError: continue
-      image: image-registry.openshift-image-registry.svc:5000/ac-portal-dev/zaproxy:stable
+      image: image-registry.openshift-image-registry.svc:5000/openshift/ac-zapproxy:2.17.0
       workingDir: $(workspaces.source.path)
       computeResources:
         requests: { memory: 512Mi, cpu: 250m }
