@@ -706,6 +706,7 @@ export const SIDEBAR = {
       items: [
         { key: 'api', label: 'Cấu hình API', icon: '⚿' },
         { key: 'admin', label: 'Quản trị', icon: '⚙' },
+        { key: 'followers', label: 'Người theo dõi', icon: '⚑' },
       ],
     },
     {

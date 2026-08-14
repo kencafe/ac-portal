@@ -12,7 +12,7 @@ import { PROVIDERS_PUBLIC } from "@/lib/providers";
 import { IMAGE_PROVIDERS_PUBLIC } from "@/lib/imageProviders";
 import CoverArt from "@/components/shared/CoverArt";
 
-type View = "posts" | "editor" | "taxonomy" | "feeds" | "inbox" | "translate" | "api" | "admin" | "aistudio";
+type View = "posts" | "editor" | "taxonomy" | "feeds" | "inbox" | "translate" | "api" | "admin" | "aistudio" | "followers";
 
 type Me = {
   authenticated: boolean;
@@ -254,6 +254,7 @@ export default function CmsApp() {
   const [mailBusy, setMailBusy] = useState(false);
   // Newsletter: auto-send on publish + recipients (subscribers + distribution list)
   const [subs, setSubs] = useState<{ email: string; at: string }[]>([]);
+  const [followers, setFollowers] = useState<{ name: string; email: string; company?: string; needs?: string; at: string; updatedAt?: string }[]>([]);
   const [recipientsInput, setRecipientsInput] = useState("");
   const [nlMsg, setNlMsg] = useState("");
 
@@ -286,6 +287,7 @@ export default function CmsApp() {
     fetch("/api/v1/me", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then(setMe); }).catch(() => {});
     fetch("/api/v1/settings", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then((s: SiteSettings) => { setSettings(s); setAiModelSel(s.aiModel || ""); setAiProviderSel(s.aiProvider || "anthropic"); setAiTopicsInput((s.aiTopics || []).join(", ")); setRecipientsInput((s.mailExtraRecipients || []).join("\n")); setAiImageModelSel(s.aiImageModel || "gemini-2.5-flash-image"); setAiImageProviderSel(s.aiImageProvider || "pollinations"); }); }).catch(() => {});
     loadSubscribers();
+    loadFollowers();
     fetch("/api/v1/ai/history", { cache: "no-store" }).then((r) => { if (r.ok) r.json().then((d) => setAiHistory(d.results || [])); }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -676,6 +678,72 @@ export default function CmsApp() {
     setSubs((s) => s.filter((x) => x.email !== email)); // optimistic
     await fetch("/api/v1/subscribers", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }).catch(() => {});
   }
+  async function loadFollowers() {
+    try {
+      const res = await fetch("/api/v1/followers", { cache: "no-store" });
+      if (res.ok) setFollowers((await res.json()).followers ?? []);
+    } catch { /* ignore */ }
+  }
+  async function removeFollower(email: string) {
+    if (!window.confirm(`Xoá follower ${email}?`)) return;
+    setFollowers((f) => f.filter((x) => x.email !== email)); // optimistic
+    await fetch("/api/v1/followers", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }).catch(() => {});
+  }
+  // Email a published post to every follower (on-demand blast).
+  async function sendToFollowers(slug: string, title: string) {
+    if (!window.confirm(`Gửi bài "${title}" tới tất cả follower qua email?`)) return;
+    try {
+      const res = await fetch(`/api/v1/posts/${slug}/send-followers`, { method: "POST" });
+      const d = await res.json().catch(() => ({}));
+      alert(res.ok ? `✅ Đã gửi tới ${d.sent} follower.` : `❌ ${d.error || "Gửi thất bại."}`);
+    } catch (e) {
+      alert((e as Error).message);
+    }
+  }
+  // Directory of visitors who submitted the homepage contact form (leads).
+  function FollowersView() {
+    const cellL: CSSProperties = { padding: "10px 12px", verticalAlign: "top" };
+    const th: CSSProperties = { textAlign: "left", padding: "10px 12px", color: COLORS.ink3, fontWeight: 600, borderBottom: `1px solid ${COLORS.split}`, whiteSpace: "nowrap" };
+    return (
+      <div style={{ padding: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: COLORS.ink, margin: 0 }}>Người theo dõi</h2>
+          <span style={{ fontSize: 13, color: COLORS.ink3 }}>({followers.length})</span>
+          <button type="button" onClick={loadFollowers} style={{ ...btnSm, marginLeft: "auto" }}>Tải lại</button>
+        </div>
+        <div style={{ fontSize: 12.5, color: COLORS.ink3, marginBottom: 16 }}>
+          Khách điền form Liên hệ ở trang chủ và bấm gửi sẽ được ghi nhận tại đây để theo dõi & chăm sóc.
+        </div>
+        {followers.length === 0 ? (
+          <div style={{ fontSize: 13, color: COLORS.ink3, border: `1px dashed ${COLORS.border}`, borderRadius: 8, padding: 20, textAlign: "center" }}>
+            Chưa có ai theo dõi. Khi khách gửi form Liên hệ ở trang chủ, họ sẽ xuất hiện ở đây.
+          </div>
+        ) : (
+          <div style={{ border: `1px solid ${COLORS.split}`, borderRadius: 8, overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 720 }}>
+              <thead>
+                <tr style={{ background: "#FBFCFD" }}>
+                  {["Họ tên", "Email", "Công ty", "Nhu cầu", "Ngày", ""].map((h) => <th key={h} style={th}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {followers.map((f) => (
+                  <tr key={f.email} style={{ borderBottom: `1px solid ${COLORS.split}` }}>
+                    <td style={{ ...cellL, color: COLORS.ink, fontWeight: 600, whiteSpace: "nowrap" }}>{f.name}</td>
+                    <td style={cellL}><a href={`mailto:${f.email}`} style={{ color: COLORS.brandBlue }}>{f.email}</a></td>
+                    <td style={{ ...cellL, color: COLORS.ink2 }}>{f.company || "—"}</td>
+                    <td style={{ ...cellL, color: COLORS.ink2, maxWidth: 380 }}>{f.needs || "—"}</td>
+                    <td style={{ ...cellL, color: COLORS.ink3, whiteSpace: "nowrap" }}>{(f.at || "").slice(0, 10)}</td>
+                    <td style={cellL}><button type="button" onClick={() => removeFollower(f.email)} style={{ ...btnSm, height: 26, padding: "0 8px", color: "#C0392B" }}>Xoá</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   async function togglePublish(slug: string) {
     const cur = posts.find((p) => p.slug === slug);
@@ -900,6 +968,7 @@ export default function CmsApp() {
           {view === "api" && ApiView()}
           {view === "admin" && AdminView()}
           {view === "aistudio" && AiStudioView()}
+          {view === "followers" && FollowersView()}
         </main>
       </div>
     </div>
@@ -1356,6 +1425,7 @@ export default function CmsApp() {
                     {p.status === "Đã xuất bản" && (
                       <button type="button" onClick={() => toggleFeatured(p.slug)} title={p.featured ? "Bỏ ghim khỏi trang chủ" : "Ghim lên trang chủ portal"} style={{ ...btnSm, height: 28, padding: "0 10px", color: p.featured ? "#B7791F" : COLORS.ink2, borderColor: p.featured ? "#F0C674" : COLORS.border, background: p.featured ? "#FEF3C7" : "#fff" }}>{p.featured ? "★ Bỏ ghim" : "☆ Trang chủ"}</button>
                     )}
+                    {p.status === "Đã xuất bản" && <button type="button" onClick={() => sendToFollowers(p.slug, p.title)} title="Gửi bài này tới tất cả follower qua email" style={{ ...btnSm, height: 28, padding: "0 10px", color: COLORS.brandGreen, borderColor: "#BFE3B0" }}>✉ Gửi follower</button>}
                     {(me?.isAdmin ?? true) && <button type="button" onClick={() => deletePost(p.slug, p.title)} title="Xoá vĩnh viễn" style={{ ...btnSm, height: 28, padding: "0 10px", color: "#C0392B", borderColor: "#E7B4AC" }}>Xoá</button>}
                   </div>
                 </div>

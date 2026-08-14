@@ -25,11 +25,14 @@ export default function Contact() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
+  const [busy, setBusy] = useState(false);
+
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     const name = String(data.get("Họ và tên") ?? "").trim();
     const email = String(data.get("Email") ?? "").trim();
+    const company = String(data.get("Công ty") ?? "").trim();
     const need = String(data.get("Nhu cầu") ?? "").trim();
     if (!name || !need) {
       setError(en ? CONTACT.form.errors.required.en : CONTACT.form.errors.required.vi);
@@ -40,8 +43,21 @@ export default function Contact() {
       return;
     }
     setError(null);
-    // No backend yet — TODO: POST to the contact API when available.
-    setSent(true);
+    setBusy(true);
+    // Record the submitter as a follower/lead (see /api/v1/followers).
+    try {
+      const res = await fetch("/api/v1/followers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, company, needs: need }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      setSent(true);
+    } catch {
+      setError(en ? "Could not send — please try again." : "Gửi không thành công, vui lòng thử lại.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   const rows = [
@@ -109,24 +125,27 @@ export default function Contact() {
 
           <button
             type="submit"
-            disabled={sent}
+            disabled={sent || busy}
             style={{
               alignSelf: "flex-start",
               height: 40,
               padding: "0 20px",
               borderRadius: RADIUS.button,
               border: "none",
-              cursor: sent ? "default" : "pointer",
+              cursor: sent || busy ? "default" : "pointer",
               fontSize: 14,
               fontWeight: 600,
               color: "#fff",
               background: sent ? COLORS.brandGreen : COLORS.brandBlue,
+              opacity: busy ? 0.7 : 1,
               transition: "background .2s",
             }}
           >
-            {sent
-              ? (en ? CONTACT.form.submit.sentEn : CONTACT.form.submit.sent)
-              : (en ? CONTACT.form.submit.defaultEn : CONTACT.form.submit.default)}
+            {busy
+              ? (en ? "Sending…" : "Đang gửi…")
+              : sent
+                ? (en ? CONTACT.form.submit.sentEn : CONTACT.form.submit.sent)
+                : (en ? CONTACT.form.submit.defaultEn : CONTACT.form.submit.default)}
           </button>
         </form>
       </div>

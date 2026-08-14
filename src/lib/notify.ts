@@ -8,6 +8,7 @@
 import { getSettings } from "@/lib/settings";
 import { sendMail } from "@/lib/mail";
 import { subscriberEmails } from "@/lib/subscribers";
+import { followerEmails } from "@/lib/followers";
 import { upsertPost, type StoredPost } from "@/lib/store";
 
 function publicBlogUrl(slug: string, blogHost: string): string {
@@ -48,5 +49,25 @@ export async function notifyPublished(post: StoredPost): Promise<number> {
   } catch (e) {
     console.error(`[mail] newsletter failed for ${post.slug}:`, (e as Error).message);
     return 0;
+  }
+}
+
+// Manually blast a published post to the follower directory (contact-form leads).
+// Unlike the subscriber newsletter this is on-demand (a CMS "Send to followers"
+// button) and NOT guarded by the post's `notified` flag, so it can be re-sent.
+export async function notifyFollowers(post: StoredPost): Promise<{ sent: number; error?: string }> {
+  const s = await getSettings();
+  if (!s.mailHost || !s.mailUser || !s.mailPassword) return { sent: 0, error: "SMTP chưa được cấu hình (Quản trị → Gửi email)." };
+  const recipients = Array.from(
+    new Set((await followerEmails()).map((e) => e.trim().toLowerCase()).filter(Boolean)),
+  );
+  if (recipients.length === 0) return { sent: 0, error: "Chưa có follower nào." };
+  const url = publicBlogUrl(post.slug, s.blogHost);
+  try {
+    await sendMail(recipients, `[${s.siteName}] ${post.title}`, renderEmail(post, url, s.siteName));
+    console.log(`[mail] send-to-followers ${post.slug} → ${recipients.length} recipients`);
+    return { sent: recipients.length };
+  } catch (e) {
+    return { sent: 0, error: (e as Error).message };
   }
 }
