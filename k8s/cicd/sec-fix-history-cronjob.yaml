@@ -1,7 +1,8 @@
-# Weekly SEC fix-history digest (SEC-002 / W4). Queries DefectDojo and writes a
-# summary to logs + ConfigMap `sec-fix-history` (key report.md). No external
-# delivery channel is configured yet — upgrade to email/Telegram/Teams by adding
-# a POST step once a webhook/SMTP secret is provided.
+# Weekly SEC fix-history digest (SEC-002 / W4). Queries DefectDojo, writes a
+# summary to logs + ConfigMap `sec-fix-history`, then best-effort delivers to
+# Telegram (secret `sec-report-telegram`: keys token, chat_id). Telegram is
+# NON-FATAL: an invalid/missing token or a send error is logged and skipped —
+# the report itself always succeeds.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -27,6 +28,8 @@ spec:
                 - { name: DD_URL,   valueFrom: { secretKeyRef: { name: ns-web-defectdojo, key: DD_URL } } }
                 - { name: DD_HOST,  valueFrom: { secretKeyRef: { name: ns-web-defectdojo, key: DD_HOST } } }
                 - { name: DD_TOKEN, valueFrom: { secretKeyRef: { name: ns-web-defectdojo, key: DD_TOKEN } } }
+                - { name: TG_TOKEN, valueFrom: { secretKeyRef: { name: sec-report-telegram, key: token,   optional: true } } }
+                - { name: TG_CHAT,  valueFrom: { secretKeyRef: { name: sec-report-telegram, key: chat_id, optional: true } } }
               command: ["/bin/sh","-c"]
               args:
                 - |
@@ -38,14 +41,14 @@ spec:
                   MIT=$(q "findings/?is_mitigated=true&limit=1")
                   TI=$(q "test_imports/?limit=1")
                   NOW=$(date -u +%Y-%m-%dT%H:%MZ)
-                  REPORT="# SEC-002 Fix History — auto ($NOW)
+                  REPORT="SEC-002 Fix History (auto $NOW)
 
                   Active (non-duplicate): Critical=$CRIT  High=$HIGH  Medium=$MED  Low=$LOW
                   Resolved to date (mitigated): $MIT
                   Scan imports recorded (all-time): $TI
 
-                  Source: DefectDojo AC-Portal. Detail: GET /api/v2/findings/?is_mitigated=true
-                  (Full report page: Notion 'SEC-002 Fix History Report'.)"
+                  Source: DefectDojo AC-Portal. Detail: /api/v2/findings/?is_mitigated=true
+                  Full report: Notion 'SEC-002 Fix History Report'."
                   echo "$REPORT"
                   echo "$REPORT" > /tmp/report.md
                   oc create configmap sec-fix-history \
@@ -53,3 +56,16 @@ spec:
                     --from-literal=updated="$NOW" \
                     --dry-run=client -o yaml | oc apply -f -
                   echo "== configmap sec-fix-history updated =="
+                  # --- Telegram delivery: best-effort, never fails the report ---
+                  set +e
+                  TG_TOKEN=$(printf '%s' "$TG_TOKEN" | tr -d '[:space:]')
+                  if printf '%s' "$TG_TOKEN" | grep -qE '^[0-9]+:[A-Za-z0-9_-]{30,}$'; then
+                    code=$(curl -sk -m 30 -o /tmp/tg.out -w "%{http_code}" -X POST \
+                      "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
+                      --data-urlencode "chat_id=$TG_CHAT" \
+                      --data-urlencode "text=$(cat /tmp/report.md)")
+                    echo "Telegram sendMessage HTTP $code"; head -c 200 /tmp/tg.out; echo
+                  else
+                    echo "Telegram token missing/invalid format — delivery skipped (report saved to ConfigMap)."
+                  fi
+                  exit 0
