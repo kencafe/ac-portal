@@ -63,9 +63,9 @@ export default function SiteHeader({
           <Image
             src="/assets/appcarrier-icon.svg"
             alt="AppCarrier — FPT-IS Next Gen Service"
-            width={28}
-            height={28}
-            style={{ borderRadius: 7, display: "block", flexShrink: 0 }}
+            width={34}
+            height={34}
+            style={{ borderRadius: 8, display: "block", flexShrink: 0 }}
           />
           <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
             <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>
