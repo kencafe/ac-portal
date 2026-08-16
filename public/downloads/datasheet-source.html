@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>FPT-IS NS — Service Datasheet</title>
+<style>
+  :root{ --orange:#F37021; --blue:#0072BC; --cyan:#38A3D8; --green:#57A336; --navy:#001529; }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+  body{font-family:Inter,-apple-system,"Helvetica Neue",Arial,sans-serif; color:rgba(0,0,0,.88)}
+  @page{ size:A4; margin:0 }
+  .page{ position:relative; width:210mm; height:297mm; overflow:hidden; background:#fff;
+    display:flex; flex-direction:column; page-break-after:always }
+  .page:last-child{page-break-after:auto}
+  .rule{height:4px; flex-shrink:0; background:linear-gradient(90deg,var(--orange) 0 33.34%,var(--blue) 33.34% 66.67%,var(--green) 66.67% 100%)}
+  /* head band (page 1) */
+  .head{background:var(--navy); color:#fff; padding:9mm 18mm; border-bottom:4px solid var(--tone)}
+  .head-top{display:flex; align-items:center; justify-content:space-between}
+  .lock{display:flex; align-items:center; gap:9px}
+  .lock .m{width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,var(--orange),var(--blue))}
+  .lock b{font-size:14px;font-weight:700;letter-spacing:.3px}
+  .lock span{display:block;font-size:8px;letter-spacing:2.5px;font-weight:600;color:rgba(255,255,255,.55)}
+  .dslabel{font-size:11px;font-weight:700;letter-spacing:.14em;color:rgba(255,255,255,.5)}
+  .head-mid{display:flex; align-items:center; gap:12px; margin-top:16px}
+  .plate{min-width:58px;height:34px;padding:0 10px;border-radius:4px;background:var(--tone);color:#fff;
+    font-size:15px;font-weight:800;letter-spacing:.1em;display:flex;align-items:center;justify-content:center}
+  .grouptag{height:26px;padding:0 12px;border-radius:13px;background:rgba(255,255,255,.1);
+    font-size:12px;display:flex;align-items:center;color:rgba(255,255,255,.85)}
+  h1{font-size:31px;font-weight:700;letter-spacing:-.025em;line-height:1.16;margin-top:14px}
+  .h1en{font-size:17px;color:rgba(255,255,255,.6);font-weight:500;margin-top:2px}
+  /* body */
+  .body{flex:1; padding:9mm 18mm 0}
+  .pitch{font-size:15px;line-height:1.68;color:rgba(0,0,0,.8)}
+  .sh{display:flex;align-items:baseline;gap:10px;margin:16px 0 8px}
+  .sh .sq{width:10px;height:10px;border-radius:2px;background:var(--tone);position:relative;top:1px}
+  .sh h2{font-size:18px;font-weight:600;letter-spacing:-.015em}
+  .sh .en{font-size:12.5px;color:rgba(0,0,0,.45)}
+  /* spec table */
+  .spec{border:1px solid rgba(5,5,5,.08);border-radius:8px;overflow:hidden}
+  .spec .row{display:grid;grid-template-columns:42mm 1fr;gap:14px;padding:7px 14px;align-items:baseline;border-bottom:1px solid rgba(5,5,5,.07)}
+  .spec .row:last-child{border-bottom:none}
+  .spec .row:nth-child(even){background:#FAFAFA}
+  .spec .k{font-size:13px;font-weight:500;color:rgba(0,0,0,.6)}
+  .spec .k .en{display:block;font-size:11px;color:rgba(0,0,0,.4)}
+  .spec .v{font-size:14.5px;color:rgba(0,0,0,.82)}
+  /* two-col deliverables/outcomes */
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:14px}
+  .col h3{font-size:11.5px;font-weight:700;letter-spacing:.1em;color:rgba(0,0,0,.5);margin-bottom:6px}
+  .col .li{display:flex;gap:8px;font-size:13.5px;line-height:1.55;padding:4px 0;border-bottom:1px solid rgba(5,5,5,.06)}
+  .col .li:last-child{border-bottom:none}
+  .col .li .mk{flex:0 0 auto;font-weight:700}
+  .deliver .mk{color:var(--green)}
+  .outcome .mk{color:var(--tone)}
+  /* footer */
+  .foot{margin:0 18mm;padding:8px 0 10mm;display:flex;justify-content:space-between;
+    font-size:11.5px;color:rgba(0,0,0,.4);border-top:1px solid rgba(5,5,5,.08)}
+  /* page 2 */
+  .body2{flex:1;padding:14mm 18mm 0}
+  .phases{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+  .ph{border:1px solid rgba(5,5,5,.08);border-top-width:3px;border-radius:8px;padding:12px 14px}
+  .ph .eb{font-size:11px;font-weight:800;color:rgba(0,0,0,.35)}
+  .ph .pt{font-size:16px;font-weight:600;margin:2px 0 8px}
+  .ph .b{display:flex;gap:7px;font-size:13px;line-height:1.5;padding:2px 0}
+  .ph .b .dot{flex:0 0 auto;width:5px;height:5px;border-radius:50%;margin-top:6px}
+  .stack{margin-top:14px;border:1px solid rgba(5,5,5,.08);border-radius:8px;padding:14px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+  .chip{height:26px;padding:0 10px;border-radius:4px;background:#FAFAFA;border:1px solid rgba(5,5,5,.1);
+    font-size:12.5px;color:rgba(0,0,0,.7);display:inline-flex;align-items:center}
+  .cta{margin-top:14px;background:linear-gradient(140deg,#0B3C86,#071A46);color:#fff;border-radius:8px;
+    padding:18px 20px;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
+  .cta .t{font-size:16px;font-weight:600;line-height:1.4}
+  .cta .t .en{display:block;font-size:12px;color:rgba(255,255,255,.6);margin-top:3px;font-weight:400}
+  .cta .contacts{display:flex;flex-direction:column;gap:6px;min-width:62mm}
+  .cta .cc{background:rgba(255,255,255,.08);border-radius:6px;padding:7px 11px;display:flex;
+    justify-content:space-between;gap:12px;font-size:12px}
+  .cta .cc .l{color:rgba(255,255,255,.55)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const ORANGE="#F37021",BLUE="#0072BC",GREEN="#57A336";
+const SPEC_EN=["Service code","Service group","Scope","Target customers","Engagement models","Commitments"];
+const PHASE_EN=["Consult","Deploy","Operate","Optimize"];
+const PHASE_TL=["Tư vấn","Triển khai","Vận hành","Tối ưu"];
+const PHASE_COL=["#F37021","#0072BC","#38A3D8","#57A336"];
+const SERVICES={"devops":{"code":"DEV","tone":"#F37021","name":"DevOps / DevSecOps","nameEn":"Secure CI/CD & automation","group":"Harness Engineering","pitch":"Dựng và vận hành đường ống phát hành: CI/CD, GitOps, Infrastructure as Code, feature flag. Mục tiêu là mỗi thay đổi đi từ commit đến production một cách an toàn, có thể lặp lại và có thể quay lui.","specs":[["Mã dịch vụ","NS-DEV"],["Nhóm dịch vụ","Harness Engineering — nền tảng phát hành"],["Phạm vi","Pipeline CI/CD, IaC, bảo mật trong pipeline (SAST/DAST/SCA), quản trị artifact, release governance"],["Đối tượng","Đội phát triển sản phẩm, khối CNTT có nhiều ứng dụng cùng phát hành"],["Mô hình hợp tác","Dự án triển khai · đồng hành theo sprint · managed pipeline"],["Cam kết","SLA theo hợp đồng · pipeline availability · thời gian phục hồi build"]],"phases":[["Đánh giá độ trưởng thành DevOps","Rà soát repo, branch strategy","Chuẩn hoá quy trình phát hành","Thiết kế pipeline mục tiêu"],["Dựng CI/CD pipeline","IaC cho môi trường","Artifact registry & scan","SAST/DAST/SCA trong pipeline","Feature flag & blue-green"],["Vận hành pipeline","Quản trị secret & quyền","Theo dõi DORA metrics","Hỗ trợ đội dev"],["Giảm thời gian build","Tự động hoá kiểm thử","Progressive delivery","Chuẩn hoá template dùng lại"]],"deliverables":["Tài liệu kiến trúc pipeline và quy trình phát hành","Bộ pipeline CI/CD chạy thực tế trên môi trường khách hàng","Repository IaC có version và review","Bộ template dùng lại cho các ứng dụng tiếp theo","Báo cáo DORA metrics định kỳ"],"stack":["GitLab CI","GitHub Actions","Jenkins","Argo CD","Terraform","Ansible","Helm","Harbor","SonarQube","Vault"],"outcomes":["Rút ngắn thời gian từ commit đến production","Giảm tỷ lệ lỗi khi phát hành","Phát hành lặp lại được, không phụ thuộc cá nhân"]},"sre":{"code":"SRE","tone":"#0072BC","name":"SRE","nameEn":"Site reliability engineering","group":"Độ tin cậy & vận hành","pitch":"Đưa độ tin cậy thành một chỉ số có thể quản trị: SLO/SLI, error budget, observability đầy đủ và văn hoá blameless postmortem. Vận hành theo dữ liệu thay vì theo cảm tính.","specs":[["Mã dịch vụ","NS-SRE"],["Nhóm dịch vụ","Độ tin cậy & vận hành"],["Phạm vi","SLO/SLI, error budget, observability, on-call, quản trị sự cố"],["Đối tượng","Hệ thống có yêu cầu sẵn sàng cao: giao dịch, cổng dịch vụ công, nền tảng số"],["Mô hình hợp tác","SRE embedded · SRE as a service · kíp trực 24/7"],["Cam kết","SLA 24/7 · thời gian phản hồi và khắc phục theo mức độ sự cố"]],"phases":[["Xác định hành trình người dùng quan trọng","Đặt SLO/SLI và error budget","Đánh giá khoảng trống observability","Thiết kế mô hình on-call"],["Triển khai metric, log, trace","Dựng dashboard và cảnh báo theo SLO","Xây runbook","Thiết lập quy trình sự cố"],["Kíp trực on-call 24/7","Xử lý và điều phối sự cố","Blameless postmortem","Báo cáo error budget"],["Giảm toil bằng tự động hoá","Tinh chỉnh ngưỡng cảnh báo","Diễn tập sự cố & chaos","Cải tiến kiến trúc theo dữ liệu"]],"deliverables":["Bộ SLO/SLI cho các hành trình nghiệp vụ chính","Hệ thống observability và dashboard vận hành","Runbook và quy trình quản trị sự cố","Báo cáo error budget, MTTR, postmortem định kỳ"],"stack":["Prometheus","Grafana","Loki","Tempo","OpenTelemetry","Elastic","Zabbix","PagerDuty","Alertmanager"],"outcomes":["Giảm số sự cố lặp lại và thời gian khắc phục","Nhìn thấy vấn đề trước khi người dùng phản ánh","Cân bằng được tốc độ phát hành và độ ổn định"]},"aiops":{"code":"AIO","tone":"#57A336","name":"AIOps","nameEn":"Intelligent operations","group":"Vận hành thông minh — dịch vụ mới","pitch":"Đài chỉ huy tự đọc tín hiệu. Chúng tôi dựng nền tảng dữ liệu vận hành, đưa mô hình phát hiện bất thường vào đường dẫn cảnh báo, rồi vận hành cùng kíp SRE — không bàn giao một dashboard rồi rút.","specs":[["Mã dịch vụ","NS-AIO"],["Nhóm dịch vụ","Vận hành thông minh — dịch vụ mới"],["Phạm vi","Nền tảng dữ liệu vận hành, phát hiện bất thường, gom nhóm cảnh báo, tự khắc phục"],["Đối tượng","Tổ chức có nhiều hệ thống, cảnh báo nhiều nhưng khó ưu tiên"],["Mô hình hợp tác","Triển khai nền tảng · vận hành cùng kíp SRE 24/7"],["Cam kết","SLA 24/7 · mục tiêu giảm nhiễu cảnh báo và MTTR theo cam kết hợp đồng"]],"phases":[["Kiểm kê nguồn tín hiệu","Đánh giá chất lượng dữ liệu vận hành","Chọn ca sử dụng ưu tiên","Thiết kế kiến trúc AIOps"],["Dựng pipeline log/metric/trace","Chuẩn hoá kho sự kiện","Triển khai mô hình phát hiện bất thường","Nối vào quy trình on-call"],["Gom nhóm và ưu tiên cảnh báo","Phân tích nguyên nhân gốc","Runbook tự chạy","Kíp SRE trực cùng nền tảng"],["Huấn luyện lại theo mùa tải","Mở rộng tự khắc phục","Giảm cảnh báo nhiễu","Báo cáo hiệu quả theo SLO"]],"deliverables":["Nền tảng dữ liệu vận hành tập trung","Mô hình phát hiện bất thường đưa vào sản xuất","Bộ runbook tự động cho nhóm sự cố quen thuộc","Báo cáo giảm nhiễu cảnh báo và MTTR"],"stack":["OpenTelemetry","Prometheus","Elastic","Grafana","Kafka","OpenSearch","Python / ML pipeline","Ansible","n8n / Rundeck"],"outcomes":["Giảm nhiễu cảnh báo [X]% — số liệu điền sau","Rút ngắn MTTR [X]% — số liệu điền sau","Kíp vận hành tập trung vào việc đáng làm"]},"platform":{"code":"PLT","tone":"#0072BC","name":"Cloud Platform","nameEn":"Landing zone & FinOps","group":"Nền tảng cloud","pitch":"Thân hạm của toàn bộ hệ thống: landing zone chuẩn hoá, mạng, danh tính, quản trị chi phí. Nền tảng được dựng một lần cho đúng để mọi ứng dụng phía trên chạy trên cùng luật.","specs":[["Mã dịch vụ","NS-PLT"],["Nhóm dịch vụ","Nền tảng cloud"],["Phạm vi","Landing zone, mạng, danh tính, tagging, guardrail, FinOps"],["Đối tượng","Tổ chức bắt đầu hoặc đang mở rộng trên nhiều tài khoản/đám mây"],["Mô hình hợp tác","Dự án dựng nền tảng · quản trị nền tảng theo tháng"],["Cam kết","SLA theo hợp đồng · báo cáo chi phí và tuân thủ định kỳ"]],"phases":[["Đánh giá hiện trạng cloud","Thiết kế landing zone","Mô hình tài khoản & phân quyền","Dự toán TCO"],["Dựng landing zone","Cấu hình mạng & kết nối","Guardrail và policy","Chuẩn tagging & billing"],["Quản trị nền tảng","Theo dõi tuân thủ","Quản lý hạn mức và quota","Hỗ trợ đội ứng dụng"],["FinOps tối ưu chi phí","Rightsizing & reserved capacity","Dọn tài nguyên không dùng","Báo cáo hiệu quả chi phí"]],"deliverables":["Tài liệu thiết kế landing zone","Landing zone triển khai bằng IaC","Bộ policy, guardrail và chuẩn tagging","Báo cáo FinOps định kỳ"],"stack":["AWS","Microsoft Azure","Google Cloud","FPT Smart Cloud","VMware","Terraform","Cloud Custodian","Entra ID"],"outcomes":["Nền tảng nhất quán, mở rộng có kiểm soát","Chi phí cloud minh bạch theo đơn vị sử dụng","Ứng dụng mới lên nhanh hơn"]},"security":{"code":"SEC","tone":"#57A336","name":"Cloud Security","nameEn":"Zero Trust & compliance","group":"Bảo mật & tuân thủ","pitch":"Vành đai phòng thủ nhiều lớp quanh hạm đội: Zero Trust, quản trị danh tính, bảo vệ workload, giám sát liên tục và tuân thủ. Phát hiện từ xa, chặn ở nhiều tầng, phục hồi theo kịch bản đã diễn tập.","specs":[["Mã dịch vụ","NS-SEC"],["Nhóm dịch vụ","Bảo mật & tuân thủ"],["Phạm vi","Zero Trust, IAM, bảo vệ workload, mã hoá, giám sát, tuân thủ"],["Đối tượng","Khối ngân hàng, khu vực công và doanh nghiệp có yêu cầu tuân thủ"],["Mô hình hợp tác","Dự án củng cố bảo mật · giám sát 24/7 · đánh giá định kỳ"],["Cam kết","SLA 24/7 · thời gian phản ứng sự cố theo mức độ"]],"phases":[["Đánh giá rủi ro & bề mặt tấn công","Rà soát tuân thủ","Thiết kế kiến trúc Zero Trust","Lộ trình khắc phục"],["Triển khai IAM & MFA","Phân vùng mạng và policy","Bảo vệ workload & mã hoá","Quản trị bí mật"],["Giám sát bảo mật 24/7","Điều tra và xử lý sự cố","Quản lý lỗ hổng & bản vá","Diễn tập phục hồi"],["Thu hẹp quyền theo least privilege","Tự động hoá phản ứng","Kiểm thử xâm nhập định kỳ","Cải tiến theo khung tuân thủ"]],"deliverables":["Báo cáo đánh giá rủi ro và khoảng trống tuân thủ","Kiến trúc và policy Zero Trust","Hệ thống giám sát bảo mật vận hành","Kịch bản ứng phó sự cố và biên bản diễn tập"],"stack":["Entra ID","Keycloak","HashiCorp Vault","Wazuh","CrowdStrike","Trivy","WAF","SIEM/SOAR","CIS Benchmark"],"outcomes":["Giảm bề mặt tấn công và quyền dư thừa","Phát hiện và phản ứng sự cố nhanh hơn","Đáp ứng yêu cầu kiểm toán và tuân thủ"]},"cloudai":{"code":"AIC","tone":"#0072BC","name":"Cloud for AI","nameEn":"Cloud & data for AI","group":"Nền tảng dữ liệu & AI","pitch":"Kho nhiên liệu của phi đội AI: nền tảng cloud và dữ liệu sẵn sàng cho workload AI/ML — từ thu thập, quản trị đến phục vụ mô hình ở quy mô sản xuất.","specs":[["Mã dịch vụ","NS-AIC"],["Nhóm dịch vụ","Nền tảng dữ liệu & AI"],["Phạm vi","Data platform, feature store, quản trị dữ liệu, môi trường huấn luyện và phục vụ"],["Đối tượng","Tổ chức đang đưa AI/ML vào sản xuất"],["Mô hình hợp tác","Dự án nền tảng · đồng hành cùng đội data science"],["Cam kết","SLA theo hợp đồng · cam kết hiệu năng pipeline dữ liệu"]],"phases":[["Khảo sát nguồn dữ liệu","Đánh giá mức độ sẵn sàng cho AI","Thiết kế kiến trúc dữ liệu","Chọn nền tảng và dự toán"],["Dựng data lake / lakehouse","Pipeline thu thập & xử lý","Feature store","Môi trường huấn luyện"],["Vận hành pipeline dữ liệu","Quản trị chất lượng dữ liệu","Kiểm soát truy cập & dòng dữ liệu","Theo dõi chi phí xử lý"],["Tối ưu hiệu năng truy vấn","Tối ưu chi phí lưu trữ theo lớp","Mở rộng theo nhu cầu mô hình","Chuẩn hoá tái sử dụng dữ liệu"]],"deliverables":["Kiến trúc dữ liệu cho workload AI","Data lake/lakehouse và pipeline vận hành","Quy tắc quản trị và phân quyền dữ liệu","Môi trường huấn luyện và phục vụ mô hình"],"stack":["Databricks","Apache Spark","Kafka","Airflow","dbt","MinIO / S3","Feast","Snowflake","PostgreSQL"],"outcomes":["Dữ liệu sạch và sẵn sàng cho mô hình","Rút ngắn thời gian từ ý tưởng đến mô hình chạy thật","Chi phí dữ liệu kiểm soát được"]},"aiinfra":{"code":"GPU","tone":"#F37021","name":"AI Infrastructure","nameEn":"GPU clusters & MLOps","group":"Hạ tầng AI","pitch":"Xưởng động cơ cho tiêm kích hạng nặng: hạ tầng GPU/accelerator, cluster huấn luyện, MLOps và phục vụ LLM ở quy mô sản xuất — đủ lực và đủ ổn định.","specs":[["Mã dịch vụ","NS-GPU"],["Nhóm dịch vụ","Hạ tầng AI"],["Phạm vi","Cluster GPU, scheduler, MLOps, model serving, tối ưu suy luận"],["Đối tượng","Tổ chức huấn luyện hoặc phục vụ mô hình lớn, bao gồm LLM"],["Mô hình hợp tác","Dự án dựng hạ tầng · vận hành cluster theo tháng"],["Cam kết","SLA theo hợp đồng · cam kết mức sẵn sàng cluster và thông lượng"]],"phases":[["Xác định workload và nhu cầu tính toán","Thiết kế cluster GPU","So sánh phương án on-prem / cloud","Dự toán TCO"],["Dựng cluster & scheduler","Cấu hình mạng tốc độ cao và lưu trữ","Triển khai MLOps pipeline","Dựng lớp model serving"],["Vận hành cluster 24/7","Quản trị hạn mức GPU theo nhóm","Theo dõi hiệu suất và nhiệt độ","Bảo trì và cập nhật driver"],["Tối ưu sử dụng GPU","Quantization & tối ưu suy luận","Autoscaling theo tải","Giảm chi phí trên mỗi yêu cầu"]],"deliverables":["Thiết kế và triển khai cluster GPU","MLOps pipeline từ huấn luyện đến phát hành mô hình","Lớp phục vụ mô hình có giám sát","Báo cáo hiệu suất sử dụng GPU"],"stack":["NVIDIA GPU","Kubernetes","Kubeflow","MLflow","Ray","Slurm","vLLM","Triton Inference Server","GPU Operator"],"outcomes":["Tận dụng GPU hiệu quả hơn, giảm thời gian chờ","Mô hình đưa vào sản xuất theo quy trình chuẩn","Chi phí suy luận trên mỗi yêu cầu giảm"]},"migration":{"code":"MIG","tone":"#57A336","name":"Cloud Migration","nameEn":"Assess & migrate","group":"Di trú & hiện đại hoá","pitch":"Chuyển cả phi đội sang hạm mới mà không gián đoạn nhiệm vụ: đánh giá, phân loại, di trú ứng dụng và dữ liệu, hiện đại hoá theo từng đợt có kiểm soát.","specs":[["Mã dịch vụ","NS-MIG"],["Nhóm dịch vụ","Di trú & hiện đại hoá"],["Phạm vi","Đánh giá, thiết kế đích, di trú ứng dụng/dữ liệu, cutover, hiện đại hoá"],["Đối tượng","Tổ chức chuyển từ on-premise lên cloud hoặc giữa các đám mây"],["Mô hình hợp tác","Dự án theo đợt (wave) · hỗ trợ hậu di trú"],["Cam kết","Cam kết cửa sổ downtime và phương án quay lui cho từng đợt"]],"phases":[["Kiểm kê ứng dụng & phụ thuộc","Phân loại 6R","Thiết kế kiến trúc đích","Lập kế hoạch theo đợt và TCO"],["Dựng môi trường đích","Di trú dữ liệu & ứng dụng","Kiểm thử hiệu năng và nghiệp vụ","Cutover và go-live"],["Theo dõi sau di trú","Xử lý tồn đọng","Chuyển giao vận hành","Đóng hệ thống cũ"],["Hiện đại hoá dần sang cloud-native","Tối ưu chi phí sau di trú","Chuẩn hoá kiến trúc","Cải tiến hiệu năng"]],"deliverables":["Báo cáo kiểm kê và phân loại 6R","Kiến trúc đích và kế hoạch di trú theo đợt","Hệ thống chạy trên môi trường mới","Biên bản cutover và tài liệu chuyển giao vận hành"],"stack":["AWS MGN","Azure Migrate","Velostrata","VMware HCX","Terraform","Ansible","DMS","Veeam"],"outcomes":["Di trú theo đợt, hạn chế rủi ro gián đoạn","Giảm chi phí duy trì hệ thống cũ","Hệ thống sẵn sàng cho bước hiện đại hoá tiếp theo"]},"cloudapp":{"code":"APP","tone":"#0072BC","name":"Cloud App","nameEn":"Cloud-native apps","group":"Ứng dụng cloud-native","pitch":"Xưởng đóng mới và nâng cấp phi cơ: phát triển, tái cấu trúc ứng dụng theo kiến trúc cloud-native, container/Kubernetes và microservice có thể vận hành lâu dài.","specs":[["Mã dịch vụ","NS-APP"],["Nhóm dịch vụ","Ứng dụng cloud-native"],["Phạm vi","Kiến trúc microservice, container hoá, API, tái cấu trúc ứng dụng cũ"],["Đối tượng","Tổ chức có ứng dụng monolith cần mở rộng hoặc phát triển sản phẩm mới"],["Mô hình hợp tác","Dự án phát triển · đội phát triển tăng cường"],["Cam kết","SLA theo hợp đồng · cam kết chất lượng và bảo hành sau bàn giao"]],"phases":[["Đánh giá ứng dụng hiện tại","Thiết kế kiến trúc microservice","Xác định ranh giới nghiệp vụ","Lộ trình tách dịch vụ"],["Container hoá ứng dụng","Triển khai trên Kubernetes/OpenShift","Dựng API gateway & service mesh","Tích hợp CI/CD"],["Vận hành ứng dụng","Theo dõi hiệu năng và lỗi","Quản trị phiên bản","Hỗ trợ người dùng"],["Tối ưu tài nguyên container","Autoscaling theo tải","Refactor phần nghẽn","Chuẩn hoá thư viện dùng chung"]],"deliverables":["Tài liệu kiến trúc ứng dụng cloud-native","Ứng dụng container hoá chạy trên K8s/OpenShift","Bộ API và tài liệu tích hợp","Tài liệu vận hành và chuyển giao"],"stack":["Kubernetes","OpenShift","Docker","Helm","Istio","Kong","Spring Boot","Node.js","PostgreSQL","Redis"],"outcomes":["Ứng dụng mở rộng theo tải thay vì nâng cấp phần cứng","Phát hành từng phần, giảm rủi ro","Chi phí hạ tầng theo nhu cầu thực"]}};
+const ORDER=["devops","sre","aiops","platform","security","cloudai","aiinfra","migration","cloudapp"];
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+function render(slug){
+  const d=SERVICES[slug]||SERVICES.devops;
+  const tone=d.tone;
+  const specRows=d.specs.map((s,i)=>`<div class="row"><div class="k">${esc(s[0])}<span class="en">${esc(SPEC_EN[i]||"")}</span></div><div class="v">${esc(s[1])}</div></div>`).join("");
+  const deliver=d.deliverables.map(x=>`<div class="li"><span class="mk">✓</span><span>${esc(x)}</span></div>`).join("");
+  const outcome=d.outcomes.map(x=>`<div class="li"><span class="mk">→</span><span>${esc(x)}</span></div>`).join("");
+  const phases=d.phases.map((items,i)=>`<div class="ph" style="border-top-color:${PHASE_COL[i]}"><div class="eb">0${i+1}</div><div class="pt">${PHASE_TL[i]} <span style="color:rgba(0,0,0,.4);font-weight:400;font-size:12.5px">/ ${PHASE_EN[i]}</span></div>${items.map(it=>`<div class="b"><span class="dot" style="background:${PHASE_COL[i]}"></span><span>${esc(it)}</span></div>`).join("")}</div>`).join("");
+  const stack=d.stack.map(x=>`<span class="chip">${esc(x)}</span>`).join("");
+  document.body.style.setProperty("--tone",tone);
+  document.getElementById("root").innerHTML=`
+  <div class="page" style="--tone:${tone}">
+    <div class="rule"></div>
+    <div class="head">
+      <div class="head-top">
+        <div class="lock"><div class="m"></div><div><b>FPT-IS</b><span>NEXT GEN SERVICE</span></div></div>
+        <div class="dslabel">SERVICE DATASHEET</div>
+      </div>
+      <div class="head-mid"><div class="plate">${esc(d.code)}</div><div class="grouptag">${esc(d.group)}</div></div>
+      <h1>${esc(d.name)}</h1><div class="h1en">${esc(d.nameEn)}</div>
+    </div>
+    <div class="body">
+      <div class="pitch">${esc(d.pitch)}</div>
+      <div class="sh"><span class="sq"></span><h2>Bảng mô tả dịch vụ</h2><span class="en">Service description</span></div>
+      <div class="spec">${specRows}</div>
+      <div class="two">
+        <div class="col deliver"><h3>SẢN PHẨM BÀN GIAO · DELIVERABLES</h3>${deliver}</div>
+        <div class="col outcome"><h3>KẾT QUẢ KỲ VỌNG · OUTCOMES</h3>${outcome}</div>
+      </div>
+    </div>
+    <div class="foot"><span>FPT-IS Next Gen Service · ${esc(d.name)}</span><span>1 / 2</span></div>
+  </div>
+  <div class="page" style="--tone:${tone}">
+    <div class="rule"></div>
+    <div class="body2">
+      <div class="sh"><span class="sq"></span><h2>Hạng mục công việc theo giai đoạn</h2><span class="en">Consult → Deploy → Operate → Optimize</span></div>
+      <div class="phases">${phases}</div>
+      <div class="stack"><div class="col"><h3>CÔNG NGHỆ SỬ DỤNG · TECHNOLOGY STACK</h3></div><div class="chips">${stack}</div></div>
+      <div class="cta">
+        <div class="t">Bắt đầu với ${esc(d.name)} bằng một buổi khảo sát hiện trạng.<span class="en">Start with a current-state assessment.</span></div>
+        <div class="contacts">
+          <div class="cc"><span class="l">Điện thoại</span><span>+84 973 391 388</span></div>
+          <div class="cc"><span class="l">Email</span><span>dungpv30@fpt.com.vn</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>FPT-IS Next Gen Service · ${esc(d.name)}</span><span>2 / 2</span></div>
+  </div>`;
+}
+const slug=new URLSearchParams(location.search).get("service")||"devops";
+render(slug);
+</script>
+</body>
+</html>
