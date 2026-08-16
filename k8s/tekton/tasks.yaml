@@ -182,8 +182,8 @@ spec:
           curl -sk -m 60 -H "Host: $DD_HOST" -H "Authorization: Token $DD_TOKEN" -H "Accept: application/json" \
             -F "scan_type=ZAP Scan" -F "file=@reports/zap.json" \
             -F "auto_create_context=true" -F "product_name=AC-Portal" -F "product_type_name=Research and Development" \
-            -F "engagement_name=$(params.ENGAGEMENT)" -F "active=true" -F "verified=false" \
-            "$DD_URL/api/v2/import-scan/" -o /dev/null -w "DD ZAP import HTTP %{http_code}\n" || true
+            -F "engagement_name=$(params.ENGAGEMENT)" -F "active=true" -F "verified=false" -F "close_old_findings=true" \
+            "$DD_URL/api/v2/reimport-scan/" -o /dev/null -w "DD ZAP reimport HTTP %{http_code}\n" || true
         fi
 ---
 apiVersion: tekton.dev/v1
@@ -220,8 +220,8 @@ spec:
           curl -sk -m 60 -H "Host: $DD_HOST" -H "Authorization: Token $DD_TOKEN" -H "Accept: application/json" \
             -F "scan_type=$typ" -F "file=@$f" \
             -F "auto_create_context=true" -F "product_name=AC-Portal" -F "product_type_name=Research and Development" \
-            -F "engagement_name=$(params.ENGAGEMENT)" -F "active=true" -F "verified=false" \
-            "$DD_URL/api/v2/import-scan/" -o /dev/null -w "DD import [$typ] HTTP %{http_code}\n" || true
+            -F "engagement_name=$(params.ENGAGEMENT)" -F "active=true" -F "verified=false" -F "close_old_findings=true" \
+            "$DD_URL/api/v2/reimport-scan/" -o /dev/null -w "DD reimport [$typ] HTTP %{http_code}\n" || true
         }
         imp "Dependency Check Scan" reports/dependency-check-report.json
         imp "Semgrep JSON Report"   reports/semgrep.sarif
