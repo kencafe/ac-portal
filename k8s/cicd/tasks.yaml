@@ -210,7 +210,7 @@ spec:
         if [ -s /zap/wrk/zap.xml ]; then
           echo "Uploading ZAP report to DefectDojo…"
           curl -sk -m 60 -H "Host: $DD_HOST" -H "Authorization: Token $DD_TOKEN" -H "Accept: application/json" \
-            -F "scan_type=ZAP Scan" -F "file=@/zap/wrk/zap.xml" \
+            -F "scan_type=ZAP Scan" -F "test_title=ZAP Scan" -F "file=@/zap/wrk/zap.xml" \
             -F "auto_create_context=true" -F "product_name=AC-Portal" -F "product_type_name=Research and Development" \
             -F "engagement_name=$(params.ENGAGEMENT)" -F "active=true" -F "verified=false" -F "close_old_findings=true" \
             "$DD_URL/api/v2/reimport-scan/" -o /dev/null -w "DD ZAP reimport HTTP %{http_code}\n" || true
@@ -253,7 +253,7 @@ spec:
         imp() {
           typ="$1"; f="$2"; [ -s "$f" ] || { echo "skip $typ ($f missing)"; return; }
           curl -sk -m 60 -H "Host: $DD_HOST" -H "Authorization: Token $DD_TOKEN" -H "Accept: application/json" \
-            -F "scan_type=$typ" -F "file=@$f" \
+            -F "scan_type=$typ" -F "test_title=$typ" -F "file=@$f" \
             -F "auto_create_context=true" -F "product_name=AC-Portal" -F "product_type_name=Research and Development" \
             -F "engagement_name=$(params.ENGAGEMENT)" -F "active=true" -F "verified=false" -F "close_old_findings=true" \
             "$DD_URL/api/v2/reimport-scan/" -o /dev/null -w "DD reimport [$typ] HTTP %{http_code}\n" || true
