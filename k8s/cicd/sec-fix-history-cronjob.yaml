@@ -1,0 +1,55 @@
+# Weekly SEC fix-history digest (SEC-002 / W4). Queries DefectDojo and writes a
+# summary to logs + ConfigMap `sec-fix-history` (key report.md). No external
+# delivery channel is configured yet — upgrade to email/Telegram/Teams by adding
+# a POST step once a webhook/SMTP secret is provided.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sec-fix-history
+  namespace: ac-portal-cicd
+spec:
+  schedule: "0 1 * * 1"            # Mondays 08:00 Asia/Ho_Chi_Minh (01:00 UTC)
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 4
+  failedJobsHistoryLimit: 2
+  startingDeadlineSeconds: 3600
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          serviceAccountName: ns-web-pipeline
+          restartPolicy: OnFailure
+          containers:
+            - name: report
+              image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+              env:
+                - { name: DD_URL,   valueFrom: { secretKeyRef: { name: ns-web-defectdojo, key: DD_URL } } }
+                - { name: DD_HOST,  valueFrom: { secretKeyRef: { name: ns-web-defectdojo, key: DD_HOST } } }
+                - { name: DD_TOKEN, valueFrom: { secretKeyRef: { name: ns-web-defectdojo, key: DD_TOKEN } } }
+              command: ["/bin/sh","-c"]
+              args:
+                - |
+                  set -e
+                  B="$DD_URL/api/v2"
+                  q() { curl -sk -m 30 -H "Host: $DD_HOST" -H "Authorization: Token $DD_TOKEN" "$B/$1" | grep -o '"count":[0-9]*' | head -1 | cut -d: -f2; }
+                  cnt() { q "findings/?active=true&duplicate=false&severity=$1&limit=1"; }
+                  CRIT=$(cnt Critical); HIGH=$(cnt High); MED=$(cnt Medium); LOW=$(cnt Low)
+                  MIT=$(q "findings/?is_mitigated=true&limit=1")
+                  TI=$(q "test_imports/?limit=1")
+                  NOW=$(date -u +%Y-%m-%dT%H:%MZ)
+                  REPORT="# SEC-002 Fix History — auto ($NOW)
+
+                  Active (non-duplicate): Critical=$CRIT  High=$HIGH  Medium=$MED  Low=$LOW
+                  Resolved to date (mitigated): $MIT
+                  Scan imports recorded (all-time): $TI
+
+                  Source: DefectDojo AC-Portal. Detail: GET /api/v2/findings/?is_mitigated=true
+                  (Full report page: Notion 'SEC-002 Fix History Report'.)"
+                  echo "$REPORT"
+                  echo "$REPORT" > /tmp/report.md
+                  oc create configmap sec-fix-history \
+                    --from-file=report.md=/tmp/report.md \
+                    --from-literal=updated="$NOW" \
+                    --dry-run=client -o yaml | oc apply -f -
+                  echo "== configmap sec-fix-history updated =="
