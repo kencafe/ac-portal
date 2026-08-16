@@ -453,13 +453,13 @@ export const CONTACT = {
   panelTitleEn: "Contact information",
   phone: { label: "Điện thoại", labelEn: "Phone", value: "+84 973 391 388", href: "tel:+84973391388" },
   email: { label: "Email", labelEn: "Email", value: "dungpv30@fpt.com.vn", href: "mailto:dungpv30@fpt.com.vn" },
-  office: { label: "Văn phòng", labelEn: "Office", value: "FPT IS — Keangnam Landmark 72, E10, Nam Từ Liêm, Hà Nội" },
+  office: { label: "Văn phòng", labelEn: "Office", value: "FPT IS — Keangnam Landmark 72, E6 Phạm Hùng, Nam Từ Liêm, Hà Nội" },
   form: {
     fields: [
-      { label: "Họ và tên", labelEn: "Full name", type: "text", placeholder: "[Nguyễn Văn A]", placeholderEn: "[John Smith]" },
-      { label: "Email", labelEn: "Email", type: "email", placeholder: "[name@company.com]", placeholderEn: "[name@company.com]" },
-      { label: "Công ty", labelEn: "Company", type: "text", placeholder: "[Tên công ty]", placeholderEn: "[Company name]" },
-      { label: "Nhu cầu", labelEn: "Your needs", type: "textarea", rows: 3, placeholder: "[Mô tả ngắn nhu cầu Cloud / AI của bạn]", placeholderEn: "[Briefly describe your Cloud / AI needs]" },
+      { label: "Họ và tên", labelEn: "Full name", type: "text", placeholder: "Nguyễn Văn A", placeholderEn: "John Smith" },
+      { label: "Email", labelEn: "Email", type: "email", placeholder: "name@company.com", placeholderEn: "name@company.com" },
+      { label: "Công ty", labelEn: "Company", type: "text", placeholder: "Tên công ty", placeholderEn: "Company name" },
+      { label: "Nhu cầu", labelEn: "Your needs", type: "textarea", rows: 3, placeholder: "Mô tả ngắn nhu cầu Cloud / AI của bạn", placeholderEn: "Briefly describe your Cloud / AI needs" },
     ],
     submit: { default: "Gửi yêu cầu tư vấn", sent: "Đã gửi — cảm ơn bạn!", defaultEn: "Send a consultation request", sentEn: "Sent — thank you!" },
     errors: {
@@ -522,8 +522,8 @@ export const FOOTER = {
     },
   ],
   bottom: {
-    copyright: "© [2026] FPT-IS Next Gen Service. All rights reserved.",
-    address: "Keangnam Landmark 72, E10, Nam Từ Liêm, Hà Nội",
+    copyright: "© 2026 FPT-IS Next Gen Service. All rights reserved.",
+    address: "Keangnam Landmark 72, E6 Phạm Hùng, Nam Từ Liêm, Hà Nội",
   },
 } as const;
 

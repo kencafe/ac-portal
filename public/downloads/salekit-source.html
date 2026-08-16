@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>AC-Portal Sale Kit — FPT-IS Next Gen Service</title>
+<style>
+  :root{
+    --orange:#F37021; --blue:#0072BC; --green:#57A336;
+    --navy:#0e1e33; --navy2:#12233b;
+    --ink:#1a2b42; --muted:#6b7c93; --line:#e4e9f0; --lightbg:#ffffff;
+    --lnav:#a9b7c9;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+  body{font-family:-apple-system,"Helvetica Neue",Arial,"Segoe UI",sans-serif; color:var(--ink)}
+  @page{ size:A4; margin:0 }
+  .page{
+    position:relative; width:210mm; height:297mm; overflow:hidden;
+    padding:16mm 15mm 14mm; page-break-after:always; background:#fff;
+  }
+  .page:last-child{page-break-after:auto}
+  .page.dark{background:var(--navy); color:#e8eef6}
+  /* top ribbon */
+  .ribbon{position:absolute; top:0; left:0; right:0; height:7px; display:flex}
+  .ribbon i{display:block; height:100%}
+  .ribbon .o{flex:0 0 30%; background:var(--orange)}
+  .ribbon .b{flex:0 0 42%; background:var(--blue)}
+  .ribbon .g{flex:1; background:var(--green)}
+  /* brand */
+  .brand{display:flex; align-items:center; gap:10px}
+  .brand .mark{width:26px; height:26px; border-radius:6px;
+    background:linear-gradient(135deg,var(--orange),var(--blue)); flex:0 0 auto}
+  .brand b{font-size:15px; letter-spacing:.5px}
+  .brand span{display:block; font-size:8.5px; letter-spacing:3px; color:var(--muted); font-weight:600}
+  .dark .brand span{color:#8ca0ba}
+  /* headings */
+  .eyebrow{font-size:9px; font-weight:700; letter-spacing:2.5px; color:var(--orange)}
+  h1{font-size:33px; line-height:1.12; font-weight:800; letter-spacing:-.5px; margin:12px 0 6px}
+  .h1sub{font-size:15px; color:#9fb0c6; font-weight:500}
+  h2{font-size:21px; font-weight:800; display:flex; align-items:center; gap:9px}
+  h2::before{content:""; width:9px; height:9px; border-radius:2px; background:var(--orange)}
+  h2.b::before{background:var(--blue)} h2.g::before{background:var(--green)}
+  .h2sub{font-size:11px; color:var(--muted); margin:3px 0 0 18px}
+  .lead{font-size:11.2px; line-height:1.6; color:#33465e; margin-top:12px}
+  .dark .lead{color:#c4d2e3}
+  .lead.en{color:#8b9bb0; font-style:normal}
+  .dark .lead.en{color:#7f93ab}
+  section{margin-top:16px}
+  /* stat tiles */
+  .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:10px}
+  .stat{border:1px solid var(--line); border-radius:10px; padding:12px 12px 13px}
+  .stat .k{font-size:9px; color:var(--muted); font-weight:600}
+  .stat .v{font-size:27px; font-weight:800; margin:6px 0 2px}
+  .stat .s{font-size:8.5px; color:var(--muted); line-height:1.35}
+  .v.o{color:var(--orange)} .v.b{color:var(--blue)} .v.g{color:var(--green)}
+  /* callout */
+  .callout{margin-top:16px; background:var(--navy); color:#eaf1f9; border-radius:12px; padding:16px 18px}
+  .callout .t{font-size:9px; letter-spacing:2px; font-weight:700; color:#7f95b0}
+  .callout p{font-size:12.5px; line-height:1.6; margin-top:7px}
+  .callout .en{font-size:10px; color:#93a7c0; margin-top:6px}
+  .hl-o{color:var(--orange); font-weight:700} .hl-g{color:var(--green); font-weight:700} .hl-b{color:#5aa9e6; font-weight:700}
+  /* two-col tile grid */
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:12px}
+  .tile{border:1px solid var(--line); border-radius:9px; padding:11px 12px; border-left-width:3px}
+  .tile.o{border-left-color:var(--orange)} .tile.b{border-left-color:var(--blue)} .tile.g{border-left-color:var(--green)}
+  .tile .tt{font-size:12px; font-weight:700}
+  .tile .ts{font-size:9px; color:var(--muted); margin-top:3px; line-height:1.4}
+  /* chips */
+  .chips{display:flex; flex-wrap:wrap; gap:7px; margin-top:11px}
+  .chip{font-size:9px; border:1px solid var(--line); border-radius:20px; padding:5px 11px; color:#42566e; background:#f7f9fc}
+  .dark .chip{border-color:#2b3f5a; background:#16294190; color:#c2d2e6}
+  .chip.solid{color:#fff; border:none}
+  .chip.o{background:var(--orange)} .chip.b{background:var(--blue)} .chip.g{background:var(--green)}
+  /* phases */
+  .phase{display:flex; gap:13px; padding:13px 0; border-bottom:1px solid var(--line)}
+  .phase:last-child{border-bottom:none}
+  .pnum{flex:0 0 30px; height:30px; border-radius:50%; color:#fff; font-weight:800; font-size:13px;
+    display:flex; align-items:center; justify-content:center}
+  .pnum.o{background:var(--orange)} .pnum.b{background:var(--blue)} .pnum.c{background:#22a3c4} .pnum.g{background:var(--green)}
+  .pstage{font-size:8px; letter-spacing:2px; color:var(--muted); font-weight:700}
+  .ptitle{font-size:14px; font-weight:800; margin:2px 0 5px}
+  .ptitle span{color:var(--muted); font-weight:600; font-size:11px}
+  /* service cards */
+  .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:11px; margin-top:14px}
+  .card{border:1px solid var(--line); border-radius:10px; padding:12px; border-top:3px solid var(--blue)}
+  .card.o{border-top-color:var(--orange)} .card.g{border-top-color:var(--green)} .card.b{border-top-color:var(--blue)}
+  .badge{display:inline-block; font-size:8px; font-weight:800; letter-spacing:1px; color:#fff; padding:3px 7px; border-radius:5px}
+  .badge.o{background:var(--orange)} .badge.b{background:var(--blue)} .badge.g{background:var(--green)}
+  .card .ct{font-size:12.5px; font-weight:800; margin-top:9px}
+  .card .cs{font-size:8.5px; color:var(--muted)}
+  .card .cd{font-size:9px; color:#42566e; line-height:1.45; margin-top:6px}
+  .new{float:right; font-size:7.5px; font-weight:800; color:var(--green); letter-spacing:1px}
+  .platforms{margin-top:14px; background:#f7f9fc; border:1px solid var(--line); border-radius:10px; padding:13px 14px}
+  .platforms .t{font-size:8.5px; letter-spacing:2px; font-weight:700; color:var(--muted)}
+  /* pricing table */
+  table{width:100%; border-collapse:collapse; margin-top:13px; font-size:10px}
+  thead td{background:var(--navy); color:#dfe8f3; font-size:8.5px; letter-spacing:1px; font-weight:700; padding:10px}
+  tbody td{border-bottom:1px solid var(--line); padding:11px 10px; vertical-align:top}
+  .m1{font-weight:700; font-size:11px} .m1 span{display:block; font-weight:500; color:var(--muted); font-size:8.5px}
+  .cell-en{color:var(--muted); font-size:8.5px; display:block; margin-top:2px}
+  .note{font-size:8.5px; color:var(--muted); margin-top:9px; line-height:1.5}
+  /* commitments */
+  .commit{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:12px}
+  .commit .c{border:1px solid var(--line); border-radius:10px; padding:13px}
+  .commit .cv{font-size:22px; font-weight:800}
+  .commit .ck{font-size:11px; font-weight:700; margin-top:2px}
+  .commit .cs{font-size:8.5px; color:var(--muted)}
+  /* case cards */
+  .case{border:1px solid var(--line); border-radius:10px; padding:12px 13px; margin-top:11px}
+  .case .ch{display:flex; align-items:center; gap:9px; font-size:12px; font-weight:800}
+  .case .meta{margin-left:auto; font-size:8.5px; color:var(--muted); font-weight:500}
+  .case .cols{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:9px}
+  .case .col .l{font-size:8px; letter-spacing:1px; font-weight:700; color:var(--muted)}
+  .case .col .x{font-size:9px; color:#42566e; line-height:1.45; margin-top:4px}
+  /* partners */
+  .partners{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:12px}
+  .pbox{border:1px solid var(--line); border-radius:10px; padding:13px}
+  .pbox .t{font-size:8.5px; letter-spacing:1.5px; font-weight:700; color:var(--muted); margin-bottom:10px}
+  /* cover */
+  .cover-hero{margin-top:20px; border:1px dashed #33507a; border-radius:14px; overflow:hidden;
+    background:#0b1a2e; height:96mm; display:flex; align-items:center; justify-content:center}
+  .cover-hero img{width:100%; height:100%; object-fit:cover}
+  .cover-chips{margin-top:16px; display:flex; gap:8px; flex-wrap:wrap}
+  .cover-chips .chip{background:#16294190; border-color:#2b3f5a; color:#cddcee}
+  /* contact page */
+  .contact-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:20px}
+  .cbox{border:1px solid #2b3f5a; border-radius:10px; padding:14px 16px}
+  .cbox.full{grid-column:1/3}
+  .cbox .l{font-size:8px; letter-spacing:2px; color:#8ca0ba; font-weight:700}
+  .cbox .v{font-size:14px; font-weight:700; margin-top:6px; color:#eef4fb}
+  /* footer */
+  .foot{position:absolute; left:15mm; right:15mm; bottom:9mm; display:flex; justify-content:space-between;
+    font-size:8px; color:var(--muted); border-top:1px solid var(--line); padding-top:6px}
+  .dark .foot{color:#7288a3; border-color:#263a54}
+  .spacer{height:14px}
+</style>
+</head>
+<body>
+
+<!-- ===== PAGE 1 — COVER ===== -->
+<div class="page dark">
+  <div class="ribbon"><i class="o"></i><i class="b"></i><i class="g"></i></div>
+  <div class="brand"><div class="mark"></div><div><b>FPT-IS</b><span>NEXT GEN SERVICE</span></div></div>
+  <div style="margin-top:34px">
+    <div class="eyebrow">HỒ SƠ NĂNG LỰC · CAPABILITY PROFILE</div>
+    <h1>Đối tác Cloud &amp; AI end-<br>to-end cho doanh nghiệp</h1>
+    <div class="h1sub">Your end-to-end Cloud &amp; AI partner</div>
+    <p class="lead" style="max-width:150mm">Tư vấn, triển khai, vận hành và tối ưu trên đa nền tảng cloud — một đầu mối chịu trách nhiệm suốt vòng đời hệ thống.</p>
+    <p class="lead en">Advisory, build, run and optimize across multiple clouds — a single accountable partner for the entire system lifecycle.</p>
+  </div>
+  <div class="cover-hero"><img src="../assets/appcarrier-cover.png" alt="AppCarrier"></div>
+  <div class="cover-chips">
+    <span class="chip">Nền tảng = tàu sân bay</span>
+    <span class="chip">App &amp; microservice = phi đội</span>
+    <span class="chip">Bảo mật = vành đai</span>
+  </div>
+</div>
+
+<!-- ===== PAGE 2 — ABOUT ===== -->
+<div class="page">
+  <div class="ribbon"><i class="o"></i><i class="b"></i><i class="g"></i></div>
+  <h2 class="g">Giới thiệu đơn vị <span style="font-weight:500;color:var(--muted);font-size:12px">&nbsp;About the unit</span></h2>
+  <p class="lead">FPT-IS Next Gen Service cung cấp dịch vụ hạ tầng Cloud &amp; AI toàn trình — từ tư vấn kiến trúc, di trú và triển khai, tới vận hành 24/7 và tối ưu chi phí – hiệu năng.</p>
+  <p class="lead en">Full-lifecycle Cloud &amp; AI infrastructure services — architecture advisory, migration and build, 24/7 operations, cost and performance optimization.</p>
+  <section class="stats">
+    <div class="stat"><div class="k">Dự án triển khai</div><div class="v o">100+</div><div class="s">Projects delivered</div></div>
+    <div class="stat"><div class="k">Chứng chỉ quốc tế</div><div class="v b">50</div><div class="s">Cloud · K8s · Security</div></div>
+    <div class="stat"><div class="k">Năm kinh nghiệm</div><div class="v g">10</div><div class="s">Years of experience</div></div>
+    <div class="stat"><div class="k">Nền tảng cloud</div><div class="v b">6+</div><div class="s">AWS · Azure · GCP · FSC</div></div>
+  </section>
+  <div class="callout">
+    <div class="t">MÔ HÌNH VẬN HÀNH APPCARRIER</div>
+    <p>Nền tảng là <span class="hl-o">tàu sân bay</span>. Ứng dụng và microservice là <span class="hl-o">phi đội</span>. Bảo mật là <span class="hl-g">vành đai phòng thủ</span>. Một sở chỉ huy duy nhất.</p>
+    <div class="en">The platform is the carrier. Apps and microservices are the air wing. Security is the defensive perimeter. One command deck.</div>
+  </div>
+  <section>
+    <h2>Vì sao chọn chúng tôi <span style="font-weight:500;color:var(--muted);font-size:12px">&nbsp;Why us</span></h2>
+    <div class="grid2">
+      <div class="tile o"><div class="tt">Toàn trình, một đầu mối</div><div class="ts">Single accountability across the lifecycle</div></div>
+      <div class="tile b"><div class="tt">Đa nền tảng cloud</div><div class="ts">Multi-cloud coverage</div></div>
+      <div class="tile o"><div class="tt">Bảo mật theo thiết kế</div><div class="ts">Secure by design</div></div>
+      <div class="tile g"><div class="tt">Văn hoá SRE</div><div class="ts">Error budget · blameless postmortem</div></div>
+      <div class="tile o"><div class="tt">Harness Engineering</div><div class="ts">CI/CD · GitOps · feature flags</div></div>
+      <div class="tile g"><div class="tt">Cam kết SLA 24/7</div><div class="ts">SLA-backed delivery</div></div>
+    </div>
+  </section>
+  <div class="foot"><span>FPT-IS Next Gen Service · Hồ sơ năng lực</span><span>02</span></div>
+</div>
+
+<!-- ===== PAGE 3 — SERVICE MODEL ===== -->
+<div class="page">
+  <div class="ribbon"><i class="o"></i><i class="b"></i><i class="g"></i></div>
+  <h2 class="g">Mô hình dịch vụ toàn trình</h2>
+  <div class="h2sub">Consult → Deploy → Operate → Optimize</div>
+  <section style="margin-top:8px">
+    <div class="phase">
+      <div class="pnum o">1</div>
+      <div><div class="pstage">GIAI ĐOẠN 01</div><div class="ptitle">Tư vấn <span>/ Consult</span></div>
+      <div class="lead" style="margin:0">Đánh giá hiện trạng, thiết kế kiến trúc mục tiêu, lập lộ trình và dự toán TCO/ROI trước khi hành động vào hệ thống.</div>
+      <div class="lead en" style="margin-top:4px">Current-state assessment, target architecture, roadmap and TCO/ROI modelling.</div>
+      <div class="chips"><span class="chip">Đánh giá hiện trạng</span><span class="chip">Kiến trúc mục tiêu</span><span class="chip">Lộ trình</span><span class="chip">TCO / ROI</span></div></div>
+    </div>
+    <div class="phase">
+      <div class="pnum b">2</div>
+      <div><div class="pstage">GIAI ĐOẠN 02</div><div class="ptitle">Triển khai <span>/ Deploy</span></div>
+      <div class="lead" style="margin:0">Dựng landing zone, di trú ứng dụng và dữ liệu, thiết lập CI/CD và nền tảng giám sát, đưa hệ thống lên go-live.</div>
+      <div class="lead en" style="margin-top:4px">Landing zone, migration, CI/CD and observability build-out through go-live.</div>
+      <div class="chips"><span class="chip">Landing zone</span><span class="chip">Migrate</span><span class="chip">CI/CD</span><span class="chip">Nền tảng AIOps</span><span class="chip">Go-live</span></div></div>
+    </div>
+    <div class="phase">
+      <div class="pnum c">3</div>
+      <div><div class="pstage">GIAI ĐOẠN 03</div><div class="ptitle">Vận hành <span>/ Operate</span></div>
+      <div class="lead" style="margin:0">Kíp trực SRE 24/7, giám sát bằng AIOps, quản trị sự cố và bản vá, diễn tập DR/backup theo kịch bản.</div>
+      <div class="lead en" style="margin-top:4px">24/7 managed operations, AIOps monitoring, incident management, patching and DR drills.</div>
+      <div class="chips"><span class="chip">Managed 24/7</span><span class="chip">AIOps monitoring</span><span class="chip">On-call SRE</span><span class="chip">DR / Backup</span></div></div>
+    </div>
+    <div class="phase">
+      <div class="pnum g">4</div>
+      <div><div class="pstage">GIAI ĐOẠN 04</div><div class="ptitle">Tối ưu <span>/ Optimize</span></div>
+      <div class="lead" style="margin:0">FinOps giảm chi phí, tinh chỉnh hiệu năng, giảm toil bằng tự động hoá và cải tiến kiến trúc theo dữ liệu vận hành.</div>
+      <div class="lead en" style="margin-top:4px">FinOps, performance tuning, toil reduction and data-driven architecture improvement.</div>
+      <div class="chips"><span class="chip">FinOps</span><span class="chip">Rightsizing</span><span class="chip">Tự động hoá</span><span class="chip">Cải tiến liên tục</span></div></div>
+    </div>
+  </section>
+  <div class="foot"><span>Mô hình dịch vụ · Service model</span><span>03</span></div>
+</div>
+
+<!-- ===== PAGE 4 — SERVICE CATALOGUE ===== -->
+<div class="page">
+  <div class="ribbon"><i class="o"></i><i class="b"></i><i class="g"></i></div>
+  <h2 class="b">Danh mục 9 dịch vụ</h2>
+  <div class="h2sub">Nine services · mỗi dịch vụ có datasheet riêng kèm theo</div>
+  <div class="cards">
+    <div class="card o"><span class="badge o">DEV</span><div class="ct">DevOps / DevSecOps</div><div class="cs">Secure CI/CD &amp; automation</div><div class="cd">CI/CD, GitOps, IaC, feature flag — rút ngắn thời gian phát hành an toàn.</div></div>
+    <div class="card b"><span class="badge b">SRE</span><div class="ct">SRE</div><div class="cs">Site reliability engineering</div><div class="cd">SLO/SLI, error budget, observability, blameless postmortem.</div></div>
+    <div class="card g"><span class="badge g">AIO</span><span class="new">MỚI</span><div class="ct">AIOps</div><div class="cs">Intelligent operations</div><div class="cd">Phát hiện bất thường, gom nhóm cảnh báo, tự khắc phục, giảm MTTR.</div></div>
+    <div class="card b"><span class="badge b">PLT</span><div class="ct">Cloud Platform</div><div class="cs">Landing zone &amp; FinOps</div><div class="cd">Landing zone, đa đám mây, guardrail và tối ưu chi phí.</div></div>
+    <div class="card g"><span class="badge g">SEC</span><div class="ct">Cloud Security</div><div class="cs">Zero Trust &amp; compliance</div><div class="cd">Zero Trust, IAM, tuân thủ, giám sát bảo mật liên tục.</div></div>
+    <div class="card b"><span class="badge b">AIC</span><div class="ct">Cloud for AI</div><div class="cs">Cloud &amp; data for AI</div><div class="cd">Nền tảng cloud và dữ liệu phục vụ workload AI/ML.</div></div>
+    <div class="card o"><span class="badge o">GPU</span><div class="ct">AI Infrastructure</div><div class="cs">GPU clusters &amp; MLOps</div><div class="cd">Cluster GPU, MLOps, phục vụ LLM ở quy mô sản xuất.</div></div>
+    <div class="card g"><span class="badge g">MIG</span><div class="ct">Cloud Migration</div><div class="cs">Assess &amp; migrate</div><div class="cd">Đánh giá 6R, di trú theo đợt, hiện đại hoá hệ thống.</div></div>
+    <div class="card b"><span class="badge b">APP</span><div class="ct">Cloud App</div><div class="cs">Cloud-native apps</div><div class="cd">Microservice, container/K8s, hiện đại hoá ứng dụng cũ.</div></div>
+  </div>
+  <div class="platforms">
+    <div class="t">NỀN TẢNG VẬN HÀNH · PLATFORMS WE RUN ON</div>
+    <div class="chips">
+      <span class="chip">AWS</span><span class="chip">Microsoft Azure</span><span class="chip">Google Cloud</span><span class="chip">FPT Smart Cloud</span><span class="chip">Private cloud</span>
+      <span class="chip">Hybrid cloud</span><span class="chip">OpenShift</span><span class="chip">Kubernetes</span><span class="chip">VMware</span>
+    </div>
+  </div>
+  <div class="foot"><span>Danh mục dịch vụ · Service catalogue</span><span>04</span></div>
+</div>
+
+<!-- ===== PAGE 5 — PRICING ===== -->
+<div class="page">
+  <div class="ribbon"><i class="o"></i><i class="b"></i><i class="g"></i></div>
+  <h2 class="o">Mô hình hợp tác &amp; giá tham chiếu</h2>
+  <div class="h2sub">Engagement models &amp; indicative pricing</div>
+  <table>
+    <thead><tr><td>MÔ HÌNH / MODEL</td><td>PHÙ HỢP KHI / BEST FOR</td><td>CƠ SỞ TÍNH GIÁ / PRICING</td></tr></thead>
+    <tbody>
+      <tr><td class="m1">Tư vấn &amp; đánh giá<span>Advisory / assessment</span></td><td>Cần bức tranh hiện trạng, kiến trúc mục tiêu và lộ trình trước khi đầu tư.<span class="cell-en">Before committing budget to a build.</span></td><td>Trọn gói theo phạm vi<span class="cell-en">từ 80 triệu VNĐ</span></td></tr>
+      <tr><td class="m1">Dự án triển khai<span>Project delivery</span></td><td>Có phạm vi và mốc bàn giao rõ ràng: landing zone, di trú, CI/CD, nền tảng AIOps.<span class="cell-en">Fixed scope with defined milestones.</span></td><td>Trọn gói theo mốc<span class="cell-en">từ 300 triệu VNĐ</span></td></tr>
+      <tr><td class="m1">Managed service<span>Vận hành 24/7</span></td><td>Hệ thống đã chạy, cần kíp trực SRE, giám sát và cam kết SLA liên tục.<span class="cell-en">Ongoing 24/7 operations under SLA.</span></td><td>Phí tháng theo quy mô<span class="cell-en">từ 60 triệu VNĐ/tháng</span></td></tr>
+      <tr><td class="m1">Đội tăng cường<span>Team augmentation</span></td><td>Đội nội bộ cần bổ sung kỹ sư DevOps/SRE/Cloud theo sprint.<span class="cell-en">Embedded engineers alongside your team.</span></td><td>Theo man-month<span class="cell-en">từ 40 triệu VNĐ/MM</span></td></tr>
+    </tbody>
+  </table>
+  <div class="note">Giá tham chiếu, chưa gồm VAT và chi phí license bên thứ ba. Báo giá chính thức được lập sau buổi khảo sát. · Indicative only, excluding VAT and third-party licences.</div>
+  <section>
+    <h2 class="b" style="font-size:19px">Cam kết dịch vụ <span style="font-weight:500;color:var(--muted);font-size:12px">&nbsp;Service commitments</span></h2>
+    <div class="commit">
+      <div class="c"><div class="cv b">24/7</div><div class="ck">Kíp trực vận hành</div><div class="cs">On-call coverage</div></div>
+      <div class="c"><div class="cv o">15 phút</div><div class="ck">Phản hồi sự cố P1</div><div class="cs">P1 response time</div></div>
+      <div class="c"><div class="cv g">99.9%</div><div class="ck">Mức sẵn sàng cam kết</div><div class="cs">Availability target</div></div>
+    </div>
+    <div class="note">Các mức cụ thể được chốt theo hợp đồng và mức độ quan trọng của từng hệ thống.</div>
+  </section>
+  <div class="foot"><span>Hợp tác &amp; giá · Engagement &amp; pricing</span><span>05</span></div>
+</div>
+
+<!-- ===== PAGE 6 — CASES & PARTNERS ===== -->
+<div class="page">
+  <div class="ribbon"><i class="o"></i><i class="b"></i><i class="g"></i></div>
+  <h2 class="g">Khách hàng tiêu biểu</h2>
+  <div class="h2sub">Selected case studies</div>
+  <div class="case">
+    <div class="ch"><span class="badge g">MIG</span> Ngân hàng thương mại <span class="meta">Cloud Migration · 2025</span></div>
+    <div class="cols">
+      <div class="col"><div class="l">BÀI TOÁN / CHALLENGE</div><div class="x">Hệ thống on-premise quá tải, cửa sổ downtime hẹp, khó mở rộng theo mùa cao điểm.</div></div>
+      <div class="col"><div class="l">GIẢI PHÁP / SOLUTION</div><div class="x">Phân loại 6R, di trú theo 4 đợt, mỗi đợt có phương án quay lui đã diễn tập.</div></div>
+      <div class="col"><div class="l">KẾT QUẢ / OUTCOME</div><div class="x">Downtime cutover < 30 phút · giảm 35% chi phí duy trì hệ thống cũ.</div></div>
+    </div>
+  </div>
+  <div class="case">
+    <div class="ch"><span class="badge b">AIO</span> Cơ quan khối nhà nước <span class="meta">AIOps · SRE · 2025</span></div>
+    <div class="cols">
+      <div class="col"><div class="l">BÀI TOÁN / CHALLENGE</div><div class="x">Nhiều hệ thống, cảnh báo tràn ngập, khó ưu tiên và dễ bỏ sót sự cố thật.</div></div>
+      <div class="col"><div class="l">GIẢI PHÁP / SOLUTION</div><div class="x">Nền tảng dữ liệu vận hành hợp nhất, phát hiện bất thường, gom nhóm cảnh báo và runbook tự chạy.</div></div>
+      <div class="col"><div class="l">KẾT QUẢ / OUTCOME</div><div class="x">Giảm 60% cảnh báo nhiễu · MTTR giảm 45%.</div></div>
+    </div>
+  </div>
+  <div class="case">
+    <div class="ch"><span class="badge o">DEV</span> Doanh nghiệp sản xuất <span class="meta">DevSecOps · 2025</span></div>
+    <div class="cols">
+      <div class="col"><div class="l">BÀI TOÁN / CHALLENGE</div><div class="x">Phát hành thủ công, phụ thuộc cá nhân, hay lỗi khi lên production.</div></div>
+      <div class="col"><div class="l">GIẢI PHÁP / SOLUTION</div><div class="x">Pipeline CI/CD chuẩn hoá, hạ tầng bằng IaC, quét bảo mật tự động trong pipeline.</div></div>
+      <div class="col"><div class="l">KẾT QUẢ / OUTCOME</div><div class="x">Lead time giảm 70% · tỷ lệ lỗi phát hành giảm 50%.</div></div>
+    </div>
+  </div>
+  <section>
+    <h2 class="b" style="font-size:19px">Đối tác &amp; chứng chỉ <span style="font-weight:500;color:var(--muted);font-size:12px">&nbsp;Partners &amp; certifications</span></h2>
+    <div class="partners">
+      <div class="pbox"><div class="t">ĐỐI TÁC NỀN TẢNG</div><div class="chips">
+        <span class="chip">AWS</span><span class="chip">Microsoft</span><span class="chip">Google Cloud</span><span class="chip">Red Hat</span><span class="chip">NVIDIA</span><span class="chip">VMware</span><span class="chip">FPT Smart Cloud</span></div></div>
+      <div class="pbox"><div class="t">CHỨNG CHỈ KỸ SƯ</div><div class="chips">
+        <span class="chip">AWS Solutions Architect</span><span class="chip">Azure Solutions Architect</span><span class="chip">CKA / CKAD</span><span class="chip">Red Hat OpenShift</span><span class="chip">CISSP / CCSP</span><span class="chip">ITIL</span></div></div>
+    </div>
+  </section>
+  <div class="foot"><span>Khách hàng &amp; đối tác · Clients &amp; partners</span><span>06</span></div>
+</div>
+
+<!-- ===== PAGE 7 — CONTACT (BACK) ===== -->
+<div class="page dark">
+  <div class="ribbon"><i class="o"></i><i class="b"></i><i class="g"></i></div>
+  <div style="margin-top:26px">
+    <h1 style="font-size:26px">Bắt đầu bằng một buổi khảo sát hiện trạng</h1>
+    <div class="h1sub" style="color:#8ca0ba">Start with a current-state assessment</div>
+    <p class="lead" style="color:#c4d2e3; max-width:150mm">Đội ngũ FPT-IS Next Gen Service khảo sát hệ thống của bạn và đề xuất phương án trong 3 ngày làm việc — không ràng buộc.</p>
+  </div>
+  <div class="contact-grid">
+    <div class="cbox"><div class="l">ĐIỆN THOẠI / PHONE</div><div class="v">+84 973 391 388</div></div>
+    <div class="cbox"><div class="l">EMAIL</div><div class="v">dungpv30@fpt.com.vn</div></div>
+    <div class="cbox full"><div class="l">VĂN PHÒNG / OFFICE</div><div class="v">Keangnam Landmark 72, E6 Phạm Hùng, Nam Từ Liêm, Hà Nội</div></div>
+  </div>
+  <section style="margin-top:22px">
+    <div class="cbox" style="border:none; padding:0">
+      <div class="l" style="color:#8ca0ba">TÀI LIỆU ĐI KÈM · ACCOMPANYING DATASHEETS</div>
+      <div class="chips" style="margin-top:12px">
+        <span class="chip">DevOps / DevSecOps</span><span class="chip">SRE</span><span class="chip">AIOps</span><span class="chip">Cloud Platform</span><span class="chip">Cloud Security</span>
+        <span class="chip">Cloud for AI</span><span class="chip">AI Infrastructure</span><span class="chip">Cloud Migration</span><span class="chip">Cloud App</span>
+      </div>
+    </div>
+  </section>
+  <div class="foot"><span>© 2026 FPT-IS Next Gen Service</span><span>07</span></div>
+</div>
+
+</body>
+</html>

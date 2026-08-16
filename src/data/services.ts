@@ -215,8 +215,8 @@ export const SERVICES: Record<string, ServiceDetail> = {
     ],
     stack: ["OpenTelemetry", "Prometheus", "Elastic", "Grafana", "Kafka", "OpenSearch", "Python / ML pipeline", "Ansible", "n8n / Rundeck"],
     outcomes: [
-      "Giảm nhiễu cảnh báo [X]% — số liệu điền sau",
-      "Rút ngắn MTTR [X]% — số liệu điền sau",
+      "Giảm nhiễu cảnh báo 60%",
+      "Rút ngắn MTTR 45%",
       "Kíp vận hành tập trung vào việc đáng làm",
     ],
   },
@@ -701,7 +701,7 @@ export const BLOCK_HEADINGS = {
  */
 export const CTA_PANEL = {
   title: "Cần lộ trình cụ thể cho {{ name }}?",
-  sub: "Đội ngũ FPT-IS Next Gen Service sẽ khảo sát hiện trạng và đề xuất phương án trong [X] ngày làm việc.",
+  sub: "Đội ngũ FPT-IS Next Gen Service sẽ khảo sát hiện trạng và đề xuất phương án trong 3 ngày làm việc.",
   phone: { key: "Điện thoại", value: "+84 973 391 388", href: "tel:+84973391388" },
   email: { key: "Email", value: "dungpv30@fpt.com.vn", href: "mailto:dungpv30@fpt.com.vn" },
   button: { label: "Gửi yêu cầu tư vấn", href: "FPTIS NS Landing v3 Ant.dc.html#contact" },
@@ -709,7 +709,7 @@ export const CTA_PANEL = {
 
 /** Footer (contains [2026] placeholder preserved verbatim) */
 export const FOOTER = {
-  copyright: "© [2026] FPT-IS Next Gen Service. Keangnam Landmark 72, E10, Nam Từ Liêm, Hà Nội.",
+  copyright: "© 2026 FPT-IS Next Gen Service. Keangnam Landmark 72, E6 Phạm Hùng, Nam Từ Liêm, Hà Nội.",
   backLink: { label: "← Về trang chính", href: "FPTIS NS Landing v3 Ant.dc.html" },
 };
 
@@ -829,8 +829,8 @@ export const SERVICES_EN: Record<string, ServiceEN> = {
       "Alert-noise and MTTR reduction reports",
     ],
     outcomes: [
-      "Reduce alert noise by [X]% — figure to be filled in",
-      "Shorten MTTR by [X]% — figure to be filled in",
+      "Reduce alert noise by 60%",
+      "Shorten MTTR by 45%",
       "Let the operations crew focus on work that matters",
     ],
   },
@@ -1174,8 +1174,8 @@ export const DETAIL_UI = {
   cta: {
     title: { vi: "Cần lộ trình cụ thể cho {{ name }}?", en: "Need a concrete roadmap for {{ name }}?" },
     sub: {
-      vi: "Đội ngũ FPT-IS Next Gen Service sẽ khảo sát hiện trạng và đề xuất phương án trong [X] ngày làm việc.",
-      en: "The FPT-IS Next Gen Service team will assess your current state and propose a plan within [X] business days.",
+      vi: "Đội ngũ FPT-IS Next Gen Service sẽ khảo sát hiện trạng và đề xuất phương án trong 3 ngày làm việc.",
+      en: "The FPT-IS Next Gen Service team will assess your current state and propose a plan within 3 business days.",
     },
     phoneKey: { vi: "Điện thoại", en: "Phone" },
     emailKey: { vi: "Email", en: "Email" },

@@ -422,7 +422,7 @@ export const ARTICLE_PAGE = {
 
 export const FOOTER = {
   copyright:
-    '© [2026] FPT-IS Next Gen Service. Keangnam Landmark 72, E10, Nam Từ Liêm, Hà Nội.',
+    '© 2026 FPT-IS Next Gen Service. Keangnam Landmark 72, E6 Phạm Hùng, Nam Từ Liêm, Hà Nội.',
   backLink: '← Về trang chính',
   backHref: 'FPTIS NS Landing v3 Ant.dc.html',
 };
