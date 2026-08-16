@@ -84,6 +84,9 @@ export default function ServiceDetailView({ slug }: { slug: string }) {
           <div style={{ display: "flex", gap: 12, marginTop: 26, flexWrap: "wrap" }}>
             <a href="/#contact" style={btnPrimary}>{en ? DETAIL_UI.heroPrimary.en : DETAIL_UI.heroPrimary.vi}</a>
             <a href="#phases" style={btnDefault}>{en ? DETAIL_UI.heroSecondary.en : DETAIL_UI.heroSecondary.vi}</a>
+            <a href={`/downloads/AC-Portal-Datasheet-${s.code}.pdf`} download style={btnDefault}>
+              {en ? "⬇ Download datasheet (PDF)" : "⬇ Tải datasheet (PDF)"}
+            </a>
           </div>
         </div>
       </section>
