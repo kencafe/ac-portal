@@ -40,7 +40,7 @@ export default function Cases() {
                 {en ? c.titleEn : c.title}
               </div>
               <p style={{ fontSize: 14, lineHeight: 1.6, color: COLORS.ink2, margin: "0 0 14px" }}>{en ? c.descEn : c.desc}</p>
-              <a href="#contact" className="ns-arrow" style={{ fontSize: 13.5, fontWeight: 600, color: COLORS.brandBlue }}>
+              <a href={`/blog/${c.blogSlug}`} className="ns-arrow" style={{ fontSize: 13.5, fontWeight: 600, color: COLORS.brandBlue }}>
                 {en ? UI_STRINGS.caseCardLinkEn : c.linkLabel}
               </a>
             </div>

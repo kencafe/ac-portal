@@ -400,6 +400,7 @@ export const BLOG_TEASERS = [
 export const CASES = [
   {
     tag: "CHÍNH PHỦ & KHU VỰC CÔNG",
+    blogSlug: "case-chinh-phu-cong",
     tagEn: "GOVERNMENT & PUBLIC SECTOR",
     tagAccent: "blue",
     gridBg: "#EAF3FA", // logoWallGov
@@ -419,6 +420,7 @@ export const CASES = [
   },
   {
     tag: "NGÂN HÀNG – TÀI CHÍNH (BFSI)",
+    blogSlug: "case-ngan-hang-bfsi",
     tagEn: "BANKING & FINANCE (BFSI)",
     tagAccent: "green",
     gridBg: "#EFF7EA", // logoWallBfsi
@@ -438,6 +440,7 @@ export const CASES = [
   },
   {
     tag: "DOANH NGHIỆP · NỀN TẢNG SỐ",
+    blogSlug: "case-doanh-nghiep-nen-tang-so",
     tagEn: "ENTERPRISE · DIGITAL PLATFORMS",
     tagAccent: "orange",
     gridBg: "#FEF2EA", // logoWallBiz
@@ -468,7 +471,7 @@ export const CONTACT = {
   panelTitle: "Thông tin liên hệ / Contact",
   panelTitleEn: "Contact information",
   phone: { label: "Điện thoại", labelEn: "Phone", value: "+84 973 391 388", href: "tel:+84973391388" },
-  email: { label: "Email", labelEn: "Email", value: "contact@appcarrier.cloud", href: "mailto:contact@appcarrier.cloud" },
+  email: { label: "Email", labelEn: "Email", value: "contact@appcarrier.cloud hoặc dungpv30@fpt.com", href: "mailto:contact@appcarrier.cloud" },
   office: { label: "Văn phòng", labelEn: "Office", value: "FPT IS — Keangnam Landmark 72, E6 Phạm Hùng, Nam Từ Liêm, Hà Nội" },
   form: {
     fields: [
@@ -493,7 +496,7 @@ export const FOOTER = {
   blurb: "Dịch vụ hạ tầng Cloud & AI toàn trình cho doanh nghiệp.",
   blurbEn: "Full-lifecycle Cloud & AI infrastructure services for enterprises.",
   phone: { value: "+84 973 391 388", href: "tel:+84973391388" },
-  email: { value: "contact@appcarrier.cloud", href: "mailto:contact@appcarrier.cloud" },
+  email: { value: "contact@appcarrier.cloud hoặc dungpv30@fpt.com", href: "mailto:contact@appcarrier.cloud" },
   columns: [
     {
       head: "Dịch vụ",

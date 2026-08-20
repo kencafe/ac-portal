@@ -251,7 +251,7 @@ export default function ServiceDetailView({ slug }: { slug: string }) {
                   {en ? DETAIL_UI.cta.phoneKey.en : DETAIL_UI.cta.phoneKey.vi}: +84 973 391 388
                 </a>
                 <a href="mailto:contact@appcarrier.cloud" style={{ color: "#8FD1FF" }}>
-                  {en ? DETAIL_UI.cta.emailKey.en : DETAIL_UI.cta.emailKey.vi}: contact@appcarrier.cloud
+                  {en ? DETAIL_UI.cta.emailKey.en : DETAIL_UI.cta.emailKey.vi}: contact@appcarrier.cloud hoặc dungpv30@fpt.com
                 </a>
               </div>
             </div>
