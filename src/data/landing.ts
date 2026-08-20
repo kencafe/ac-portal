@@ -370,6 +370,10 @@ export const PARTNERS = [
     logo: "https://cdn.simpleicons.org/nutanix", placeholderHint: "Nutanix" },
   { id: "partner-suse", name: "SUSE", desc: "Enterprise Linux & Rancher", descEn: "Enterprise Linux & Rancher",
     logo: "https://cdn.simpleicons.org/suse", placeholderHint: "SUSE" },
+  { id: "partner-docker", name: "Docker", desc: "Container runtime & registry", descEn: "Container runtime & registry",
+    logo: "https://cdn.simpleicons.org/docker", placeholderHint: "Docker" },
+  { id: "partner-ubuntu", name: "Ubuntu / Canonical", desc: "Enterprise Linux & OpenStack", descEn: "Enterprise Linux & OpenStack",
+    logo: "https://cdn.simpleicons.org/ubuntu", placeholderHint: "Ubuntu / Canonical" },
 ] as const;
 
 /* ==================================================================
@@ -539,12 +543,33 @@ export const FOOTER = {
 /* ==================================================================
  * 13. SECTION TITLES + repeated UI strings
  * ================================================================== */
+/* ==================================================================
+ * 8b. PLATFORMS — enterprise products & digital platforms (FPT ecosystem)
+ * ================================================================== */
+export const PLATFORMS_LEAD =
+  "Các sản phẩm doanh nghiệp và nền tảng số trong hệ sinh thái FPT mà chúng tôi tích hợp, triển khai và vận hành trên hạ tầng Cloud & AI.";
+export const PLATFORMS_LEAD_EN =
+  "Enterprise products and digital platforms in the FPT ecosystem that we integrate, deploy and operate on Cloud & AI infrastructure.";
+
+export const PLATFORMS = [
+  { id: "plat-tradeflat", name: "Tradeflat", accent: "blue",
+    desc: "Nền tảng số hoá tài trợ thương mại & chuỗi cung ứng",
+    descEn: "Digital trade-finance & supply-chain platform" },
+  { id: "plat-khaothi", name: "Khảo Thí Online", accent: "orange",
+    desc: "Nền tảng thi & đánh giá năng lực trực tuyến",
+    descEn: "Online examination & assessment platform" },
+  { id: "plat-baohiem", name: "Bảo hiểm FPT", accent: "green",
+    desc: "Nền tảng bảo hiểm số & phân phối trực tuyến",
+    descEn: "Digital insurance & online distribution platform" },
+] as const;
+
 export const SECTION_TITLES = {
   about: { vi: "Dịch vụ Cloud & AI Infrastructure", en: "Cloud & AI infrastructure services unit", mark: "orange" },
   services: { vi: "Các dịch vụ", en: "Our services", mark: "blue" },
   model: { vi: "Mô hình dịch vụ toàn trình", en: "Consult → Deploy → Operate → Optimize", mark: "green" },
   industries: { vi: "Ngành phục vụ", en: "Industries we serve", mark: "blue" },
   partners: { vi: "Đối tác công nghệ", en: "Technology partners", mark: "green" },
+  platforms: { vi: "Đối tác doanh nghiệp & nền tảng số", en: "Enterprise partners & digital platforms", mark: "orange" },
   cases: { vi: "Case study tiêu biểu", en: "Selected client stories", mark: "orange" },
   blog: { vi: "Blog kỹ thuật", en: "Engineering blog", mark: "blue" },
   contact: {
