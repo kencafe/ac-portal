@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { PARTNERS, PARTNERS_LEAD, PARTNERS_LEAD_EN, PLATFORMS, PLATFORMS_LEAD, PLATFORMS_LEAD_EN, SECTION_TITLES } from "@/data/landing";
-import { ACCENTS, Accent, COLORS, RADIUS } from "@/lib/tokens";
+import { PARTNERS, PARTNERS_LEAD, PARTNERS_LEAD_EN, SECTION_TITLES } from "@/data/landing";
+import { COLORS, RADIUS } from "@/lib/tokens";
 import { leadText } from "@/lib/ui";
 import Section from "@/components/shared/Section";
 import SectionHeading from "@/components/shared/SectionHeading";
@@ -13,8 +13,7 @@ function logoSrc(logo: string) {
   return logo.startsWith("http") ? logo : `/${logo}`;
 }
 
-/** Brand colour per partner — used for the card accent + hover tint.
- *  ("nền ô lấy màu logo hãng"). Falls back to brand blue. */
+/** Brand colour per partner — card accent + hover tint ("nền ô lấy màu logo hãng"). */
 const BRAND: Record<string, string> = {
   "partner-redhat": "#EE0000", "partner-ibm": "#0530AD", "partner-vmware": "#607078",
   "partner-dellemc": "#007DB8", "partner-hpe": "#01A982", "partner-supermicro": "#151F6D",
@@ -78,33 +77,6 @@ export default function Partners() {
             </HoverCard>
           );
         })}
-      </div>
-
-      <div style={{ marginTop: 44 }}>
-        <SectionHeading vi={SECTION_TITLES.platforms.vi} en={SECTION_TITLES.platforms.en} mark="orange" />
-        <p style={{ ...leadText, marginTop: -12, marginBottom: 24 }}>{en ? PLATFORMS_LEAD_EN : PLATFORMS_LEAD}</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
-          {PLATFORMS.map((p) => {
-            const a = ACCENTS[p.accent as Accent];
-            return (
-              <HoverCard
-                key={p.id}
-                style={{
-                  background: "#fff",
-                  border: `1px solid ${COLORS.split}`,
-                  borderTop: `3px solid ${a.color}`,
-                  borderRadius: RADIUS.card,
-                  padding: 20,
-                  transition: "background .18s ease, box-shadow .18s ease, transform .18s ease",
-                }}
-                hoverStyle={{ background: a.bg, boxShadow: "0 14px 30px -18px rgba(0,21,41,0.42)", transform: "translateY(-3px)" }}
-              >
-                <div style={{ fontSize: 16.5, fontWeight: 700, color: COLORS.ink }}>{p.name}</div>
-                <div style={{ fontSize: 13, color: COLORS.ink3, marginTop: 5, lineHeight: 1.5 }}>{en ? p.descEn : p.desc}</div>
-              </HoverCard>
-            );
-          })}
-        </div>
       </div>
     </Section>
   );
