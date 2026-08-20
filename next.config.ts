@@ -3,7 +3,16 @@ import type { NextConfig } from "next";
 // Content-Security-Policy — tightened for the DAST (OWASP ZAP) gate.
 // Partner logos load from Simple Icons / jsDelivr (Devicon); fonts are
 // self-hosted by next/font, so no external font/style origins are needed.
-const csp = [
+//
+// SEC-002: the CSP for anything that renders HTML now lives in src/middleware.ts,
+// because script-src carries a per-request nonce and next.config headers are
+// static. The copy below is the no-nonce fallback for the paths middleware does
+// not run on (its matcher excludes _next/, assets/, favicon*, api/). The two
+// sets are deliberately DISJOINT: if both applied to one response the browser
+// would receive two CSP headers and enforce their intersection, which — a nonce
+// policy intersected with an 'unsafe-inline' policy — blocks every script.
+// Keep this list in sync with cspFor() in src/middleware.ts.
+const staticCsp = [
   "default-src 'self'",
   "base-uri 'self'",
   "frame-ancestors 'none'",
@@ -11,15 +20,17 @@ const csp = [
   "object-src 'none'",
   "img-src 'self' data: https://cdn.simpleicons.org https://cdn.jsdelivr.net",
   "font-src 'self' data:",
-  // Next.js injects small inline runtime/style hydration payloads.
+  // Next.js injects small inline style hydration payloads.
   "style-src 'self' 'unsafe-inline'",
-  "script-src 'self' 'unsafe-inline'",
+  // No inline script is ever served from these paths, so no nonce is needed.
+  "script-src 'self'",
   "connect-src 'self'",
   "upgrade-insecure-requests",
 ].join("; ");
 
+const cspOnly = [{ key: "Content-Security-Policy", value: staticCsp }];
+
 const securityHeaders = [
-  { key: "Content-Security-Policy", value: csp },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -50,7 +61,16 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
-    return [{ source: "/(.*)", headers: securityHeaders }];
+    return [
+      // Everything gets the non-CSP security headers.
+      { source: "/(.*)", headers: securityHeaders },
+      // CSP only for the paths middleware skips (see the note on staticCsp).
+      { source: "/_next/:path*", headers: cspOnly },
+      { source: "/assets/:path*", headers: cspOnly },
+      { source: "/api/:path*", headers: cspOnly },
+      { source: "/favicon.svg", headers: cspOnly },
+      { source: "/favicon.ico", headers: cspOnly },
+    ];
   },
 };
 
