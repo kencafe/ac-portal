@@ -21,8 +21,9 @@ export default function Model() {
         }}
       >
         {MODEL.phases.map((p) => (
-          <div
+          <a
             key={p.num}
+            href={`/blog/${p.blogSlug}`}
             style={{
               ...card,
               borderTop: `3px solid ${p.color}`,
@@ -30,6 +31,8 @@ export default function Model() {
               height: "100%",
               display: "flex",
               flexDirection: "column",
+              textDecoration: "none",
+              color: "inherit",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -97,7 +100,10 @@ export default function Model() {
                 </span>
               ))}
             </div>
-          </div>
+            <div style={{ marginTop: "auto", paddingTop: 14, fontSize: 13, fontWeight: 600, color: p.color }}>
+              {en ? "Read the article →" : "Đọc bài viết →"}
+            </div>
+          </a>
         ))}
       </div>
     </Section>
