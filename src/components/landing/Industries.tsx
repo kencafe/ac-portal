@@ -26,7 +26,14 @@ export default function Industries() {
               key={ind.vi}
               style={{
                 background: "#fff",
-                border: `1px solid ${COLORS.split}`,
+                // Longhands, not the `border` shorthand: hoverStyle overrides
+                // borderColor, and React clears a hover-only key on un-hover.
+                // With only the shorthand here there is nothing left to fall
+                // back to, so border-color resolved to currentColor and the
+                // card kept a near-black 1px border after the pointer left.
+                borderWidth: 1,
+                borderStyle: "solid",
+                borderColor: COLORS.split,
                 borderRadius: RADIUS.card,
                 padding: "18px 18px 20px",
                 transition: "background .18s ease, box-shadow .18s ease, border-color .18s ease, transform .18s ease",

@@ -46,7 +46,10 @@ export default function BlogTeasersView({ posts }: { posts: Post[] }) {
                 style={{
                   display: "block",
                   background: "#fff",
-                  border: `1px solid ${COLORS.split}`,
+                  // Longhands — hoverStyle overrides borderColor. See HoverCard.
+                  borderWidth: 1,
+                  borderStyle: "solid",
+                  borderColor: COLORS.split,
                   borderRadius: RADIUS.card,
                   color: COLORS.ink,
                 }}

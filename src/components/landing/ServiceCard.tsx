@@ -31,7 +31,11 @@ export default function ServiceCard({ meta }: { meta: Meta }) {
     display: "block",
     color: COLORS.ink,
     background: "#fff",
-    border: `1px solid ${isHot ? a.color : COLORS.split}`,
+    // Longhands so the hover override of borderColor can be reverted cleanly
+    // (see the note in Industries.tsx / HoverCard).
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: isHot ? a.color : COLORS.split,
     borderRadius: RADIUS.card,
     padding: "22px 22px 24px",
     height: "100%",
