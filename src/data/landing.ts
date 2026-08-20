@@ -108,6 +108,10 @@ export const SERVICE_GLYPHS: Record<string, string> = {
     '<circle cx="8.6" cy="8.4" r="2.6"/><path d="M3.6 18.6a5 5 0 0 1 10 0"/><circle cx="16.4" cy="9.4" r="2.1"/><path d="M14.2 14.2a4.4 4.4 0 0 1 6.2 4.4"/>',
   attt:
     '<path d="M12 3.4l6.6 2.5v5.6c0 4.3-2.8 7.4-6.6 9.1-3.8-1.7-6.6-4.8-6.6-9.1V5.9z"/><path d="M9.2 11.8l2 2 3.6-3.8"/>',
+  managed:
+    '<path d="M7.2 18a4 4 0 0 1-.5-8 5.5 5.5 0 0 1 10.7-1.2A3.8 3.8 0 0 1 17.2 18z"/><path d="M9.6 13.4l1.9 1.9 3.2-3.7"/>',
+  incident:
+    '<path d="M12 4 L21 19.5 H3 Z"/><path d="M12 10v4.2"/><circle cx="12" cy="17.2" r="0.6" fill="currentColor" stroke="none"/>',
 };
 
 /* ==================================================================
@@ -298,6 +302,8 @@ export const INDUSTRIES = [
   { vi: "Logistics", en: "Logistics", accent: "orange" },
   { vi: "Năng lượng – Tiện ích", en: "Energy & utilities", accent: "blue" },
   { vi: "Bảo hiểm – Chứng khoán", en: "Insurance & securities", accent: "green" },
+  { vi: "Bất động sản", en: "Real estate", accent: "orange" },
+  { vi: "Truyền thông – Giải trí", en: "Media & entertainment", accent: "green" },
 ] as const;
 
 /* ==================================================================
@@ -452,7 +458,7 @@ export const CONTACT = {
   panelTitle: "Thông tin liên hệ / Contact",
   panelTitleEn: "Contact information",
   phone: { label: "Điện thoại", labelEn: "Phone", value: "+84 973 391 388", href: "tel:+84973391388" },
-  email: { label: "Email", labelEn: "Email", value: "dungpv30@fpt.com.vn", href: "mailto:dungpv30@fpt.com.vn" },
+  email: { label: "Email", labelEn: "Email", value: "contact@appcarrier.cloud", href: "mailto:contact@appcarrier.cloud" },
   office: { label: "Văn phòng", labelEn: "Office", value: "FPT IS — Keangnam Landmark 72, E6 Phạm Hùng, Nam Từ Liêm, Hà Nội" },
   form: {
     fields: [
@@ -477,7 +483,7 @@ export const FOOTER = {
   blurb: "Dịch vụ hạ tầng Cloud & AI toàn trình cho doanh nghiệp.",
   blurbEn: "Full-lifecycle Cloud & AI infrastructure services for enterprises.",
   phone: { value: "+84 973 391 388", href: "tel:+84973391388" },
-  email: { value: "dungpv30@fpt.com.vn", href: "mailto:dungpv30@fpt.com.vn" },
+  email: { value: "contact@appcarrier.cloud", href: "mailto:contact@appcarrier.cloud" },
   columns: [
     {
       head: "Dịch vụ",

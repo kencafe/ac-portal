@@ -703,7 +703,7 @@ export const CTA_PANEL = {
   title: "Cần lộ trình cụ thể cho {{ name }}?",
   sub: "Đội ngũ FPT-IS Next Gen Service sẽ khảo sát hiện trạng và đề xuất phương án trong 3 ngày làm việc.",
   phone: { key: "Điện thoại", value: "+84 973 391 388", href: "tel:+84973391388" },
-  email: { key: "Email", value: "dungpv30@fpt.com.vn", href: "mailto:dungpv30@fpt.com.vn" },
+  email: { key: "Email", value: "contact@appcarrier.cloud", href: "mailto:contact@appcarrier.cloud" },
   button: { label: "Gửi yêu cầu tư vấn", href: "FPTIS NS Landing v3 Ant.dc.html#contact" },
 };
 

@@ -15,7 +15,7 @@ export default function Industries() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
           gap: 12,
         }}
       >
@@ -29,8 +29,14 @@ export default function Industries() {
                 border: `1px solid ${COLORS.split}`,
                 borderRadius: RADIUS.card,
                 padding: "18px 18px 20px",
+                transition: "background .18s ease, box-shadow .18s ease, border-color .18s ease, transform .18s ease",
               }}
-              hoverStyle={{ borderColor: a.color }}
+              hoverStyle={{
+                background: a.bg,
+                borderColor: a.color,
+                boxShadow: "0 14px 30px -18px rgba(0,21,41,0.42)",
+                transform: "translateY(-2px)",
+              }}
             >
               <span style={{ display: "block", width: 30, height: 3, borderRadius: 2, background: a.color, marginBottom: 14 }} />
               <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>{en ? ind.en : ind.vi}</div>
