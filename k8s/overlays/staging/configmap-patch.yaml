@@ -4,6 +4,8 @@ metadata:
   name: ac-portal-config
 data:
   SITE_URL: "https://staging.appcarrier.cloud"
-  # staging is fronted by the oauth2-proxy CMS route → trust its X-Forwarded-*
-  # auth headers. NEVER set this on a public env without a proxy (SEC-001).
-  TRUST_FORWARDED_AUTH: "1"
+  # SEC-001: TRUST_FORWARDED_AUTH removed. It was unsound here — this env runs
+  # ONE deployment behind two services (ac-portal → app :3000 with no proxy,
+  # ac-portal-cms → oauth2-proxy :8080) that share this ConfigMap, so the flag
+  # also switched header trust on for the unproxied public path. The app now
+  # decides per request by host instead; see getIdentity() in src/lib/identity.ts.
