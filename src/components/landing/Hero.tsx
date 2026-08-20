@@ -6,6 +6,30 @@ import { COLORS, GRAD, CONTENT_MAX } from "@/lib/tokens";
 import { btnPrimary, btnDefault } from "@/lib/ui";
 import { useLang } from "@/components/shared/LangContext";
 
+// A browser may wrap at a hyphen, which split the headline as "end-to-" /
+// "end cho doanh nghiệp" and left the first line visibly short. Render the
+// hyphenated term inside a nowrap span so the break can only land between
+// words. Done with a span rather than U+2011 so it does not depend on the
+// font shipping a non-breaking-hyphen glyph.
+const NOWRAP_TERMS = ["end-to-end"];
+const NOWRAP_SPLIT = new RegExp(`(${NOWRAP_TERMS.join("|")})`, "gi");
+
+function keepTermsWhole(text: string) {
+  // Compare the split part by value; do NOT .test() the /g/ regex here — its
+  // lastIndex is stateful, so the second call would report false and silently
+  // let the term wrap again.
+  const terms = new Set(NOWRAP_TERMS);
+  return text.split(NOWRAP_SPLIT).map((part, i) =>
+    terms.has(part.toLowerCase()) ? (
+      <span key={i} style={{ whiteSpace: "nowrap" }}>
+        {part}
+      </span>
+    ) : (
+      part
+    ),
+  );
+}
+
 export default function Hero() {
   const { lang } = useLang();
   const en = lang === "en";
@@ -46,15 +70,23 @@ export default function Hero() {
             </span>
             <h1
               style={{
-                fontSize: "clamp(30px, 3.6vw, 46px)",
+                // Measured on the live hero: the text column is 620px at a
+                // 1440px viewport, and "Đối tác Cloud & AI end-to-end" needs
+                // 664px at 46px — hence the headline fell to three lines with a
+                // two-word orphan. 42px brings that first line to ~607px so it
+                // fits, and text-wrap:balance then evens the two lines.
+                fontSize: "clamp(30px, 3.2vw, 42px)",
                 fontWeight: 600,
                 letterSpacing: "-0.02em",
                 lineHeight: 1.16,
                 margin: 0,
                 color: COLORS.ink,
+                // Even the lines out instead of letting the last one orphan.
+                // Ignored by browsers that do not support it — no fallback needed.
+                textWrap: "balance",
               }}
             >
-              {h1}
+              {keepTermsWhole(h1)}
             </h1>
             {h1sub && (
               <p
@@ -63,9 +95,10 @@ export default function Hero() {
                   fontWeight: 400,
                   color: COLORS.ink3,
                   margin: "10px 0 0",
+                  textWrap: "balance",
                 }}
               >
-                {h1sub}
+                {keepTermsWhole(h1sub)}
               </p>
             )}
             <p style={{ fontSize: 16, lineHeight: 1.72, color: COLORS.ink2, maxWidth: 660, margin: "20px 0 0" }}>
