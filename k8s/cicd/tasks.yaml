@@ -145,9 +145,15 @@ spec:
         # --timeout bounds the run: this cluster's egress can't reach the trivy-db
         # registry (ghcr), so the DB pull hangs. Cap it so the (advisory) scan
         # gives up fast instead of stalling the pipeline to its 45m timeout.
-        trivy image --severity HIGH,CRITICAL --no-progress --exit-code 0 --insecure --timeout 3m0s \
+        #
+        # SEC-002 W1b: --ignore-unfixed drops findings with no vendor fix (83 of
+        # 118 HIGH on the 2026-08-20 image). Those are not actionable in CI — no
+        # upstream patch exists to pull in — and they buried the ~35 that *are*
+        # fixable in the DefectDojo queue. The unfixed set is handled at the
+        # image level instead (see Dockerfile: kernel-headers/vim/rsync removed).
+        trivy image --severity HIGH,CRITICAL --ignore-unfixed --no-progress --exit-code 0 --insecure --timeout 3m0s \
           --format json -o reports/trivy-image.json $(params.IMAGE) || echo "image scan skipped"
-        trivy image --severity HIGH,CRITICAL --no-progress --exit-code 0 --insecure --timeout 3m0s $(params.IMAGE) || true
+        trivy image --severity HIGH,CRITICAL --ignore-unfixed --no-progress --exit-code 0 --insecure --timeout 3m0s $(params.IMAGE) || true
 ---
 apiVersion: tekton.dev/v1
 kind: Task

@@ -37,6 +37,21 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# SEC-002 W1b — shrink the runtime CVE surface. Two separate causes:
+#  1. The mirrored base is a RHEL 9.7 snapshot, so every *fixable* HIGH is just
+#     an el9_7 -> el9_8 bump (35 of them: openssl, gnutls, python3, curl, ...).
+#     `dnf upgrade` closes all of those without changing the base image.
+#  2. The rest is build-time cruft a runtime image never executes.
+#     kernel-headers alone was 71 of the 118 HIGH findings and *none* of them
+#     has a fix available, so it can only be removed, not patched. glibc-devel
+#     is pulled out with it (toolchain only — glibc itself stays); nothing else
+#     in the image requires vim-*/rsync. Verified with rpm --whatrequires.
+# NOTE: this drops `vi` from the runtime image — debug with `oc debug` instead.
+RUN dnf -y upgrade --refresh --setopt=install_weak_deps=0 \
+ && dnf -y remove kernel-headers vim-minimal vim-filesystem rsync \
+ && dnf -y clean all \
+ && rm -rf /var/cache/dnf /var/cache/yum
+
 COPY --from=builder /app/public ./public
 RUN mkdir .next && chown -R 1001980000:0 /app && chmod -R g=u /app
 COPY --from=builder --chown=1001980000:0 /app/.next/standalone ./
