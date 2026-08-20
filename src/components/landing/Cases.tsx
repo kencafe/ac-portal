@@ -1,11 +1,10 @@
 "use client";
 
 import { CASES, SECTION_TITLES, UI_STRINGS } from "@/data/landing";
-import { Accent, COLORS, RADIUS } from "@/lib/tokens";
+import { ACCENTS, Accent, COLORS, RADIUS } from "@/lib/tokens";
 import { tag } from "@/lib/ui";
 import Section from "@/components/shared/Section";
 import SectionHeading from "@/components/shared/SectionHeading";
-import CaseLogo from "@/components/landing/CaseLogo";
 import { useLang } from "@/components/shared/LangContext";
 
 // Human-readable customer name from the placeholderHint ("Techcombank — kéo
@@ -59,7 +58,22 @@ export default function Cases() {
               }}
             >
               {c.logos.map((logo) => (
-                <CaseLogo key={logo.id} src={logo.src} name={logoName(logo.placeholderHint) || logo.id} />
+                <div
+                  key={logo.id}
+                  style={{
+                    height: 64,
+                    background: "#fff",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "0 14px",
+                  }}
+                >
+                  <span style={{ width: 3, height: 22, borderRadius: 2, background: ACCENTS[c.tagAccent as Accent].color, flexShrink: 0 }} />
+                  <span style={{ fontSize: 14.5, fontWeight: 700, color: COLORS.ink, lineHeight: 1.2 }}>
+                    {logoName(logo.placeholderHint) || logo.id}
+                  </span>
+                </div>
               ))}
             </div>
           </div>
