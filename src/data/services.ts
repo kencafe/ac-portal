@@ -617,15 +617,25 @@ export const BRAND = {
 };
 
 /** Header nav items (label → href) */
-export const HEADER_NAV: { label: string; href: string }[] = [
-  { label: "Tất cả dịch vụ", href: "FPTIS NS Landing v3 Ant.dc.html#services" },
-  { label: "Phạm vi", href: "#scope" },
-  { label: "Hạng mục", href: "#phases" },
-  { label: "Công nghệ", href: "#stack" },
+// labelEn is what SiteHeader renders when the language toggle is on EN. Without
+// it the header stayed Vietnamese on the EN view while the rest of the page
+// switched. "Services" and "Get in touch" are reused verbatim from HEADER in
+// landing.ts so the two headers read the same; the other three are the anchor
+// names (#scope / #phases / #stack) rather than a translation of the section
+// headings, which are full sentences and too long for a nav item.
+export const HEADER_NAV: { label: string; labelEn: string; href: string }[] = [
+  { label: "Tất cả dịch vụ", labelEn: "All services", href: "FPTIS NS Landing v3 Ant.dc.html#services" },
+  { label: "Phạm vi", labelEn: "Scope", href: "#scope" },
+  { label: "Hạng mục", labelEn: "Phases", href: "#phases" },
+  { label: "Công nghệ", labelEn: "Stack", href: "#stack" },
 ];
 
 /** Header primary CTA button */
-export const HEADER_CTA = { label: "Liên hệ tư vấn", href: "FPTIS NS Landing v3 Ant.dc.html#contact" };
+export const HEADER_CTA = {
+  label: "Liên hệ tư vấn",
+  labelEn: "Get in touch",
+  href: "FPTIS NS Landing v3 Ant.dc.html#contact",
+};
 
 /** Breadcrumb labels (the 3rd item is the dynamic {{ name }}) */
 export const BREADCRUMB: { label: string; href?: string; dynamic?: boolean }[] = [

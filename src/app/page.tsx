@@ -17,8 +17,15 @@ import Contact from "@/components/landing/Contact";
 // Render per-request so newly published CMS posts appear immediately.
 export const dynamic = "force-dynamic";
 
-const nav = HEADER.nav.map((n) => ({ label: n.label, href: rewriteHref(n.href) }));
-const cta = { label: HEADER.ctaButton.label, href: HEADER.ctaButton.href };
+// Carry labelEn through: SiteHeader reads it to switch the header to
+// English. Mapping to only { label, href } silently dropped it, so the
+// nav rendered Vietnamese even on the EN view.
+const nav = HEADER.nav.map((n) => ({ label: n.label, labelEn: n.labelEn, href: rewriteHref(n.href) }));
+const cta = {
+  label: HEADER.ctaButton.label,
+  labelEn: HEADER.ctaButton.labelEn,
+  href: HEADER.ctaButton.href,
+};
 
 export default function LandingPage() {
   return (

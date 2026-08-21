@@ -25,8 +25,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return { title: s.name, description: s.positioning };
 }
 
-const nav = HEADER_NAV.map((n) => ({ label: n.label, href: rewriteHref(n.href) }));
-const cta = { label: HEADER_CTA.label, href: rewriteHref(HEADER_CTA.href) };
+// Carry labelEn through: SiteHeader reads it to switch the header to
+// English. Mapping to only { label, href } silently dropped it, so the
+// nav rendered Vietnamese even on the EN view.
+const nav = HEADER_NAV.map((n) => ({ label: n.label, labelEn: n.labelEn, href: rewriteHref(n.href) }));
+const cta = { label: HEADER_CTA.label, labelEn: HEADER_CTA.labelEn, href: rewriteHref(HEADER_CTA.href) };
 
 export default async function ServiceDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

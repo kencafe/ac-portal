@@ -15,8 +15,11 @@ export const metadata: Metadata = {
   description: LIST_HERO.lead,
 };
 
-const nav = HEADER.navItems.map((n) => ({ label: n.label, href: rewriteHref(n.href) }));
-const cta = { label: HEADER.ctaLabel, href: rewriteHref(HEADER.ctaHref) };
+// Carry labelEn through: SiteHeader reads it to switch the header to
+// English. Mapping to only { label, href } silently dropped it, so the
+// nav rendered Vietnamese even on the EN view.
+const nav = HEADER.navItems.map((n) => ({ label: n.label, labelEn: n.labelEn, href: rewriteHref(n.href) }));
+const cta = { label: HEADER.ctaLabel, labelEn: HEADER.ctaLabelEn, href: rewriteHref(HEADER.ctaHref) };
 
 export default async function BlogPage() {
   const posts = await listPublished();

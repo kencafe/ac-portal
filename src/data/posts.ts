@@ -332,12 +332,16 @@ export const HEADER = {
   brandName: 'FPT-IS',
   brandUnit: 'NEXT GEN SERVICE',
   sectionBadge: 'BLOG',
+  // labelEn / ctaLabelEn: the blog header used to stay Vietnamese on the EN
+  // view. Wording copied verbatim from HEADER in landing.ts so the blog and the
+  // landing page do not label the same destination two different ways.
   navItems: [
-    { label: 'Dịch vụ', href: 'FPTIS NS Landing v3 Ant.dc.html#services' },
-    { label: 'Đối tác', href: 'FPTIS NS Landing v3 Ant.dc.html#partners' },
-    { label: 'Khách hàng', href: 'FPTIS NS Landing v3 Ant.dc.html#cases' },
+    { label: 'Dịch vụ', labelEn: 'Services', href: 'FPTIS NS Landing v3 Ant.dc.html#services' },
+    { label: 'Đối tác', labelEn: 'Partners', href: 'FPTIS NS Landing v3 Ant.dc.html#partners' },
+    { label: 'Khách hàng', labelEn: 'Customers', href: 'FPTIS NS Landing v3 Ant.dc.html#cases' },
   ],
   ctaLabel: 'Liên hệ tư vấn',
+  ctaLabelEn: 'Get in touch',
   ctaHref: 'FPTIS NS Landing v3 Ant.dc.html#contact',
 };
 
