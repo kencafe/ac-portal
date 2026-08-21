@@ -74,19 +74,27 @@ export default function BlogList({ posts }: { posts: Post[] }) {
   const [subEmail, setSubEmail] = useState("");
   const [subErr, setSubErr] = useState("");
 
-  const featured = useMemo(() => posts.find((p) => p.featured) ?? posts[0], [posts]);
+  // Language gate applied ONCE, so the featured card and the list can never
+  // disagree. It used to be applied only inside `filtered`, while `featured`
+  // was picked from every post — so the EN view showed a Vietnamese featured
+  // article sitting above a list that read "0 posts".
+  const inLang = useMemo(
+    () => posts.filter((p) => (p.lang ?? "vi") === (en ? "en" : "vi")),
+    [posts, en],
+  );
+  const featured = useMemo(() => inLang.find((p) => p.featured) ?? inLang[0], [inLang]);
   const q = query.trim().toLowerCase();
 
   const filtered = useMemo(
     () =>
-      posts
-        .filter((p) => (p.lang ?? "vi") === (en ? "en" : "vi"))
+      inLang
         .filter((p) => cat === "Tất cả" || p.cat === cat)
         .filter((p) => !q || (p.title + " " + p.excerpt + " " + (p.tags ?? []).join(" ")).toLowerCase().includes(q)),
-    [posts, cat, q, en],
+    [inLang, cat, q],
   );
 
-  const showFeatured = cat === "Tất cả" && !q;
+  // No featured slot when there is nothing in this language to feature.
+  const showFeatured = cat === "Tất cả" && !q && !!featured;
   const listed = showFeatured ? filtered.filter((p) => !p.featured) : filtered;
 
   return (
